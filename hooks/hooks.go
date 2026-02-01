@@ -1,0 +1,402 @@
+// Package hooks 提供 Hexagon AI Agent 框架的钩子/回调系统
+//
+// 钩子系统允许在 Agent 执行的各个阶段插入自定义逻辑，借鉴 LangChain 的回调系统设计。
+//
+// 支持的钩子点：
+//   - OnStart: Agent 开始执行前
+//   - OnEnd: Agent 执行完成后
+//   - OnError: 发生错误时
+//   - OnToolStart: 工具调用开始前
+//   - OnToolEnd: 工具调用完成后
+//   - OnLLMStart: LLM 调用开始前
+//   - OnLLMEnd: LLM 调用完成后
+//   - OnRetrieverStart: 检索开始前
+//   - OnRetrieverEnd: 检索完成后
+//
+// 主要类型：
+//   - RunHook: Agent 运行钩子
+//   - ToolHook: 工具调用钩子
+//   - LLMHook: LLM 调用钩子
+//   - RetrieverHook: 检索钩子
+//   - Manager: 钩子管理器，统一管理和触发钩子
+//
+// 使用示例：
+//
+//	manager := NewManager()
+//	manager.RegisterRunHook(myRunHook)
+//	manager.TriggerRunStart(ctx, &RunStartEvent{...})
+package hooks
+
+import (
+	"context"
+	"sync"
+)
+
+// Hook 钩子接口
+type Hook interface {
+	// Name 返回钩子名称
+	Name() string
+
+	// Enabled 是否启用
+	Enabled() bool
+}
+
+// RunHook Agent 运行钩子
+type RunHook interface {
+	Hook
+	// OnStart Agent 开始执行
+	OnStart(ctx context.Context, event *RunStartEvent) error
+	// OnEnd Agent 执行完成
+	OnEnd(ctx context.Context, event *RunEndEvent) error
+	// OnError 发生错误
+	OnError(ctx context.Context, event *ErrorEvent) error
+}
+
+// ToolHook 工具调用钩子
+type ToolHook interface {
+	Hook
+	// OnToolStart 工具调用开始
+	OnToolStart(ctx context.Context, event *ToolStartEvent) error
+	// OnToolEnd 工具调用完成
+	OnToolEnd(ctx context.Context, event *ToolEndEvent) error
+}
+
+// LLMHook LLM 调用钩子
+type LLMHook interface {
+	Hook
+	// OnLLMStart LLM 调用开始
+	OnLLMStart(ctx context.Context, event *LLMStartEvent) error
+	// OnLLMEnd LLM 调用完成
+	OnLLMEnd(ctx context.Context, event *LLMEndEvent) error
+	// OnLLMStream LLM 流式输出
+	OnLLMStream(ctx context.Context, event *LLMStreamEvent) error
+}
+
+// RetrieverHook 检索钩子
+type RetrieverHook interface {
+	Hook
+	// OnRetrieverStart 检索开始
+	OnRetrieverStart(ctx context.Context, event *RetrieverStartEvent) error
+	// OnRetrieverEnd 检索完成
+	OnRetrieverEnd(ctx context.Context, event *RetrieverEndEvent) error
+}
+
+// ============== Events ==============
+
+// RunStartEvent Agent 开始执行事件
+type RunStartEvent struct {
+	RunID    string         `json:"run_id"`
+	AgentID  string         `json:"agent_id"`
+	Input    any            `json:"input"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// RunEndEvent Agent 执行完成事件
+type RunEndEvent struct {
+	RunID    string         `json:"run_id"`
+	AgentID  string         `json:"agent_id"`
+	Output   any            `json:"output"`
+	Duration int64          `json:"duration_ms"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// ErrorEvent 错误事件
+type ErrorEvent struct {
+	RunID    string         `json:"run_id"`
+	AgentID  string         `json:"agent_id"`
+	Error    error          `json:"error"`
+	Phase    string         `json:"phase"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// ToolStartEvent 工具调用开始事件
+type ToolStartEvent struct {
+	RunID      string         `json:"run_id"`
+	ToolName   string         `json:"tool_name"`
+	ToolID     string         `json:"tool_id"`
+	Input      map[string]any `json:"input"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
+}
+
+// ToolEndEvent 工具调用完成事件
+type ToolEndEvent struct {
+	RunID    string         `json:"run_id"`
+	ToolName string         `json:"tool_name"`
+	ToolID   string         `json:"tool_id"`
+	Output   any            `json:"output"`
+	Duration int64          `json:"duration_ms"`
+	Error    error          `json:"error,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// LLMStartEvent LLM 调用开始事件
+type LLMStartEvent struct {
+	RunID       string         `json:"run_id"`
+	Model       string         `json:"model"`
+	Provider    string         `json:"provider"`
+	Messages    []any          `json:"messages"`
+	Temperature float64        `json:"temperature,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+}
+
+// LLMEndEvent LLM 调用完成事件
+type LLMEndEvent struct {
+	RunID            string         `json:"run_id"`
+	Model            string         `json:"model"`
+	Response         any            `json:"response"`
+	PromptTokens     int            `json:"prompt_tokens"`
+	CompletionTokens int            `json:"completion_tokens"`
+	Duration         int64          `json:"duration_ms"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
+}
+
+// LLMStreamEvent LLM 流式输出事件
+type LLMStreamEvent struct {
+	RunID   string `json:"run_id"`
+	Model   string `json:"model"`
+	Content string `json:"content"`
+	Index   int    `json:"index"`
+}
+
+// RetrieverStartEvent 检索开始事件
+type RetrieverStartEvent struct {
+	RunID    string         `json:"run_id"`
+	Query    string         `json:"query"`
+	TopK     int            `json:"top_k"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// RetrieverEndEvent 检索完成事件
+type RetrieverEndEvent struct {
+	RunID     string         `json:"run_id"`
+	Query     string         `json:"query"`
+	Documents []any          `json:"documents"`
+	Duration  int64          `json:"duration_ms"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
+}
+
+// ============== HookManager ==============
+
+// Manager 钩子管理器
+type Manager struct {
+	runHooks       []RunHook
+	toolHooks      []ToolHook
+	llmHooks       []LLMHook
+	retrieverHooks []RetrieverHook
+	mu             sync.RWMutex
+}
+
+// NewManager 创建钩子管理器
+func NewManager() *Manager {
+	return &Manager{
+		runHooks:       make([]RunHook, 0),
+		toolHooks:      make([]ToolHook, 0),
+		llmHooks:       make([]LLMHook, 0),
+		retrieverHooks: make([]RetrieverHook, 0),
+	}
+}
+
+// RegisterRunHook 注册运行钩子
+func (m *Manager) RegisterRunHook(hook RunHook) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.runHooks = append(m.runHooks, hook)
+}
+
+// RegisterToolHook 注册工具钩子
+func (m *Manager) RegisterToolHook(hook ToolHook) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.toolHooks = append(m.toolHooks, hook)
+}
+
+// RegisterLLMHook 注册 LLM 钩子
+func (m *Manager) RegisterLLMHook(hook LLMHook) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.llmHooks = append(m.llmHooks, hook)
+}
+
+// RegisterRetrieverHook 注册检索钩子
+func (m *Manager) RegisterRetrieverHook(hook RetrieverHook) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.retrieverHooks = append(m.retrieverHooks, hook)
+}
+
+// TriggerRunStart 触发运行开始事件
+func (m *Manager) TriggerRunStart(ctx context.Context, event *RunStartEvent) error {
+	m.mu.RLock()
+	hooks := m.runHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnStart(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerRunEnd 触发运行结束事件
+func (m *Manager) TriggerRunEnd(ctx context.Context, event *RunEndEvent) error {
+	m.mu.RLock()
+	hooks := m.runHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnEnd(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerError 触发错误事件
+func (m *Manager) TriggerError(ctx context.Context, event *ErrorEvent) error {
+	m.mu.RLock()
+	hooks := m.runHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnError(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerToolStart 触发工具开始事件
+func (m *Manager) TriggerToolStart(ctx context.Context, event *ToolStartEvent) error {
+	m.mu.RLock()
+	hooks := m.toolHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnToolStart(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerToolEnd 触发工具结束事件
+func (m *Manager) TriggerToolEnd(ctx context.Context, event *ToolEndEvent) error {
+	m.mu.RLock()
+	hooks := m.toolHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnToolEnd(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerLLMStart 触发 LLM 开始事件
+func (m *Manager) TriggerLLMStart(ctx context.Context, event *LLMStartEvent) error {
+	m.mu.RLock()
+	hooks := m.llmHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnLLMStart(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerLLMEnd 触发 LLM 结束事件
+func (m *Manager) TriggerLLMEnd(ctx context.Context, event *LLMEndEvent) error {
+	m.mu.RLock()
+	hooks := m.llmHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnLLMEnd(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerLLMStream 触发 LLM 流式事件
+func (m *Manager) TriggerLLMStream(ctx context.Context, event *LLMStreamEvent) error {
+	m.mu.RLock()
+	hooks := m.llmHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnLLMStream(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerRetrieverStart 触发检索开始事件
+func (m *Manager) TriggerRetrieverStart(ctx context.Context, event *RetrieverStartEvent) error {
+	m.mu.RLock()
+	hooks := m.retrieverHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnRetrieverStart(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerRetrieverEnd 触发检索结束事件
+func (m *Manager) TriggerRetrieverEnd(ctx context.Context, event *RetrieverEndEvent) error {
+	m.mu.RLock()
+	hooks := m.retrieverHooks
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if hook.Enabled() {
+			if err := hook.OnRetrieverEnd(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// ============== Context Helpers ==============
+
+type hookManagerKey struct{}
+
+// ContextWithManager 将钩子管理器添加到 context
+func ContextWithManager(ctx context.Context, m *Manager) context.Context {
+	return context.WithValue(ctx, hookManagerKey{}, m)
+}
+
+// ManagerFromContext 从 context 获取钩子管理器
+func ManagerFromContext(ctx context.Context) *Manager {
+	if m, ok := ctx.Value(hookManagerKey{}).(*Manager); ok {
+		return m
+	}
+	return nil
+}

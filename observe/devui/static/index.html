@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexagon Dev UI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航栏 -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <span class="logo-icon">⬡</span>
+                    <span class="logo-text">Hexagon Dev UI</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">连接中...</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn btn-icon" id="clearBtn" title="清空事件">
+                    <span>🗑️</span>
+                </button>
+                <button class="btn btn-icon" id="pauseBtn" title="暂停/继续">
+                    <span id="pauseIcon">⏸️</span>
+                </button>
+                <button class="btn btn-icon" id="settingsBtn" title="设置">
+                    <span>⚙️</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main">
+            <!-- 左侧面板：事件列表 -->
+            <aside class="sidebar" id="sidebar">
+                <div class="panel-header">
+                    <h3>事件流</h3>
+                    <div class="event-filter">
+                        <select id="eventTypeFilter">
+                            <option value="">全部类型</option>
+                            <option value="agent.start">Agent 开始</option>
+                            <option value="agent.end">Agent 结束</option>
+                            <option value="llm.request">LLM 请求</option>
+                            <option value="llm.stream">LLM 流式</option>
+                            <option value="llm.response">LLM 响应</option>
+                            <option value="tool.call">工具调用</option>
+                            <option value="tool.result">工具结果</option>
+                            <option value="retriever.start">检索开始</option>
+                            <option value="retriever.end">检索结束</option>
+                            <option value="error">错误</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="event-list" id="eventList">
+                    <div class="empty-state">
+                        <span class="empty-icon">📭</span>
+                        <p>等待事件...</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 中间区域：详情面板 -->
+            <section class="content" id="content">
+                <div class="panel-header">
+                    <h3 id="detailTitle">事件详情</h3>
+                </div>
+                <div class="detail-view" id="detailView">
+                    <div class="empty-state">
+                        <span class="empty-icon">👈</span>
+                        <p>选择一个事件查看详情</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧面板：指标仪表板 -->
+            <aside class="metrics-panel" id="metricsPanel">
+                <div class="panel-header">
+                    <h3>实时指标</h3>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="metricTotalEvents">0</div>
+                        <div class="metric-label">总事件</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metricAgentRuns">0</div>
+                        <div class="metric-label">Agent 运行</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metricLLMCalls">0</div>
+                        <div class="metric-label">LLM 调用</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metricToolCalls">0</div>
+                        <div class="metric-label">工具调用</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metricRetrieverRuns">0</div>
+                        <div class="metric-label">检索次数</div>
+                    </div>
+                    <div class="metric-card error">
+                        <div class="metric-value" id="metricErrors">0</div>
+                        <div class="metric-label">错误</div>
+                    </div>
+                </div>
+                <div class="uptime-info">
+                    <span>运行时间: </span>
+                    <span id="uptime">-</span>
+                </div>
+            </aside>
+        </main>
+
+        <!-- 底部状态栏 -->
+        <footer class="footer">
+            <div class="footer-left">
+                <span id="eventCount">0 个事件</span>
+            </div>
+            <div class="footer-center">
+                <span id="lastEventTime">-</span>
+            </div>
+            <div class="footer-right">
+                <span>Hexagon AI Agent Framework</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- LLM 流式输出模态框 -->
+    <div class="modal" id="streamModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>LLM 流式输出</h3>
+                <button class="modal-close" id="closeStreamModal">×</button>
+            </div>
+            <div class="modal-body">
+                <pre id="streamContent" class="stream-content"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
