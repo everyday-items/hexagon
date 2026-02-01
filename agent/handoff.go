@@ -1,0 +1,257 @@
+package agent
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/everyday-items/ai-core/schema"
+	"github.com/everyday-items/ai-core/tool"
+)
+
+// Handoff 交接结果
+// 当 Agent 需要将任务交接给另一个 Agent 时使用
+type Handoff struct {
+	// TargetAgent 目标 Agent
+	TargetAgent Agent
+
+	// Message 交接消息
+	Message string
+
+	// Context 交接上下文
+	Context map[string]any
+
+	// Reason 交接原因
+	Reason string
+}
+
+// TransferToInput 转交工具的输入
+type TransferToInput struct {
+	// Message 传递给目标 Agent 的消息
+	Message string `json:"message" desc:"Message to pass to the target agent" required:"true"`
+
+	// Reason 转交原因
+	Reason string `json:"reason" desc:"Reason for transferring to this agent"`
+
+	// Context 额外上下文
+	Context map[string]any `json:"context" desc:"Additional context to pass"`
+}
+
+// TransferTool 创建转交工具
+// 借鉴 OpenAI Swarm 的设计
+func TransferTo(target Agent) tool.Tool {
+	return &transferTool{
+		target: target,
+	}
+}
+
+// transferTool 转交工具实现
+type transferTool struct {
+	target Agent
+}
+
+func (t *transferTool) Name() string {
+	return fmt.Sprintf("transfer_to_%s", t.target.Name())
+}
+
+func (t *transferTool) Description() string {
+	return fmt.Sprintf("Transfer the conversation to %s. %s", t.target.Name(), t.target.Description())
+}
+
+func (t *transferTool) Schema() *schema.Schema {
+	return schema.Of[TransferToInput]()
+}
+
+func (t *transferTool) Validate(args map[string]any) error {
+	if _, ok := args["message"]; !ok {
+		return fmt.Errorf("message is required")
+	}
+	return nil
+}
+
+func (t *transferTool) Execute(ctx context.Context, args map[string]any) (tool.Result, error) {
+	message, _ := args["message"].(string)
+	reason, _ := args["reason"].(string)
+	context, _ := args["context"].(map[string]any)
+
+	// 创建交接信息
+	handoff := Handoff{
+		TargetAgent: t.target,
+		Message:     message,
+		Context:     context,
+		Reason:      reason,
+	}
+
+	// 将交接信息存储到 context 中，供外层处理
+	return tool.Result{
+		Success: true,
+		Output:  handoff,
+	}, nil
+}
+
+// 确保实现了 Tool 接口
+var _ tool.Tool = (*transferTool)(nil)
+
+// HandoffHandler 交接处理器
+// 用于在外层处理 Agent 交接
+type HandoffHandler struct {
+	// OnHandoff 交接回调
+	OnHandoff func(ctx context.Context, handoff Handoff) error
+}
+
+// ProcessToolResult 处理工具结果，检测是否有交接
+func (h *HandoffHandler) ProcessToolResult(ctx context.Context, result tool.Result) (*Handoff, error) {
+	if !result.Success {
+		return nil, nil
+	}
+
+	handoff, ok := result.Output.(Handoff)
+	if !ok {
+		return nil, nil
+	}
+
+	if h.OnHandoff != nil {
+		if err := h.OnHandoff(ctx, handoff); err != nil {
+			return nil, err
+		}
+	}
+
+	return &handoff, nil
+}
+
+// SwarmRunner 模仿 OpenAI Swarm 的运行器
+// 自动处理 Agent 之间的交接
+type SwarmRunner struct {
+	// InitialAgent 初始 Agent
+	InitialAgent Agent
+
+	// MaxHandoffs 最大交接次数
+	MaxHandoffs int
+
+	// GlobalState 全局状态
+	GlobalState GlobalState
+
+	// Verbose 详细输出
+	Verbose bool
+}
+
+// NewSwarmRunner 创建 Swarm 运行器
+func NewSwarmRunner(initialAgent Agent) *SwarmRunner {
+	return &SwarmRunner{
+		InitialAgent: initialAgent,
+		MaxHandoffs:  10,
+		GlobalState:  NewGlobalState(),
+	}
+}
+
+// Run 运行 Swarm
+func (s *SwarmRunner) Run(ctx context.Context, input Input) (Output, error) {
+	currentAgent := s.InitialAgent
+	currentInput := input
+	handoffCount := 0
+
+	for handoffCount < s.MaxHandoffs {
+		select {
+		case <-ctx.Done():
+			return Output{}, ctx.Err()
+		default:
+		}
+
+		// 执行当前 Agent
+		output, err := currentAgent.Run(ctx, currentInput)
+		if err != nil {
+			return Output{}, fmt.Errorf("agent %s failed: %w", currentAgent.Name(), err)
+		}
+
+		// 检查是否有交接
+		handoff := s.extractHandoff(output)
+		if handoff == nil {
+			// 没有交接，返回结果
+			return output, nil
+		}
+
+		// 处理交接
+		handoffCount++
+		if s.Verbose {
+			fmt.Printf("Handoff %d: %s -> %s (reason: %s)\n",
+				handoffCount, currentAgent.Name(), handoff.TargetAgent.Name(), handoff.Reason)
+		}
+
+		// 切换到目标 Agent
+		currentAgent = handoff.TargetAgent
+		currentInput = Input{
+			Query:   handoff.Message,
+			Context: handoff.Context,
+		}
+	}
+
+	return Output{}, fmt.Errorf("max handoffs (%d) exceeded", s.MaxHandoffs)
+}
+
+// extractHandoff 从输出中提取交接信息
+func (s *SwarmRunner) extractHandoff(output Output) *Handoff {
+	for _, tc := range output.ToolCalls {
+		if handoff, ok := tc.Result.Output.(Handoff); ok {
+			return &handoff
+		}
+	}
+	return nil
+}
+
+// ContextVariables 上下文变量
+// 用于在 Agent 之间传递状态
+type ContextVariables map[string]any
+
+// Get 获取值
+func (c ContextVariables) Get(key string) (any, bool) {
+	v, ok := c[key]
+	return v, ok
+}
+
+// Set 设置值
+func (c ContextVariables) Set(key string, value any) {
+	c[key] = value
+}
+
+// Merge 合并变量
+func (c ContextVariables) Merge(other ContextVariables) {
+	for k, v := range other {
+		c[k] = v
+	}
+}
+
+// Clone 克隆变量
+func (c ContextVariables) Clone() ContextVariables {
+	clone := make(ContextVariables, len(c))
+	for k, v := range c {
+		clone[k] = v
+	}
+	return clone
+}
+
+// contextVariablesKey context key
+type contextVariablesKey struct{}
+
+// ContextWithVariables 将上下文变量添加到 context
+func ContextWithVariables(ctx context.Context, vars ContextVariables) context.Context {
+	return context.WithValue(ctx, contextVariablesKey{}, vars)
+}
+
+// VariablesFromContext 从 context 中获取上下文变量
+func VariablesFromContext(ctx context.Context) ContextVariables {
+	if v, ok := ctx.Value(contextVariablesKey{}).(ContextVariables); ok {
+		return v
+	}
+	return nil
+}
+
+// UpdateContextVariables 更新 context 中的变量
+func UpdateContextVariables(ctx context.Context, updates ContextVariables) context.Context {
+	existing := VariablesFromContext(ctx)
+	if existing == nil {
+		existing = make(ContextVariables)
+	}
+	for k, v := range updates {
+		existing[k] = v
+	}
+	return ContextWithVariables(ctx, existing)
+}

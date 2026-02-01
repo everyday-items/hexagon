@@ -1,0 +1,551 @@
+// Package graph 提供 Hexagon AI Agent 框架的图编排引擎
+//
+// Graph 编排引擎允许将多个节点（Agent、Tool、函数）组织成有向图，
+// 支持条件路由、并行执行、检查点恢复等高级特性。
+//
+// 基本用法：
+//
+//	graph := NewGraph[MyState]("my-graph").
+//	    AddNode("step1", step1Handler).
+//	    AddNode("step2", step2Handler).
+//	    AddEdge(START, "step1").
+//	    AddEdge("step1", "step2").
+//	    AddEdge("step2", END).
+//	    Build()
+//
+//	result, err := graph.Run(ctx, initialState)
+package graph
+
+import (
+	"context"
+	"fmt"
+	"sync"
+)
+
+// Graph 图定义
+type Graph[S State] struct {
+	// Name 图名称
+	Name string
+
+	// Nodes 节点映射
+	Nodes map[string]*Node[S]
+
+	// Edges 边列表
+	Edges []*Edge
+
+	// EntryPoint 入口点
+	EntryPoint string
+
+	// Checkpointer 检查点保存器
+	Checkpointer CheckpointSaver
+
+	// Metadata 元数据
+	Metadata map[string]any
+
+	// compiled 是否已编译
+	compiled bool
+
+	// adjacency 邻接表（编译后生成）
+	adjacency map[string][]string
+
+	// conditionalEdges 条件边映射
+	conditionalEdges map[string][]conditionalEdge[S]
+}
+
+// conditionalEdge 条件边内部表示
+type conditionalEdge[S State] struct {
+	router RouterFunc[S]
+	edges  map[string]string // label -> target
+}
+
+// GraphBuilder 图构建器
+type GraphBuilder[S State] struct {
+	graph *Graph[S]
+	err   error
+}
+
+// NewGraph 创建图构建器
+func NewGraph[S State](name string) *GraphBuilder[S] {
+	return &GraphBuilder[S]{
+		graph: &Graph[S]{
+			Name:             name,
+			Nodes:            make(map[string]*Node[S]),
+			Edges:            make([]*Edge, 0),
+			Metadata:         make(map[string]any),
+			adjacency:        make(map[string][]string),
+			conditionalEdges: make(map[string][]conditionalEdge[S]),
+		},
+	}
+}
+
+// AddNode 添加节点
+func (b *GraphBuilder[S]) AddNode(name string, handler NodeHandler[S]) *GraphBuilder[S] {
+	if b.err != nil {
+		return b
+	}
+
+	if name == START || name == END {
+		b.err = fmt.Errorf("cannot use reserved node name: %s", name)
+		return b
+	}
+
+	if _, exists := b.graph.Nodes[name]; exists {
+		b.err = fmt.Errorf("node %s already exists", name)
+		return b
+	}
+
+	b.graph.Nodes[name] = &Node[S]{
+		Name:     name,
+		Type:     NodeTypeNormal,
+		Handler:  handler,
+		Metadata: make(map[string]any),
+	}
+	return b
+}
+
+// AddNodeWithBuilder 使用构建器添加节点
+func (b *GraphBuilder[S]) AddNodeWithBuilder(node *Node[S]) *GraphBuilder[S] {
+	if b.err != nil {
+		return b
+	}
+
+	if node.Name == START || node.Name == END {
+		b.err = fmt.Errorf("cannot use reserved node name: %s", node.Name)
+		return b
+	}
+
+	if _, exists := b.graph.Nodes[node.Name]; exists {
+		b.err = fmt.Errorf("node %s already exists", node.Name)
+		return b
+	}
+
+	b.graph.Nodes[node.Name] = node
+	return b
+}
+
+// AddEdge 添加边
+func (b *GraphBuilder[S]) AddEdge(from, to string) *GraphBuilder[S] {
+	if b.err != nil {
+		return b
+	}
+
+	b.graph.Edges = append(b.graph.Edges, &Edge{
+		From: from,
+		To:   to,
+		Type: EdgeTypeNormal,
+	})
+	return b
+}
+
+// AddConditionalEdge 添加条件边
+// router 函数返回目标节点的标签
+// edges 是标签到目标节点的映射
+func (b *GraphBuilder[S]) AddConditionalEdge(from string, router RouterFunc[S], edges map[string]string) *GraphBuilder[S] {
+	if b.err != nil {
+		return b
+	}
+
+	if b.graph.conditionalEdges[from] == nil {
+		b.graph.conditionalEdges[from] = make([]conditionalEdge[S], 0)
+	}
+
+	b.graph.conditionalEdges[from] = append(b.graph.conditionalEdges[from], conditionalEdge[S]{
+		router: router,
+		edges:  edges,
+	})
+
+	return b
+}
+
+// SetEntryPoint 设置入口点
+func (b *GraphBuilder[S]) SetEntryPoint(node string) *GraphBuilder[S] {
+	if b.err != nil {
+		return b
+	}
+	b.graph.EntryPoint = node
+	return b
+}
+
+// SetFinishPoint 设置结束点（添加到 END 的边）
+func (b *GraphBuilder[S]) SetFinishPoint(nodes ...string) *GraphBuilder[S] {
+	if b.err != nil {
+		return b
+	}
+	for _, node := range nodes {
+		b.AddEdge(node, END)
+	}
+	return b
+}
+
+// WithCheckpointer 设置检查点保存器
+func (b *GraphBuilder[S]) WithCheckpointer(saver CheckpointSaver) *GraphBuilder[S] {
+	if b.err != nil {
+		return b
+	}
+	b.graph.Checkpointer = saver
+	return b
+}
+
+// WithMetadata 设置元数据
+func (b *GraphBuilder[S]) WithMetadata(key string, value any) *GraphBuilder[S] {
+	if b.err != nil {
+		return b
+	}
+	b.graph.Metadata[key] = value
+	return b
+}
+
+// Build 构建图
+func (b *GraphBuilder[S]) Build() (*Graph[S], error) {
+	if b.err != nil {
+		return nil, b.err
+	}
+
+	// 添加 START 和 END 节点
+	b.graph.Nodes[START] = StartNode[S]()
+	b.graph.Nodes[END] = EndNode[S]()
+
+	// 编译图
+	if err := b.graph.compile(); err != nil {
+		return nil, err
+	}
+
+	return b.graph, nil
+}
+
+// MustBuild 构建图，失败时 panic
+func (b *GraphBuilder[S]) MustBuild() *Graph[S] {
+	g, err := b.Build()
+	if err != nil {
+		panic(err)
+	}
+	return g
+}
+
+// compile 编译图
+func (g *Graph[S]) compile() error {
+	// 构建邻接表
+	for _, edge := range g.Edges {
+		g.adjacency[edge.From] = append(g.adjacency[edge.From], edge.To)
+	}
+
+	// 验证图
+	if err := g.validate(); err != nil {
+		return err
+	}
+
+	// 设置入口点
+	if g.EntryPoint == "" {
+		// 从 START 节点的边推断入口点
+		if targets, ok := g.adjacency[START]; ok && len(targets) > 0 {
+			g.EntryPoint = targets[0]
+		}
+	}
+
+	g.compiled = true
+	return nil
+}
+
+// validate 验证图
+func (g *Graph[S]) validate() error {
+	// 检查所有边引用的节点是否存在
+	for _, edge := range g.Edges {
+		if _, ok := g.Nodes[edge.From]; !ok {
+			return fmt.Errorf("node %s not found (referenced in edge)", edge.From)
+		}
+		if _, ok := g.Nodes[edge.To]; !ok {
+			return fmt.Errorf("node %s not found (referenced in edge)", edge.To)
+		}
+	}
+
+	// 检查条件边引用的节点
+	for from, condEdges := range g.conditionalEdges {
+		if _, ok := g.Nodes[from]; !ok {
+			return fmt.Errorf("node %s not found (referenced in conditional edge)", from)
+		}
+		for _, ce := range condEdges {
+			for _, to := range ce.edges {
+				if _, ok := g.Nodes[to]; !ok {
+					return fmt.Errorf("node %s not found (referenced in conditional edge target)", to)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// Run 执行图
+func (g *Graph[S]) Run(ctx context.Context, initialState S, opts ...RunOption) (S, error) {
+	if !g.compiled {
+		return initialState, fmt.Errorf("graph not compiled")
+	}
+
+	config := &runConfig{}
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	// 创建执行器
+	executor := &graphExecutor[S]{
+		graph:   g,
+		state:   initialState,
+		visited: make(map[string]bool),
+		config:  config,
+	}
+
+	return executor.run(ctx)
+}
+
+// RunOption 运行选项
+type RunOption func(*runConfig)
+
+type runConfig struct {
+	threadConfig *ThreadConfig
+	interrupt    []string
+	debug        bool
+}
+
+// WithThread 设置线程配置
+func WithThread(config *ThreadConfig) RunOption {
+	return func(c *runConfig) {
+		c.threadConfig = config
+	}
+}
+
+// WithInterrupt 设置中断节点
+func WithInterrupt(nodes ...string) RunOption {
+	return func(c *runConfig) {
+		c.interrupt = nodes
+	}
+}
+
+// WithDebug 设置调试模式
+func WithDebug(debug bool) RunOption {
+	return func(c *runConfig) {
+		c.debug = debug
+	}
+}
+
+// graphExecutor 图执行器
+type graphExecutor[S State] struct {
+	graph   *Graph[S]
+	state   S
+	visited map[string]bool
+	config  *runConfig
+	mu      sync.Mutex
+}
+
+// run 执行图
+func (e *graphExecutor[S]) run(ctx context.Context) (S, error) {
+	currentNode := e.graph.EntryPoint
+	if currentNode == "" {
+		currentNode = START
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return e.state, ctx.Err()
+		default:
+		}
+
+		// 检查是否到达终点
+		if currentNode == END {
+			break
+		}
+
+		// 检查中断
+		for _, interrupt := range e.config.interrupt {
+			if currentNode == interrupt {
+				return e.state, fmt.Errorf("interrupted at node: %s", currentNode)
+			}
+		}
+
+		// 获取节点
+		node, ok := e.graph.Nodes[currentNode]
+		if !ok {
+			return e.state, fmt.Errorf("node %s not found", currentNode)
+		}
+
+		// 执行节点
+		newState, err := node.Handler(ctx, e.state)
+		if err != nil {
+			return e.state, fmt.Errorf("node %s failed: %w", currentNode, err)
+		}
+		e.state = newState
+		e.visited[currentNode] = true
+
+		// 确定下一个节点
+		nextNode, err := e.getNextNode(currentNode)
+		if err != nil {
+			return e.state, err
+		}
+
+		currentNode = nextNode
+	}
+
+	return e.state, nil
+}
+
+// getNextNode 获取下一个节点
+func (e *graphExecutor[S]) getNextNode(currentNode string) (string, error) {
+	// 先检查条件边
+	if condEdges, ok := e.graph.conditionalEdges[currentNode]; ok && len(condEdges) > 0 {
+		for _, ce := range condEdges {
+			label := ce.router(e.state)
+			if target, ok := ce.edges[label]; ok {
+				return target, nil
+			}
+		}
+	}
+
+	// 检查普通边
+	if targets, ok := e.graph.adjacency[currentNode]; ok && len(targets) > 0 {
+		return targets[0], nil
+	}
+
+	return "", fmt.Errorf("no outgoing edge from node %s", currentNode)
+}
+
+// Stream 流式执行图（返回每个节点的输出）
+func (g *Graph[S]) Stream(ctx context.Context, initialState S, opts ...RunOption) (<-chan StreamEvent[S], error) {
+	if !g.compiled {
+		return nil, fmt.Errorf("graph not compiled")
+	}
+
+	events := make(chan StreamEvent[S], 10)
+
+	go func() {
+		defer close(events)
+
+		config := &runConfig{}
+		for _, opt := range opts {
+			opt(config)
+		}
+
+		state := initialState
+		currentNode := g.EntryPoint
+		if currentNode == "" {
+			currentNode = START
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				events <- StreamEvent[S]{
+					Type:  EventTypeError,
+					Error: ctx.Err(),
+				}
+				return
+			default:
+			}
+
+			if currentNode == END {
+				events <- StreamEvent[S]{
+					Type:  EventTypeEnd,
+					State: state,
+				}
+				return
+			}
+
+			node, ok := g.Nodes[currentNode]
+			if !ok {
+				events <- StreamEvent[S]{
+					Type:  EventTypeError,
+					Error: fmt.Errorf("node %s not found", currentNode),
+				}
+				return
+			}
+
+			// 发送节点开始事件
+			events <- StreamEvent[S]{
+				Type:     EventTypeNodeStart,
+				NodeName: currentNode,
+				State:    state,
+			}
+
+			// 执行节点
+			newState, err := node.Handler(ctx, state)
+			if err != nil {
+				events <- StreamEvent[S]{
+					Type:     EventTypeError,
+					NodeName: currentNode,
+					Error:    err,
+				}
+				return
+			}
+			state = newState
+
+			// 发送节点完成事件
+			events <- StreamEvent[S]{
+				Type:     EventTypeNodeEnd,
+				NodeName: currentNode,
+				State:    state,
+			}
+
+			// 获取下一个节点
+			executor := &graphExecutor[S]{graph: g, state: state, config: config}
+			nextNode, err := executor.getNextNode(currentNode)
+			if err != nil {
+				events <- StreamEvent[S]{
+					Type:  EventTypeError,
+					Error: err,
+				}
+				return
+			}
+
+			currentNode = nextNode
+		}
+	}()
+
+	return events, nil
+}
+
+// StreamEvent 流事件
+type StreamEvent[S State] struct {
+	// Type 事件类型
+	Type EventType
+
+	// NodeName 节点名称
+	NodeName string
+
+	// State 当前状态
+	State S
+
+	// Error 错误（仅用于 EventTypeError）
+	Error error
+
+	// Metadata 元数据
+	Metadata map[string]any
+}
+
+// EventType 事件类型
+type EventType int
+
+const (
+	// EventTypeNodeStart 节点开始
+	EventTypeNodeStart EventType = iota
+	// EventTypeNodeEnd 节点结束
+	EventTypeNodeEnd
+	// EventTypeError 错误
+	EventTypeError
+	// EventTypeEnd 图执行结束
+	EventTypeEnd
+)
+
+// String 返回事件类型的字符串表示
+func (t EventType) String() string {
+	switch t {
+	case EventTypeNodeStart:
+		return "node_start"
+	case EventTypeNodeEnd:
+		return "node_end"
+	case EventTypeError:
+		return "error"
+	case EventTypeEnd:
+		return "end"
+	default:
+		return "unknown"
+	}
+}

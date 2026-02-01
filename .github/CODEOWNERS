@@ -1,0 +1,35 @@
+# Hexagon CODEOWNERS
+#
+# 这个文件定义了代码所有者，他们会被自动请求审查 PR。
+# 详见: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# 全局默认所有者
+* @everyday-items/hexagon-maintainers
+
+# 核心模块
+/agent/ @everyday-items/hexagon-core
+/core/ @everyday-items/hexagon-core
+/hexagon.go @everyday-items/hexagon-core
+
+# RAG 系统
+/rag/ @everyday-items/hexagon-rag
+
+# 编排引擎
+/orchestration/ @everyday-items/hexagon-orchestration
+
+# 安全
+/security/ @everyday-items/hexagon-security
+
+# 可观测性
+/observe/ @everyday-items/hexagon-observability
+
+# 文档
+/docs/ @everyday-items/hexagon-docs
+*.md @everyday-items/hexagon-docs
+
+# CI/CD
+/.github/ @everyday-items/hexagon-infra
+/Makefile @everyday-items/hexagon-infra
+
+# 示例
+/examples/ @everyday-items/hexagon-docs
