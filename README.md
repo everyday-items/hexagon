@@ -166,7 +166,7 @@ output, _ := team.Run(ctx, hexagon.Input{Query: "写一篇技术文章"})
 │  Agent │ Role │ Team │ Network │ Context │ State │ Lifecycle │ Msg   │
 ├──────────────────────────────────────────────────────────────────────┤
 │                         Capability Layer                             │
-│  LLM Provider │ RAG Engine │ Tools System │ Memory System │ KB      │
+│  LLM Provider │ RAG Engine │ Tools System │ Memory System │ KB       │
 ├──────────────────────────────────────────────────────────────────────┤
 │                        Infrastructure Layer                          │
 │  Tracer │ Logger │ Metrics │ Config │ Security │ Cache │ Plugin │ DI │
