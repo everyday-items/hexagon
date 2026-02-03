@@ -59,20 +59,23 @@ import "github.com/everyday-items/ai-core/memory"
 
 ### toolkit - Go 通用工具库
 
-生产级 Go 通用工具包，提供语言增强、加密、网络、缓存等基础能力：
+生产级 Go 通用工具包，提供语言增强、加密、网络、缓存、协程池等基础能力：
 
 ```go
 import "github.com/everyday-items/toolkit/lang/conv"      // 类型转换
 import "github.com/everyday-items/toolkit/lang/stringx"   // 字符串工具
+import "github.com/everyday-items/toolkit/lang/syncx"     // 并发工具
 import "github.com/everyday-items/toolkit/net/httpx"      // HTTP 客户端
 import "github.com/everyday-items/toolkit/net/sse"        // SSE 客户端
 import "github.com/everyday-items/toolkit/util/retry"     // 重试机制
 import "github.com/everyday-items/toolkit/util/idgen"     // ID 生成
+import "github.com/everyday-items/toolkit/pool"           // 协程池
 import "github.com/everyday-items/toolkit/cache/local"    // 本地缓存
 ```
 
 **主要模块：**
 - `lang/` - 语言增强 (conv, stringx, slicex, mapx, timex, contextx, errorx, syncx)
+- `pool/` - 协程池 (高性能 goroutine 池，支持任务队列、动态扩缩容、优雅关闭)
 - `crypto/` - 加密 (aes, rsa, sign)
 - `net/` - 网络 (httpx, sse, ip)
 - `cache/` - 缓存 (local, redis, multi)
