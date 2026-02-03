@@ -73,17 +73,16 @@ import "github.com/everyday-items/toolkit/net/httpx"      // HTTP 客户端
 import "github.com/everyday-items/toolkit/net/sse"        // SSE 客户端
 import "github.com/everyday-items/toolkit/util/retry"     // 重试机制
 import "github.com/everyday-items/toolkit/util/idgen"     // ID 生成
-import "github.com/everyday-items/toolkit/pool"           // 协程池
+import "github.com/everyday-items/toolkit/util/poolx"     // 协程池
 import "github.com/everyday-items/toolkit/cache/local"    // 本地缓存
 ```
 
 **主要模块：**
 - `lang/` - 语言增强 (conv, stringx, slicex, mapx, timex, contextx, errorx, syncx)
-- `pool/` - 协程池 (高性能 goroutine 池，支持任务队列、动态扩缩容、优雅关闭)
 - `crypto/` - 加密 (aes, rsa, sign)
 - `net/` - 网络 (httpx, sse, ip)
 - `cache/` - 缓存 (local, redis, multi)
-- `util/` - 工具 (retry, rate, idgen, logger, validator)
+- `util/` - 工具 (retry, rate, idgen, logger, validator, poolx 协程池)
 - `collection/` - 数据结构 (set, list, queue, stack)
 
 ### 🎨 hexagon-ui — Dev UI 前端
@@ -275,7 +274,7 @@ output, _ := team.Run(ctx, hexagon.Input{Query: "写一篇技术文章"})
 │                            Foundation Layer                                  │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                         toolkit (通用工具库)                          │   │
-│  │   lang │ crypto │ net │ cache │ pool │ util │ collection │ infra    │   │
+│  │   lang │ crypto │ net │ cache │ util │ collection │ infra           │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
