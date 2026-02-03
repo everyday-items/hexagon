@@ -225,9 +225,12 @@ func (m *Manager) RegisterRetrieverHook(hook RetrieverHook) {
 }
 
 // TriggerRunStart 触发运行开始事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerRunStart(ctx context.Context, event *RunStartEvent) error {
 	m.mu.RLock()
-	hooks := m.runHooks
+	hooks := make([]RunHook, len(m.runHooks))
+	copy(hooks, m.runHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -241,9 +244,12 @@ func (m *Manager) TriggerRunStart(ctx context.Context, event *RunStartEvent) err
 }
 
 // TriggerRunEnd 触发运行结束事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerRunEnd(ctx context.Context, event *RunEndEvent) error {
 	m.mu.RLock()
-	hooks := m.runHooks
+	hooks := make([]RunHook, len(m.runHooks))
+	copy(hooks, m.runHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -257,9 +263,12 @@ func (m *Manager) TriggerRunEnd(ctx context.Context, event *RunEndEvent) error {
 }
 
 // TriggerError 触发错误事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerError(ctx context.Context, event *ErrorEvent) error {
 	m.mu.RLock()
-	hooks := m.runHooks
+	hooks := make([]RunHook, len(m.runHooks))
+	copy(hooks, m.runHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -273,9 +282,12 @@ func (m *Manager) TriggerError(ctx context.Context, event *ErrorEvent) error {
 }
 
 // TriggerToolStart 触发工具开始事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerToolStart(ctx context.Context, event *ToolStartEvent) error {
 	m.mu.RLock()
-	hooks := m.toolHooks
+	hooks := make([]ToolHook, len(m.toolHooks))
+	copy(hooks, m.toolHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -289,9 +301,12 @@ func (m *Manager) TriggerToolStart(ctx context.Context, event *ToolStartEvent) e
 }
 
 // TriggerToolEnd 触发工具结束事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerToolEnd(ctx context.Context, event *ToolEndEvent) error {
 	m.mu.RLock()
-	hooks := m.toolHooks
+	hooks := make([]ToolHook, len(m.toolHooks))
+	copy(hooks, m.toolHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -305,9 +320,12 @@ func (m *Manager) TriggerToolEnd(ctx context.Context, event *ToolEndEvent) error
 }
 
 // TriggerLLMStart 触发 LLM 开始事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerLLMStart(ctx context.Context, event *LLMStartEvent) error {
 	m.mu.RLock()
-	hooks := m.llmHooks
+	hooks := make([]LLMHook, len(m.llmHooks))
+	copy(hooks, m.llmHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -321,9 +339,12 @@ func (m *Manager) TriggerLLMStart(ctx context.Context, event *LLMStartEvent) err
 }
 
 // TriggerLLMEnd 触发 LLM 结束事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerLLMEnd(ctx context.Context, event *LLMEndEvent) error {
 	m.mu.RLock()
-	hooks := m.llmHooks
+	hooks := make([]LLMHook, len(m.llmHooks))
+	copy(hooks, m.llmHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -337,9 +358,12 @@ func (m *Manager) TriggerLLMEnd(ctx context.Context, event *LLMEndEvent) error {
 }
 
 // TriggerLLMStream 触发 LLM 流式事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerLLMStream(ctx context.Context, event *LLMStreamEvent) error {
 	m.mu.RLock()
-	hooks := m.llmHooks
+	hooks := make([]LLMHook, len(m.llmHooks))
+	copy(hooks, m.llmHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -353,9 +377,12 @@ func (m *Manager) TriggerLLMStream(ctx context.Context, event *LLMStreamEvent) e
 }
 
 // TriggerRetrieverStart 触发检索开始事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerRetrieverStart(ctx context.Context, event *RetrieverStartEvent) error {
 	m.mu.RLock()
-	hooks := m.retrieverHooks
+	hooks := make([]RetrieverHook, len(m.retrieverHooks))
+	copy(hooks, m.retrieverHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
@@ -369,9 +396,12 @@ func (m *Manager) TriggerRetrieverStart(ctx context.Context, event *RetrieverSta
 }
 
 // TriggerRetrieverEnd 触发检索结束事件
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
 func (m *Manager) TriggerRetrieverEnd(ctx context.Context, event *RetrieverEndEvent) error {
 	m.mu.RLock()
-	hooks := m.retrieverHooks
+	hooks := make([]RetrieverHook, len(m.retrieverHooks))
+	copy(hooks, m.retrieverHooks)
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {

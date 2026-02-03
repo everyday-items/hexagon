@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -252,10 +253,19 @@ func (r *RBAC) SetRoleHierarchy(parent string, children []string) {
 }
 
 // GetInheritedRoles 获取继承的角色
+//
+// 线程安全：此方法会获取读锁。
+// 注意：不要在已持有读锁的情况下调用此方法，否则可能导致死锁。
+// 如果已持有锁，请使用 getInheritedRolesLocked。
 func (r *RBAC) GetInheritedRoles(roleName string) []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
+	return r.getInheritedRolesLocked(roleName)
+}
+
+// getInheritedRolesLocked 获取继承的角色（调用者必须已持有读锁）
+func (r *RBAC) getInheritedRolesLocked(roleName string) []string {
 	visited := make(map[string]bool)
 	return r.collectInheritedRoles(roleName, visited)
 }
@@ -384,10 +394,8 @@ func (r *RBAC) AssignRole(userID, roleName string) error {
 	}
 
 	// 检查是否已有该角色
-	for _, role := range user.Roles {
-		if role == roleName {
-			return nil
-		}
+	if slices.Contains(user.Roles, roleName) {
+		return nil
 	}
 
 	user.Roles = append(user.Roles, roleName)
@@ -425,6 +433,8 @@ func (r *RBAC) RevokeRole(userID, roleName string) error {
 }
 
 // GetUserRoles 获取用户的所有角色（包括继承的）
+//
+// 线程安全：此方法会获取读锁，并使用内部方法避免嵌套锁导致的死锁。
 func (r *RBAC) GetUserRoles(userID string) []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -436,7 +446,8 @@ func (r *RBAC) GetUserRoles(userID string) []string {
 
 	allRoles := make(map[string]bool)
 	for _, roleName := range user.Roles {
-		for _, inherited := range r.GetInheritedRoles(roleName) {
+		// 使用不加锁的内部方法，因为我们已经持有读锁
+		for _, inherited := range r.getInheritedRolesLocked(roleName) {
 			allRoles[inherited] = true
 		}
 	}
@@ -813,20 +824,11 @@ func (r *RBAC) evaluateCondition(cond PolicyCondition, ctx map[string]any) bool 
 		}
 	case OpIn:
 		if list, ok := cond.Value.([]any); ok {
-			for _, item := range list {
-				if item == value {
-					return true
-				}
-			}
+			return slices.Contains(list, value)
 		}
 	case OpNotIn:
 		if list, ok := cond.Value.([]any); ok {
-			for _, item := range list {
-				if item == value {
-					return false
-				}
-			}
-			return true
+			return !slices.Contains(list, value)
 		}
 	}
 

@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -153,6 +154,35 @@ type NetworkNode struct {
 
 	// Metadata 节点元数据
 	Metadata map[string]any
+
+	// closed 标记收件箱是否已关闭
+	closed bool
+
+	// closeOnce 确保只关闭一次
+	closeOnce sync.Once
+
+	// mu 保护 closed 字段
+	mu sync.RWMutex
+}
+
+// CloseInbox 安全关闭收件箱
+//
+// 使用 sync.Once 确保只关闭一次，避免 panic。
+// 此方法是并发安全的。
+func (n *NetworkNode) CloseInbox() {
+	n.closeOnce.Do(func() {
+		n.mu.Lock()
+		n.closed = true
+		n.mu.Unlock()
+		close(n.Inbox)
+	})
+}
+
+// IsClosed 检查收件箱是否已关闭
+func (n *NetworkNode) IsClosed() bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.closed
 }
 
 // NodeStatus 节点状态
@@ -326,6 +356,8 @@ func (n *AgentNetwork) Register(agent Agent) error {
 }
 
 // Unregister 从网络注销 Agent
+//
+// 线程安全：此方法使用安全的 channel 关闭机制，不会因为重复关闭或并发发送而 panic。
 func (n *AgentNetwork) Unregister(agentID string) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -335,8 +367,8 @@ func (n *AgentNetwork) Unregister(agentID string) error {
 		return fmt.Errorf("agent %s not found", agentID)
 	}
 
-	// 关闭收件箱
-	close(node.Inbox)
+	// 安全关闭收件箱（使用 sync.Once 确保只关闭一次）
+	node.CloseInbox()
 
 	// 移除节点
 	delete(n.nodes, agentID)
@@ -514,6 +546,8 @@ func (n *AgentNetwork) Start(ctx context.Context) error {
 }
 
 // Stop 停止网络
+//
+// 线程安全：此方法使用安全的 channel 关闭机制，不会因为重复关闭或并发发送而 panic。
 func (n *AgentNetwork) Stop() {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -521,9 +555,9 @@ func (n *AgentNetwork) Stop() {
 	n.running = false
 	n.router.Stop()
 
-	// 关闭所有收件箱
+	// 安全关闭所有收件箱（使用 sync.Once 确保只关闭一次）
 	for _, node := range n.nodes {
-		close(node.Inbox)
+		node.CloseInbox()
 	}
 }
 
@@ -666,10 +700,10 @@ func (n *AgentNetwork) Connect(agent1ID, agent2ID string) error {
 	}
 
 	// 添加双向连接
-	if !contains(node1.Neighbors, agent2ID) {
+	if !slices.Contains(node1.Neighbors, agent2ID) {
 		node1.Neighbors = append(node1.Neighbors, agent2ID)
 	}
-	if !contains(node2.Neighbors, agent1ID) {
+	if !slices.Contains(node2.Neighbors, agent1ID) {
 		node2.Neighbors = append(node2.Neighbors, agent1ID)
 	}
 
@@ -778,6 +812,12 @@ type MessageRouter struct {
 	// Running 运行状态
 	running bool
 
+	// closed 标记队列是否已关闭
+	closed bool
+
+	// closeOnce 确保只关闭一次
+	closeOnce sync.Once
+
 	// Stats
 	messagesSent   int64
 	messagesRecv   int64
@@ -795,16 +835,32 @@ func NewMessageRouter(network *AgentNetwork) *MessageRouter {
 }
 
 // Route 路由消息
+//
+// 如果队列未启动则直接投递，否则放入队列异步处理。
+// 线程安全：会检查队列是否已关闭，避免向已关闭的 channel 发送消息。
 func (r *MessageRouter) Route(ctx context.Context, msg *NetworkMessage) error {
 	r.mu.RLock()
-	if !r.running {
-		r.mu.RUnlock()
+	running := r.running
+	closed := r.closed
+	r.mu.RUnlock()
+
+	// 如果队列已关闭，返回错误
+	if closed {
+		return fmt.Errorf("message router is stopped")
+	}
+
+	if !running {
 		// 直接投递
 		return r.deliver(ctx, msg)
 	}
-	r.mu.RUnlock()
 
-	// 放入队列
+	// 放入队列（使用 defer recover 防止并发关闭导致的 panic）
+	defer func() {
+		if rec := recover(); rec != nil {
+			// channel 已关闭，忽略 panic
+		}
+	}()
+
 	select {
 	case r.queue <- msg:
 		return nil
@@ -890,11 +946,19 @@ func (r *MessageRouter) RequestResponse(ctx context.Context, msg *NetworkMessage
 }
 
 // deliver 投递消息
+//
+// 线程安全：此方法会检查收件箱是否已关闭，避免向已关闭的 channel 发送消息导致 panic。
 func (r *MessageRouter) deliver(ctx context.Context, msg *NetworkMessage) error {
 	node, ok := r.network.GetNode(msg.To)
 	if !ok {
 		r.messagesFailed++
 		return fmt.Errorf("target agent %s not found", msg.To)
+	}
+
+	// 检查收件箱是否已关闭
+	if node.IsClosed() {
+		r.messagesFailed++
+		return fmt.Errorf("inbox closed for agent %s", msg.To)
 	}
 
 	// 检查节点状态
@@ -903,7 +967,13 @@ func (r *MessageRouter) deliver(ctx context.Context, msg *NetworkMessage) error 
 		return fmt.Errorf("target agent %s is offline", msg.To)
 	}
 
-	// 投递到收件箱
+	// 投递到收件箱（使用 defer recover 防止并发关闭导致的 panic）
+	defer func() {
+		if r := recover(); r != nil {
+			// channel 已关闭，忽略 panic
+		}
+	}()
+
 	select {
 	case node.Inbox <- msg:
 		r.messagesSent++
@@ -936,11 +1006,16 @@ func (r *MessageRouter) Start(ctx context.Context) {
 }
 
 // Stop 停止路由器
+//
+// 使用 sync.Once 确保队列只关闭一次，避免重复关闭导致 panic。
 func (r *MessageRouter) Stop() {
-	r.mu.Lock()
-	r.running = false
-	r.mu.Unlock()
-	close(r.queue)
+	r.closeOnce.Do(func() {
+		r.mu.Lock()
+		r.running = false
+		r.closed = true
+		r.mu.Unlock()
+		close(r.queue)
+	})
 }
 
 // processMessage 处理消息
@@ -973,15 +1048,6 @@ func (r *MessageRouter) processMessage(ctx context.Context, msg *NetworkMessage)
 }
 
 // 辅助函数
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
 
 func removeString(slice []string, item string) []string {
 	result := make([]string, 0, len(slice))

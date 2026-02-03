@@ -50,6 +50,8 @@ func (m TeamMode) String() string {
 
 // Team 团队
 // 多个 Agent 组成的协作团队
+//
+// 线程安全：所有方法都是并发安全的
 type Team struct {
 	// ID 团队 ID
 	id string
@@ -60,7 +62,7 @@ type Team struct {
 	// Description 团队描述
 	description string
 
-	// Agents 团队成员
+	// agents 团队成员（受 mu 保护）
 	agents []Agent
 
 	// Mode 工作模式
@@ -77,6 +79,9 @@ type Team struct {
 
 	// Verbose 详细输出
 	verbose bool
+
+	// mu 保护 agents 切片的并发访问
+	mu sync.RWMutex
 }
 
 // TeamOption 团队配置选项
@@ -169,9 +174,13 @@ func (t *Team) Description() string {
 	return t.description
 }
 
-// Agents 返回团队成员
+// Agents 返回团队成员（返回副本以确保安全）
 func (t *Team) Agents() []Agent {
-	return t.agents
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	result := make([]Agent, len(t.agents))
+	copy(result, t.agents)
+	return result
 }
 
 // Mode 返回工作模式
@@ -180,13 +189,22 @@ func (t *Team) Mode() TeamMode {
 }
 
 // AddAgent 添加 Agent 到团队
+//
+// 线程安全：此方法是并发安全的
 func (t *Team) AddAgent(agent Agent) {
+	t.mu.Lock()
 	t.agents = append(t.agents, agent)
+	t.mu.Unlock()
 	t.globalState.RegisterAgent(agent.ID(), agent)
 }
 
 // RemoveAgent 从团队移除 Agent
+//
+// 线程安全：此方法是并发安全的
 func (t *Team) RemoveAgent(agentID string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	newAgents := make([]Agent, 0, len(t.agents))
 	for _, a := range t.agents {
 		if a.ID() != agentID {
@@ -214,14 +232,20 @@ func (t *Team) Run(ctx context.Context, input Input) (Output, error) {
 
 // runSequential 顺序执行
 func (t *Team) runSequential(ctx context.Context, input Input) (Output, error) {
-	if len(t.agents) == 0 {
+	// 获取 agents 的快照
+	t.mu.RLock()
+	agents := make([]Agent, len(t.agents))
+	copy(agents, t.agents)
+	t.mu.RUnlock()
+
+	if len(agents) == 0 {
 		return Output{}, fmt.Errorf("team has no agents")
 	}
 
 	currentInput := input
 	var lastOutput Output
 
-	for _, agent := range t.agents {
+	for _, agent := range agents {
 		select {
 		case <-ctx.Done():
 			return Output{}, ctx.Err()
