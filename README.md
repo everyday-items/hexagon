@@ -1,11 +1,23 @@
 # Hexagon
 
-Go 生态的生产级 AI Agent 框架。
+**六边形战士** - Go 生态的生产级 AI Agent 框架
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/everyday-items/hexagon.svg)](https://pkg.go.dev/github.com/everyday-items/hexagon)
 [![Go Report Card](https://goreportcard.com/badge/github.com/everyday-items/hexagon)](https://goreportcard.com/report/github.com/everyday-items/hexagon)
 [![CI](https://github.com/everyday-items/hexagon/workflows/CI/badge.svg)](https://github.com/everyday-items/hexagon/actions)
-[![License](https://img.shields.io/github/license/everyday-items/hexagon)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+命名源自网络热词"六边形战士"，寓意各维度能力均衡强大、没有短板。框架在易用性、性能、扩展性、编排、可观测、安全六个维度追求均衡卓越。
+
+```
+      易用性 ⬡
+        ╱ ╲
+   安全 ⬡   ⬡ 性能
+      │     │
+ 可观测 ⬡   ⬡ 扩展性
+        ╲ ╱
+      编排 ⬡
+```
 
 ## 特性
 
@@ -14,6 +26,75 @@ Go 生态的生产级 AI Agent 框架。
 - **高性能** - 原生并发，支持 100k+ 并发 Agent
 - **可观测** - 钩子 + 追踪 + 指标，OpenTelemetry 原生支持
 - **生产就绪** - 安全防护，优雅降级，企业级稳定性
+
+## 生态系统
+
+Hexagon 是一个完整的 AI Agent 开发生态，由多个仓库组成：
+
+| 仓库 | 说明 | 链接 |
+|-----|------|------|
+| **hexagon** | AI Agent 框架核心 (编排、RAG、Graph、Hooks) | [github.com/everyday-items/hexagon](https://github.com/everyday-items/hexagon) |
+| **ai-core** | AI 基础能力库 (LLM/Tool/Memory/Schema) | [github.com/everyday-items/ai-core](https://github.com/everyday-items/ai-core) |
+| **toolkit** | Go 通用工具库 (lang/crypto/net/cache/util) | [github.com/everyday-items/toolkit](https://github.com/everyday-items/toolkit) |
+| **hexagon-ui** | Dev UI 前端 (Vue 3 + TypeScript) | [github.com/everyday-items/hexagon-ui](https://github.com/everyday-items/hexagon-ui) |
+
+### ai-core - AI 基础能力库
+
+提供 LLM、Tool、Memory、Schema 等核心抽象，支持多种 LLM Provider：
+
+```go
+import "github.com/everyday-items/ai-core/llm"
+import "github.com/everyday-items/ai-core/llm/openai"
+import "github.com/everyday-items/ai-core/tool"
+import "github.com/everyday-items/ai-core/memory"
+```
+
+**主要模块：**
+- `llm/` - LLM Provider 接口 + 实现 (OpenAI, DeepSeek, Anthropic, Gemini, 通义, 豆包, Ollama)
+- `tool/` - 工具系统，支持函数式定义
+- `memory/` - 记忆系统，支持向量存储
+- `schema/` - JSON Schema 自动生成
+- `streamx/` - 流式响应处理
+- `template/` - Prompt 模板引擎
+
+### toolkit - Go 通用工具库
+
+生产级 Go 通用工具包，提供语言增强、加密、网络、缓存等基础能力：
+
+```go
+import "github.com/everyday-items/toolkit/lang/conv"      // 类型转换
+import "github.com/everyday-items/toolkit/lang/stringx"   // 字符串工具
+import "github.com/everyday-items/toolkit/net/httpx"      // HTTP 客户端
+import "github.com/everyday-items/toolkit/net/sse"        // SSE 客户端
+import "github.com/everyday-items/toolkit/util/retry"     // 重试机制
+import "github.com/everyday-items/toolkit/util/idgen"     // ID 生成
+import "github.com/everyday-items/toolkit/cache/local"    // 本地缓存
+```
+
+**主要模块：**
+- `lang/` - 语言增强 (conv, stringx, slicex, mapx, timex, contextx, errorx, syncx)
+- `crypto/` - 加密 (aes, rsa, sign)
+- `net/` - 网络 (httpx, sse, ip)
+- `cache/` - 缓存 (local, redis, multi)
+- `util/` - 工具 (retry, rate, idgen, logger, validator)
+- `collection/` - 数据结构 (set, list, queue, stack)
+
+### hexagon-ui - Dev UI 前端
+
+基于 Vue 3 + TypeScript 的开发调试界面：
+
+```bash
+cd hexagon-ui
+npm install
+npm run dev
+# 访问 http://localhost:5173
+```
+
+**功能特性：**
+- 实时事件流 (SSE 推送)
+- 指标仪表板
+- 事件详情查看
+- LLM 流式输出展示
 
 ## 快速开始
 
@@ -173,46 +254,6 @@ output, _ := team.Run(ctx, hexagon.Input{Query: "写一篇技术文章"})
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-## 核心概念
-
-### Component (统一执行模型)
-
-所有组件实现相同接口，可任意组合：
-
-```go
-type Component[I, O any] interface {
-    Name() string
-    Run(ctx context.Context, input I) (O, error)
-    Stream(ctx context.Context, input I) (Stream[O], error)
-    Batch(ctx context.Context, inputs []I) ([]O, error)
-}
-```
-
-### Agent
-
-```go
-type Agent interface {
-    Component[Input, Output]
-    ID() string
-    Tools() []Tool
-    Memory() Memory
-}
-```
-
-### Tool
-
-```go
-// 函数式工具定义
-calculator := hexagon.NewTool("calculator", "执行计算",
-    func(ctx context.Context, input struct {
-        A float64 `json:"a"`
-        B float64 `json:"b"`
-    }) (float64, error) {
-        return input.A + input.B, nil
-    },
-)
-```
-
 ## LLM 支持
 
 | Provider | 状态 |
@@ -246,12 +287,54 @@ hexagon/
 ├── observe/            # 可观测性 (Tracer/Metrics/OTel)
 ├── security/           # 安全防护 (Guard/RBAC/Cost/Audit)
 ├── tool/               # 工具系统 (File/Python/Shell/Sandbox)
-├── store/              # 存储 (Vector/Qdrant)
+├── store/              # 存储 (Vector/Qdrant/Milvus/Chroma)
 ├── plugin/             # 插件系统
+├── config/             # 配置管理
+├── evaluate/           # 评估系统
 ├── testing/            # 测试工具 (Mock/Record)
 ├── examples/           # 示例代码
 └── hexagon.go          # 入口
 ```
+
+## 文档
+
+### 核心文档
+
+| 文档 | 说明 |
+|-----|------|
+| [快速入门](docs/QUICKSTART.md) | 5 分钟上手 Hexagon |
+| [架构设计](docs/DESIGN.md) | 框架设计理念和架构 |
+| [API 参考](docs/API.md) | 完整 API 文档 |
+| [稳定性说明](docs/STABILITY.md) | API 稳定性和版本策略 |
+| [框架对比](docs/comparison.md) | 与主流框架的对比分析 |
+
+### 使用指南
+
+| 指南 | 说明 |
+|-----|------|
+| [快速开始](docs/guides/getting-started.md) | 从零开始构建第一个 Agent |
+| [Agent 开发](docs/guides/agent-guide.md) | Agent 开发完整指南 |
+| [Agent 进阶](docs/guides/agent-development.md) | 高级 Agent 开发模式 |
+| [RAG 系统](docs/guides/rag-guide.md) | 检索增强生成入门 |
+| [RAG 集成](docs/guides/rag-integration.md) | RAG 系统深度集成 |
+| [图编排](docs/guides/graph-orchestration.md) | 复杂工作流编排 |
+| [多 Agent](docs/guides/multi-agent.md) | 多 Agent 协作系统 |
+| [插件开发](docs/guides/plugin-guide.md) | 插件系统使用指南 |
+| [可观测性](docs/guides/observability.md) | 追踪、指标、日志集成 |
+| [安全防护](docs/guides/security.md) | 安全最佳实践 |
+| [性能优化](docs/guides/performance-optimization.md) | 性能调优指南 |
+
+### 示例代码
+
+| 示例 | 说明 |
+|-----|------|
+| [examples/quickstart](examples/quickstart) | 快速入门示例 |
+| [examples/react](examples/react) | ReAct Agent 示例 |
+| [examples/rag](examples/rag) | RAG 检索示例 |
+| [examples/graph](examples/graph) | 图编排示例 |
+| [examples/team](examples/team) | 多 Agent 团队示例 |
+| [examples/handoff](examples/handoff) | Agent 交接示例 |
+| [examples/devui](examples/devui) | Dev UI 示例 |
 
 ## Dev UI
 
@@ -272,28 +355,13 @@ go ui.Start()
 // 访问 http://localhost:8080
 ```
 
-**功能特性：**
-
-- 🔄 实时事件流 (SSE 推送)
-- 📊 指标仪表板
-- 🔍 事件详情查看
-- 🔧 事件类型过滤
-- 💬 LLM 流式输出展示
-
 **运行示例：**
-
-```bash
-go run examples/devui/main.go
-# 访问 http://localhost:8080
-```
-
-**前端开发 (hexagon-ui)：**
 
 ```bash
 # 启动后端
 go run examples/devui/main.go
 
-# 启动前端 (另一个终端)
+# 启动前端 (hexagon-ui)
 cd ../hexagon-ui
 npm install
 npm run dev
@@ -309,18 +377,34 @@ make lint    # 代码检查
 make fmt     # 格式化
 ```
 
-## 文档
-
-- [快速入门](docs/QUICKSTART.md)
-- [架构设计](docs/DESIGN.md)
-- [API 参考](docs/API.md)
-- [稳定性说明](docs/STABILITY.md)
-- [示例代码](examples/)
-
 ## 贡献
 
 欢迎贡献！请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解如何参与。
 
 ## 许可证
 
-[Apache License 2.0](LICENSE)
+[MIT License](LICENSE)
+
+```
+MIT License
+
+Copyright (c) 2024 everyday-items
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
