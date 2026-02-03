@@ -37,6 +37,9 @@ type AuditLogger struct {
 	// Running 运行状态
 	running bool
 
+	// bufferOverflowCount 缓冲区溢出计数（用于监控）
+	bufferOverflowCount int64
+
 	mu sync.RWMutex
 }
 
@@ -429,8 +432,21 @@ func (l *AuditLogger) Log(event *AuditEvent) {
 	// 发送到缓冲区
 	select {
 	case l.buffer <- event:
+		// 成功加入缓冲区
 	default:
-		// 缓冲区满，直接丢弃
+		// 缓冲区满，同步写入以确保审计事件不丢失
+		// 审计日志的完整性比性能更重要
+		l.mu.Lock()
+		l.bufferOverflowCount++
+		l.mu.Unlock()
+
+		// 直接同步写入存储
+		if l.store != nil {
+			_ = l.store.Save(context.Background(), event)
+		}
+
+		// 直接写入 writers
+		l.writeEventDirect(event)
 	}
 }
 
@@ -528,6 +544,39 @@ func (l *AuditLogger) shouldLog(level AuditLevel) bool {
 	}
 
 	return levels[level] >= levels[l.config.LogLevel]
+}
+
+// writeEventDirect 直接写入事件（用于缓冲区溢出时的同步写入）
+//
+// 此方法绕过缓冲区，直接将事件写入所有配置的 writers。
+// 用于确保即使在高负载下审计事件也不会丢失。
+func (l *AuditLogger) writeEventDirect(event *AuditEvent) {
+	l.mu.RLock()
+	writers := l.writers
+	l.mu.RUnlock()
+
+	if len(writers) == 0 {
+		return
+	}
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+
+	for _, w := range writers {
+		_, _ = w.Write(data)
+		_, _ = w.Write([]byte("\n"))
+	}
+}
+
+// GetBufferOverflowCount 获取缓冲区溢出次数
+//
+// 可用于监控审计系统的健康状态
+func (l *AuditLogger) GetBufferOverflowCount() int64 {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.bufferOverflowCount
 }
 
 // sanitize 脱敏处理

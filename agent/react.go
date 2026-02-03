@@ -76,7 +76,7 @@ func (a *ReActAgent) Run(ctx context.Context, input Input) (Output, error) {
 	}
 
 	// 构建消息历史
-	messages := a.buildInitialMessages(input)
+	messages := a.buildInitialMessages(ctx, input)
 
 	// 构建工具定义
 	toolDefs := a.buildToolDefinitions()
@@ -198,9 +198,20 @@ func (a *ReActAgent) Run(ctx context.Context, input Input) (Output, error) {
 		return Output{}, runErr
 	}
 
-	// 保存到记忆
+	// 保存到记忆（保存失败不影响主流程，但通过钩子报告错误）
 	if a.config.Memory != nil {
-		a.saveToMemory(ctx, input, output)
+		if err := a.saveToMemory(ctx, input, output); err != nil {
+			// 记忆保存失败不应阻止返回成功的输出
+			// 通过错误钩子报告，便于监控和调试
+			if hookManager != nil {
+				hookManager.TriggerError(ctx, &hooks.ErrorEvent{
+					RunID:   runID,
+					AgentID: a.ID(),
+					Error:   err,
+					Phase:   "memory_save",
+				})
+			}
+		}
 	}
 
 	return output, nil
@@ -295,14 +306,20 @@ func convertMessagesToAny(messages []llm.Message) []any {
 }
 
 // buildInitialMessages 构建初始消息
-func (a *ReActAgent) buildInitialMessages(input Input) []llm.Message {
+//
+// 参数：
+//   - ctx: 上下文，用于记忆查询的超时和取消控制
+//   - input: 用户输入
+//
+// 返回构建好的消息列表
+func (a *ReActAgent) buildInitialMessages(ctx context.Context, input Input) []llm.Message {
 	messages := []llm.Message{
 		{Role: llm.RoleSystem, Content: a.config.SystemPrompt},
 	}
 
 	// 从记忆中获取历史上下文
 	if a.config.Memory != nil {
-		entries, _ := a.config.Memory.Search(context.Background(), memory.SearchQuery{
+		entries, _ := a.config.Memory.Search(ctx, memory.SearchQuery{
 			Limit:     10,
 			OrderDesc: true,
 		})
@@ -367,30 +384,49 @@ func formatToolResult(result tool.Result) string {
 }
 
 // saveToMemory 保存到记忆
-func (a *ReActAgent) saveToMemory(ctx context.Context, input Input, output Output) {
+//
+// 将对话记录保存到记忆系统，包括用户输入、工具调用和 Agent 回复。
+// 如果保存失败，错误会被返回但不会中断主流程（记忆保存是可选的增强功能）。
+//
+// 参数：
+//   - ctx: 上下文
+//   - input: 用户输入
+//   - output: Agent 输出
+//
+// 返回：
+//   - 保存过程中遇到的第一个错误，如果全部成功则返回 nil
+func (a *ReActAgent) saveToMemory(ctx context.Context, input Input, output Output) error {
 	// 保存用户输入
-	a.config.Memory.Save(ctx, memory.Entry{
+	if err := a.config.Memory.Save(ctx, memory.Entry{
 		Role:    "user",
 		Content: input.Query,
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to save user input to memory: %w", err)
+	}
 
 	// 保存工具调用记录
 	if len(output.ToolCalls) > 0 {
 		var toolSummary strings.Builder
 		for _, tc := range output.ToolCalls {
-			toolSummary.WriteString(fmt.Sprintf("Called %s: %s\n", tc.Name, tc.Result.String()))
+			fmt.Fprintf(&toolSummary, "Called %s: %s\n", tc.Name, tc.Result.String())
 		}
-		a.config.Memory.Save(ctx, memory.Entry{
+		if err := a.config.Memory.Save(ctx, memory.Entry{
 			Role:    "tool",
 			Content: toolSummary.String(),
-		})
+		}); err != nil {
+			return fmt.Errorf("failed to save tool calls to memory: %w", err)
+		}
 	}
 
 	// 保存 Agent 回复
-	a.config.Memory.Save(ctx, memory.Entry{
+	if err := a.config.Memory.Save(ctx, memory.Entry{
 		Role:    "assistant",
 		Content: output.Content,
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to save assistant response to memory: %w", err)
+	}
+
+	return nil
 }
 
 // 确保实现了 Agent 接口

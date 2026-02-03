@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -396,11 +397,13 @@ func (p *ConsensusProtocol) requestVote(ctx context.Context, poll *Poll, agentID
 }
 
 // parseVoteValue 解析投票值
+//
+// 检查 LLM 返回的内容中是否包含任何选项，如果包含则返回该选项。
 func (p *ConsensusProtocol) parseVoteValue(content string, options []any) any {
-	// 简单实现：检查内容中是否包含选项
+	// 简单实现：检查内容中是否包含选项（子字符串匹配）
 	for _, opt := range options {
 		optStr := fmt.Sprintf("%v", opt)
-		if contains([]string{content}, optStr) {
+		if strings.Contains(content, optStr) {
 			return opt
 		}
 	}
