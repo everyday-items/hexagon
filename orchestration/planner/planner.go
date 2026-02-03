@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/everyday-items/ai-core/llm"
+	"github.com/everyday-items/toolkit/util/idgen"
 )
 
 // Planner 规划器接口
@@ -297,7 +298,7 @@ func (p *SequentialPlanner) Plan(ctx context.Context, goal string, opts ...PlanO
 	}
 
 	plan := &Plan{
-		ID:        fmt.Sprintf("plan-%d", time.Now().UnixNano()),
+		ID:        "plan-" + idgen.ShortID(),
 		Goal:      goal,
 		Steps:     make([]*Step, 0),
 		State:     PlanStatePending,
@@ -572,7 +573,7 @@ func (p *StepwisePlanner) Name() string {
 // Plan 创建执行计划 (初始只规划第一步)
 func (p *StepwisePlanner) Plan(ctx context.Context, goal string, opts ...PlanOption) (*Plan, error) {
 	plan := &Plan{
-		ID:        fmt.Sprintf("plan-%d", time.Now().UnixNano()),
+		ID:        "plan-" + idgen.ShortID(),
 		Goal:      goal,
 		Steps:     make([]*Step, 0),
 		State:     PlanStatePending,
@@ -778,7 +779,7 @@ func (p *ActionPlanner) Name() string {
 // Plan 创建执行计划 (单一动作)
 func (p *ActionPlanner) Plan(ctx context.Context, goal string, opts ...PlanOption) (*Plan, error) {
 	plan := &Plan{
-		ID:        fmt.Sprintf("plan-%d", time.Now().UnixNano()),
+		ID:        "plan-" + idgen.ShortID(),
 		Goal:      goal,
 		Steps:     make([]*Step, 0),
 		State:     PlanStatePending,
