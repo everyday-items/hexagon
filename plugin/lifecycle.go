@@ -16,6 +16,7 @@ type Lifecycle struct {
 	startOrder      []string
 	healthCheckTick time.Duration
 	stopChan        chan struct{}
+	stopOnce        sync.Once // 确保 stopChan 只关闭一次
 }
 
 // LifecycleOption Lifecycle 选项
@@ -241,29 +242,53 @@ func (l *Lifecycle) StopAll(ctx context.Context) error {
 	return nil
 }
 
-// sortByDependency 按依赖关系排序
+// sortByDependency 按依赖关系排序（使用 Kahn 算法进行拓扑排序）
+//
+// 依赖关系说明：
+//   - 如果插件 A 依赖插件 B，则 B 必须在 A 之前启动
+//   - graph[A] = [B, C] 表示 A 依赖 B 和 C
+//   - 返回的列表中，被依赖的插件排在前面
+//
+// 算法流程：
+//  1. 构建反向依赖图：dependents[B] = [A] 表示 A 依赖 B
+//  2. 计算每个插件的入度（依赖项数量）
+//  3. 从入度为 0 的插件开始（无依赖的插件）
+//  4. 处理一个插件后，更新依赖它的插件的入度
+//  5. 重复直到所有插件都被处理
 func (l *Lifecycle) sortByDependency(plugins []PluginInfo) []PluginInfo {
-	// 构建依赖图
-	graph := make(map[string][]string)
+	if len(plugins) == 0 {
+		return plugins
+	}
+
+	// 构建插件集合和映射
+	pluginSet := make(map[string]bool)
+	pluginMap := make(map[string]PluginInfo)
+	for _, p := range plugins {
+		pluginSet[p.Name] = true
+		pluginMap[p.Name] = p
+	}
+
+	// 构建反向依赖图：dependents[B] = [A] 表示 A 依赖 B
+	// 即 B 被 A 依赖，B 必须在 A 之前启动
+	dependents := make(map[string][]string)
+
+	// 计算入度：插件有多少个依赖项
 	inDegree := make(map[string]int)
+	for _, p := range plugins {
+		inDegree[p.Name] = 0
+	}
 
 	for _, p := range plugins {
-		graph[p.Name] = p.Dependencies
-		if _, ok := inDegree[p.Name]; !ok {
-			inDegree[p.Name] = 0
-		}
 		for _, dep := range p.Dependencies {
-			inDegree[dep] = 0 // 初始化
+			// 只考虑在当前插件集合中的依赖
+			if pluginSet[dep] {
+				inDegree[p.Name]++
+				dependents[dep] = append(dependents[dep], p.Name)
+			}
 		}
 	}
 
-	for _, deps := range graph {
-		for _, dep := range deps {
-			inDegree[dep]++
-		}
-	}
-
-	// 拓扑排序（Kahn's algorithm）
+	// Kahn's algorithm：从入度为 0 的节点开始
 	var queue []string
 	for name, degree := range inDegree {
 		if degree == 0 {
@@ -271,33 +296,31 @@ func (l *Lifecycle) sortByDependency(plugins []PluginInfo) []PluginInfo {
 		}
 	}
 
+	// 拓扑排序结果
 	var sorted []PluginInfo
-	pluginMap := make(map[string]PluginInfo)
-	for _, p := range plugins {
-		pluginMap[p.Name] = p
-	}
 
 	for len(queue) > 0 {
+		// 取出队列头部
 		name := queue[0]
 		queue = queue[1:]
 
+		// 添加到结果
 		if info, ok := pluginMap[name]; ok {
 			sorted = append(sorted, info)
 		}
 
-		for _, deps := range graph {
-			for _, dep := range deps {
-				if dep == name {
-					// 这里的逻辑需要调整
-				}
+		// 更新依赖当前插件的所有插件的入度
+		for _, dependent := range dependents[name] {
+			inDegree[dependent]--
+			if inDegree[dependent] == 0 {
+				queue = append(queue, dependent)
 			}
 		}
-
-		// 简化：直接按名称排序
 	}
 
-	// 如果拓扑排序不完整，返回原始列表
+	// 检测循环依赖：如果排序结果少于输入插件数，说明存在循环依赖
 	if len(sorted) < len(plugins) {
+		// 存在循环依赖，返回原始列表（让后续启动检查报错）
 		return plugins
 	}
 
@@ -363,8 +386,12 @@ func (l *Lifecycle) StartHealthChecker(ctx context.Context) {
 }
 
 // StopHealthChecker 停止健康检查器
+//
+// 线程安全：此方法可以被多次调用，只有第一次会真正关闭 channel
 func (l *Lifecycle) StopHealthChecker() {
-	close(l.stopChan)
+	l.stopOnce.Do(func() {
+		close(l.stopChan)
+	})
 }
 
 // GetStartOrder 获取启动顺序
