@@ -2,6 +2,17 @@
 
 欢迎使用 Hexagon AI Agent 框架！本目录包含详细的使用指南和最佳实践。
 
+## 📦 生态系统
+
+Hexagon 是一个完整的 AI Agent 开发生态：
+
+| 仓库 | 说明 |
+|-----|------|
+| **hexagon** | AI Agent 框架核心 (编排、RAG、Graph、Hooks) |
+| **ai-core** | AI 基础能力库 (LLM/Tool/Memory/Schema) |
+| **toolkit** | Go 通用工具库 (lang/crypto/net/cache/util) |
+| **hexagon-ui** | Dev UI 前端 (Vue 3 + TypeScript) |
+
 ## 📚 指南列表
 
 ### 入门指南
@@ -75,6 +86,7 @@
 - [快速开始](../QUICKSTART.md) - 5分钟快速入门
 - [API 文档](../API.md) - 完整 API 参考
 - [设计文档](../DESIGN.md) - 架构和设计理念
+- [框架对比](../comparison.md) - 与主流框架的对比分析
 - [示例代码](../../examples/) - 可运行的示例
 
 ## 💡 学习路径
