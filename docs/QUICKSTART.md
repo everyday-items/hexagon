@@ -2,6 +2,21 @@
 
 本指南帮助你在 30 分钟内上手 Hexagon AI Agent 框架。
 
+## 项目简介
+
+**Hexagon** 取名自网络热词「六边形战士」，寓意均衡强大、无懈可击。框架聚焦 **易用性、性能、扩展性、任务编排、可观测性、安全性** 六大核心维度，为 Go 开发者打造企业级落地首选的 AI Agent 开发基座。
+
+### 生态系统
+
+Hexagon 是一个完整的 AI Agent 开发生态：
+
+| 仓库 | 说明 |
+|-----|------|
+| **hexagon** | AI Agent 框架核心 (编排、RAG、Graph、Hooks) |
+| **ai-core** | AI 基础能力库 (LLM/Tool/Memory/Schema) |
+| **toolkit** | Go 通用工具库 (lang/crypto/net/cache/util) |
+| **hexagon-ui** | Dev UI 前端 (Vue 3 + TypeScript) |
+
 ## 目录
 
 - [环境准备](#环境准备)
@@ -11,6 +26,7 @@
 - [RAG 检索增强](#rag-检索增强)
 - [图编排](#图编排)
 - [多 Agent 协作](#多-agent-协作)
+- [Dev UI](#dev-ui)
 - [下一步](#下一步)
 
 ---
@@ -410,10 +426,51 @@ metrics.Histogram("latency_ms").Observe(123.5)
 
 ---
 
+## Dev UI
+
+内置开发调试界面，实时查看 Agent 执行过程。
+
+```go
+import "github.com/everyday-items/hexagon/observe/devui"
+
+// 创建 DevUI
+ui := devui.New(
+    devui.WithAddr(":8080"),
+    devui.WithMaxEvents(1000),
+)
+
+// 启动服务
+go ui.Start()
+
+// 访问 http://localhost:8080
+```
+
+**运行示例：**
+
+```bash
+# 启动后端
+go run examples/devui/main.go
+
+# 启动前端 (hexagon-ui)
+cd ../hexagon-ui
+npm install
+npm run dev
+# 访问 http://localhost:5173
+```
+
+**功能特性：**
+- 实时事件流 (SSE 推送)
+- 指标仪表板
+- 事件详情查看
+- LLM 流式输出展示
+
+---
+
 ## 下一步
 
 - 阅读 [API 参考文档](API.md) 了解完整 API
 - 阅读 [架构设计文档](DESIGN.md) 深入理解框架设计
+- 阅读 [框架对比](comparison.md) 了解与其他框架的差异
 - 查看 [示例代码](../examples/) 获取更多用例
 - 访问 [GitHub](https://github.com/everyday-items/hexagon) 参与贡献
 
