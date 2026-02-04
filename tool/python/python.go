@@ -192,17 +192,29 @@ func (t *Tool) execute(ctx context.Context, input ExecuteInput) (*ExecuteOutput,
 }
 
 // validateCode 验证代码安全性
+//
+// 安全检查包括：
+//   - 禁止的模块导入
+//   - 危险的内置函数
+//   - 代码注入模式
+//   - 反射和元编程功能
 func (t *Tool) validateCode(code string) error {
+	// 将代码转换为小写用于某些检查（但保留原始代码用于精确匹配）
+	lowerCode := strings.ToLower(code)
+
 	// 检查禁止的模块
 	for _, module := range t.config.DeniedModules {
 		patterns := []string{
 			fmt.Sprintf("import %s", module),
 			fmt.Sprintf("from %s import", module),
+			fmt.Sprintf("from %s.", module), // from subprocess.xxx
 			fmt.Sprintf("__import__('%s')", module),
 			fmt.Sprintf(`__import__("%s")`, module),
+			fmt.Sprintf("importlib.import_module('%s')", module),
+			fmt.Sprintf(`importlib.import_module("%s")`, module),
 		}
 		for _, pattern := range patterns {
-			if strings.Contains(code, pattern) {
+			if strings.Contains(lowerCode, strings.ToLower(pattern)) {
 				return fmt.Errorf("importing '%s' is not allowed", module)
 			}
 		}
@@ -230,17 +242,74 @@ func (t *Tool) validateCode(code string) error {
 	}
 
 	// 检查危险代码模式
-	dangerousPatterns := []string{
-		"eval(",
-		"exec(",
-		"compile(",
-		"__builtins__",
-		"__class__",
-		"__subclasses__",
+	// 这些模式可能被用于绕过安全限制
+	dangerousPatterns := []struct {
+		pattern string
+		reason  string
+	}{
+		// 动态代码执行
+		{"eval(", "dynamic code execution"},
+		{"exec(", "dynamic code execution"},
+		{"compile(", "code compilation"},
+
+		// 内置函数访问
+		{"__builtins__", "access to builtins"},
+		{"__class__", "class introspection"},
+		{"__subclasses__", "subclass enumeration"},
+		{"__bases__", "base class access"},
+		{"__mro__", "method resolution order access"},
+		{"__globals__", "global namespace access"},
+		{"__code__", "code object access"},
+		{"__dict__", "dictionary access (potential sandbox escape)"},
+
+		// 反射和元编程
+		{"globals(", "global namespace access"},
+		{"locals(", "local namespace access"},
+		{"vars(", "variable access"},
+		{"dir(", "object inspection"},
+		{"getattr(", "attribute access"},
+		{"setattr(", "attribute modification"},
+		{"delattr(", "attribute deletion"},
+		{"hasattr(", "attribute checking"},
+
+		// 文件操作（如果未明确允许）
+		{"open(", "file access"},
+		{"file(", "file access"},
+
+		// 代码对象操作
+		{"types.CodeType", "code object creation"},
+		{"types.FunctionType", "function creation"},
+
+		// 危险的字符串操作（可能用于绕过）
+		{"chr(", "character conversion (bypass)"},
+		{"ord(", "ordinal conversion (bypass)"},
+
+		// 系统退出
+		{"exit(", "system exit"},
+		{"quit(", "system exit"},
+		{"sys.exit", "system exit"},
 	}
-	for _, pattern := range dangerousPatterns {
+
+	for _, dp := range dangerousPatterns {
+		if strings.Contains(code, dp.pattern) {
+			return fmt.Errorf("potentially dangerous code pattern detected: %s (%s)", dp.pattern, dp.reason)
+		}
+	}
+
+	// 检查编码绕过尝试
+	encodingPatterns := []string{
+		"base64.b64decode",
+		"codecs.decode",
+		"bytes.fromhex",
+		"bytearray.fromhex",
+		"\\x",  // 十六进制转义
+		"\\u",  // Unicode 转义
+		"\\U",  // Unicode 转义
+		"\\N{", // Unicode 名称
+	}
+	for _, pattern := range encodingPatterns {
 		if strings.Contains(code, pattern) {
-			return fmt.Errorf("potentially dangerous code pattern detected: %s", pattern)
+			return fmt.Errorf("encoding pattern detected (potential bypass attempt): %s", pattern)
 		}
 	}
 
@@ -255,7 +324,7 @@ func (t *Tool) buildCode(code string, vars map[string]string) string {
 	if len(vars) > 0 {
 		for k, v := range vars {
 			// 简单的变量赋值（字符串类型）
-			builder.WriteString(fmt.Sprintf("%s = %q\n", k, v))
+			fmt.Fprintf(&builder, "%s = %q\n", k, v)
 		}
 		builder.WriteString("\n")
 	}

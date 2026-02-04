@@ -346,17 +346,30 @@ func defaultPIIPatterns() []*piiPattern {
 			pattern: regexp.MustCompile(`[1-9]\d{5}(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]`),
 			redact:  func(s string) string { return "[ID_CARD]" },
 		},
-		// 信用卡号
+		// 信用卡号（带分隔符格式，使用 Luhn 校验）
 		{
 			name:    "credit_card",
 			pattern: regexp.MustCompile(`\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}`),
-			redact:  func(s string) string { return "[CREDIT_CARD]" },
+			redact: func(s string) string {
+				// 提取纯数字并验证 Luhn
+				digits := extractDigits(s)
+				if validateLuhn(digits) {
+					return "[CREDIT_CARD]"
+				}
+				return s // 不是有效卡号，保持原样
+			},
 		},
-		// 银行卡号
+		// 银行卡号（16-19 位纯数字，使用 Luhn 校验减少误报）
 		{
 			name:    "bank_card",
-			pattern: regexp.MustCompile(`\d{16,19}`),
-			redact:  func(s string) string { return "[BANK_CARD]" },
+			pattern: regexp.MustCompile(`\b\d{16,19}\b`),
+			redact: func(s string) string {
+				// 使用 Luhn 算法验证，减少误报
+				if validateLuhn(s) {
+					return "[BANK_CARD]"
+				}
+				return s // 不是有效卡号，保持原样
+			},
 		},
 		// IP 地址
 		{
@@ -365,4 +378,50 @@ func defaultPIIPatterns() []*piiPattern {
 			redact:  func(s string) string { return "[IP_ADDRESS]" },
 		},
 	}
+}
+
+// extractDigits 从字符串中提取所有数字
+func extractDigits(s string) string {
+	var digits []byte
+	for i := 0; i < len(s); i++ {
+		if s[i] >= '0' && s[i] <= '9' {
+			digits = append(digits, s[i])
+		}
+	}
+	return string(digits)
+}
+
+// validateLuhn 使用 Luhn 算法验证卡号
+// Luhn 算法（又称模 10 算法）用于验证银行卡号的有效性
+// 算法步骤：
+//  1. 从右向左，对奇数位数字直接相加
+//  2. 从右向左，对偶数位数字乘以 2，如果结果大于 9 则减去 9
+//  3. 将所有结果相加，如果总和能被 10 整除则有效
+func validateLuhn(number string) bool {
+	// 至少需要 13 位（最短的有效卡号）
+	if len(number) < 13 || len(number) > 19 {
+		return false
+	}
+
+	// 确保全是数字
+	for i := 0; i < len(number); i++ {
+		if number[i] < '0' || number[i] > '9' {
+			return false
+		}
+	}
+
+	var sum int
+	alt := false
+	for i := len(number) - 1; i >= 0; i-- {
+		n := int(number[i] - '0')
+		if alt {
+			n *= 2
+			if n > 9 {
+				n -= 9
+			}
+		}
+		sum += n
+		alt = !alt
+	}
+	return sum%10 == 0
 }

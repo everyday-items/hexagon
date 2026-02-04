@@ -124,19 +124,30 @@ func (c *GuardChain) Add(g Guard) {
 }
 
 // Check 执行检查
+//
+// 根据链模式执行安全检查：
+//   - ChainModeAll: 所有启用的守卫都必须通过
+//   - ChainModeAny: 任一启用的守卫通过即可
+//   - ChainModeFirst: 遇到第一个失败的守卫就停止
+//
+// 线程安全：在迭代前创建守卫列表的副本
 func (c *GuardChain) Check(ctx context.Context, input string) (*CheckResult, error) {
 	c.mu.RLock()
-	guards := c.guards
+	guards := make([]Guard, len(c.guards))
+	copy(guards, c.guards)
 	c.mu.RUnlock()
 
 	var allFindings []Finding
 	var maxScore float64 = 0
 	passedCount := 0
+	enabledCount := 0
+	var lastFailedResult *CheckResult
 
 	for _, guard := range guards {
 		if !guard.Enabled() {
 			continue
 		}
+		enabledCount++
 
 		result, err := guard.Check(ctx, input)
 		if err != nil {
@@ -151,6 +162,7 @@ func (c *GuardChain) Check(ctx context.Context, input string) (*CheckResult, err
 		if result.Passed {
 			passedCount++
 			if c.mode == ChainModeAny {
+				// Any 模式：任一通过即可返回成功
 				return &CheckResult{
 					Passed:   true,
 					Score:    maxScore,
@@ -158,7 +170,9 @@ func (c *GuardChain) Check(ctx context.Context, input string) (*CheckResult, err
 				}, nil
 			}
 		} else {
+			lastFailedResult = result
 			if c.mode == ChainModeFirst {
+				// First 模式：第一个失败就停止
 				return &CheckResult{
 					Passed:   false,
 					Score:    maxScore,
@@ -170,19 +184,45 @@ func (c *GuardChain) Check(ctx context.Context, input string) (*CheckResult, err
 		}
 	}
 
+	// 没有启用的守卫，默认通过
+	if enabledCount == 0 {
+		return &CheckResult{
+			Passed:   true,
+			Score:    0,
+			Findings: allFindings,
+		}, nil
+	}
+
+	// 根据模式判断最终结果
 	passed := false
+	var reason string
+	var category string
+
 	switch c.mode {
 	case ChainModeAll:
-		passed = passedCount == len(guards)
+		// All 模式：所有启用的守卫都必须通过
+		passed = passedCount == enabledCount
+		if !passed && lastFailedResult != nil {
+			reason = lastFailedResult.Reason
+			category = lastFailedResult.Category
+		}
 	case ChainModeAny:
+		// Any 模式：至少一个通过（如果走到这里说明没有任何通过）
 		passed = passedCount > 0
+		if !passed && lastFailedResult != nil {
+			reason = "all guards failed"
+			category = lastFailedResult.Category
+		}
 	case ChainModeFirst:
-		passed = passedCount == len(guards)
+		// First 模式：如果走到这里说明所有守卫都通过了
+		passed = true
 	}
 
 	return &CheckResult{
 		Passed:   passed,
 		Score:    maxScore,
+		Category: category,
+		Reason:   reason,
 		Findings: allFindings,
 	}, nil
 }

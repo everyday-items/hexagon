@@ -87,6 +87,8 @@ func (c *Collector) Events() *RingBuffer {
 
 // Subscribe 订阅事件流
 // 返回事件通道和取消订阅函数
+//
+// 注意：取消订阅函数只能调用一次，重复调用会导致 panic
 func (c *Collector) Subscribe() (<-chan *Event, func()) {
 	ch := make(chan *Event, 100) // 缓冲区防止阻塞
 	id := c.subID.Add(1)
@@ -97,9 +99,13 @@ func (c *Collector) Subscribe() (<-chan *Event, func()) {
 
 	unsubscribe := func() {
 		c.subMu.Lock()
-		delete(c.subscribers, id)
+		// 先从 map 中删除，确保 broadcast 不会再向此 channel 发送数据
+		// 然后在锁内关闭 channel，避免竞态条件导致向已关闭 channel 发送数据
+		if _, exists := c.subscribers[id]; exists {
+			delete(c.subscribers, id)
+			close(ch)
+		}
 		c.subMu.Unlock()
-		close(ch)
 	}
 
 	return ch, unsubscribe

@@ -116,6 +116,13 @@ func (t *Tool) execute(ctx context.Context, input ExecuteInput) (*ExecuteOutput,
 		return nil, err
 	}
 
+	// 验证参数（检查参数中是否有危险字符）
+	for _, arg := range input.Args {
+		if err := t.validateArg(arg); err != nil {
+			return nil, err
+		}
+	}
+
 	// 设置超时
 	timeout := t.config.Timeout
 	if input.Timeout > 0 {
@@ -127,14 +134,32 @@ func (t *Tool) execute(ctx context.Context, input ExecuteInput) (*ExecuteOutput,
 	// 构建命令
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		args := append([]string{"/C", input.Command}, input.Args...)
+		// Windows: 使用 cmd /C，参数需要转义
+		args := append([]string{"/C", input.Command}, escapeArgsWindows(input.Args)...)
 		cmd = exec.CommandContext(ctx, t.config.Shell, args...)
 	} else {
-		fullCmd := input.Command
-		if len(input.Args) > 0 {
-			fullCmd += " " + strings.Join(input.Args, " ")
+		// Unix: 优先使用直接执行方式（更安全），避免 shell 注入
+		if len(input.Args) == 0 && !containsShellMetachars(input.Command) {
+			// 简单命令，可以直接执行
+			parts := strings.Fields(input.Command)
+			if len(parts) > 0 {
+				cmd = exec.CommandContext(ctx, parts[0], parts[1:]...)
+			} else {
+				return nil, fmt.Errorf("empty command")
+			}
+		} else {
+			// 复杂命令或有参数，使用 shell -c
+			// 参数使用 shell 转义
+			fullCmd := input.Command
+			if len(input.Args) > 0 {
+				escapedArgs := make([]string, len(input.Args))
+				for i, arg := range input.Args {
+					escapedArgs[i] = shellEscape(arg)
+				}
+				fullCmd += " " + strings.Join(escapedArgs, " ")
+			}
+			cmd = exec.CommandContext(ctx, t.config.Shell, "-c", fullCmd)
 		}
-		cmd = exec.CommandContext(ctx, t.config.Shell, "-c", fullCmd)
 	}
 
 	// 设置工作目录
@@ -216,6 +241,70 @@ func (t *Tool) validateCommand(cmd string) error {
 	}
 
 	return nil
+}
+
+// validateArg 验证参数安全性
+func (t *Tool) validateArg(arg string) error {
+	// 检查参数中是否有命令替换模式
+	dangerousPatterns := []string{
+		"$(", "`", // 命令替换
+		"&&", "||", ";", // 命令链接
+		"|",    // 管道
+		">",    // 重定向
+		"<",    // 输入重定向
+		"\n",   // 换行符
+		"\x00", // 空字节
+	}
+	for _, pattern := range dangerousPatterns {
+		if strings.Contains(arg, pattern) {
+			return fmt.Errorf("argument contains potentially dangerous pattern: %s", pattern)
+		}
+	}
+	return nil
+}
+
+// shellEscape 对参数进行 shell 转义
+// 使用单引号包裹，并转义单引号
+func shellEscape(s string) string {
+	// 空字符串返回空引号
+	if s == "" {
+		return "''"
+	}
+	// 使用单引号包裹，单引号本身需要特殊处理
+	// 'arg' -> 'ar'\''g' (结束单引号，转义单引号，开始单引号)
+	escaped := strings.ReplaceAll(s, "'", "'\"'\"'")
+	return "'" + escaped + "'"
+}
+
+// escapeArgsWindows 对 Windows 参数进行转义
+func escapeArgsWindows(args []string) []string {
+	result := make([]string, len(args))
+	for i, arg := range args {
+		// Windows 使用双引号，需要转义双引号和反斜杠
+		escaped := strings.ReplaceAll(arg, `\`, `\\`)
+		escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+		if strings.ContainsAny(escaped, " \t") {
+			result[i] = `"` + escaped + `"`
+		} else {
+			result[i] = escaped
+		}
+	}
+	return result
+}
+
+// containsShellMetachars 检查字符串是否包含 shell 元字符
+func containsShellMetachars(s string) bool {
+	metachars := []string{
+		"|", "&", ";", "(", ")", "<", ">",
+		"$", "`", "\\", "\"", "'", " ", "\t", "\n",
+		"*", "?", "[", "]", "#", "~", "=", "%",
+	}
+	for _, c := range metachars {
+		if strings.Contains(s, c) {
+			return true
+		}
+	}
+	return false
 }
 
 // Exec 便捷执行函数

@@ -86,6 +86,7 @@ func (a *ReActAgent) Run(ctx context.Context, input Input) (Output, error) {
 	var runErr error
 
 	// ReAct 循环
+	reachedMaxIterations := false
 	for i := 0; i < a.config.MaxIterations; i++ {
 		// 调用 LLM
 		req := llm.CompletionRequest{
@@ -172,6 +173,20 @@ func (a *ReActAgent) Run(ctx context.Context, input Input) (Output, error) {
 				Role:    llm.RoleTool,
 				Content: result,
 			})
+		}
+
+		// 检查是否是最后一次迭代且 LLM 仍在请求工具调用
+		if i == a.config.MaxIterations-1 {
+			reachedMaxIterations = true
+		}
+	}
+
+	// 如果因达到最大迭代次数退出且没有最终输出，设置警告
+	if reachedMaxIterations && output.Content == "" && runErr == nil {
+		runErr = fmt.Errorf("max iterations (%d) reached, task may be incomplete", a.config.MaxIterations)
+		output.Metadata = map[string]any{
+			"warning":        "max_iterations_reached",
+			"max_iterations": a.config.MaxIterations,
 		}
 	}
 

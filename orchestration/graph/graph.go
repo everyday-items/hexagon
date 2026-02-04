@@ -409,6 +409,14 @@ func (e *graphExecutor[S]) getNextNode(currentNode string) (string, error) {
 }
 
 // Stream 流式执行图（返回每个节点的输出）
+//
+// 返回的 channel 会在以下情况关闭：
+//   - 图执行完成
+//   - 发生错误
+//   - context 被取消
+//
+// 调用者必须消费返回的 channel，否则可能导致 goroutine 泄露。
+// 如果不需要继续消费，应取消传入的 context。
 func (g *Graph[S]) Stream(ctx context.Context, initialState S, opts ...RunOption) (<-chan StreamEvent[S], error) {
 	if !g.compiled {
 		return nil, fmt.Errorf("graph not compiled")
@@ -430,68 +438,93 @@ func (g *Graph[S]) Stream(ctx context.Context, initialState S, opts ...RunOption
 			currentNode = START
 		}
 
-		for {
+		// sendEvent 发送事件，如果 context 已取消则返回 false
+		sendEvent := func(evt StreamEvent[S]) bool {
 			select {
 			case <-ctx.Done():
-				events <- StreamEvent[S]{
+				return false
+			case events <- evt:
+				return true
+			}
+		}
+
+		for {
+			// 检查 context 是否已取消
+			select {
+			case <-ctx.Done():
+				sendEvent(StreamEvent[S]{
 					Type:  EventTypeError,
 					Error: ctx.Err(),
-				}
+				})
 				return
 			default:
 			}
 
 			if currentNode == END {
-				events <- StreamEvent[S]{
+				sendEvent(StreamEvent[S]{
 					Type:  EventTypeEnd,
 					State: state,
-				}
+				})
 				return
 			}
 
 			node, ok := g.Nodes[currentNode]
 			if !ok {
-				events <- StreamEvent[S]{
+				sendEvent(StreamEvent[S]{
 					Type:  EventTypeError,
 					Error: fmt.Errorf("node %s not found", currentNode),
-				}
+				})
 				return
 			}
 
 			// 发送节点开始事件
-			events <- StreamEvent[S]{
+			if !sendEvent(StreamEvent[S]{
 				Type:     EventTypeNodeStart,
 				NodeName: currentNode,
 				State:    state,
+			}) {
+				return
 			}
 
-			// 执行节点
+			// 执行节点（handler 应该自己处理 context 取消）
 			newState, err := node.Handler(ctx, state)
 			if err != nil {
-				events <- StreamEvent[S]{
+				sendEvent(StreamEvent[S]{
 					Type:     EventTypeError,
 					NodeName: currentNode,
 					Error:    err,
-				}
+				})
 				return
 			}
+
+			// 节点执行后再次检查 context
+			if ctx.Err() != nil {
+				sendEvent(StreamEvent[S]{
+					Type:  EventTypeError,
+					Error: ctx.Err(),
+				})
+				return
+			}
+
 			state = newState
 
 			// 发送节点完成事件
-			events <- StreamEvent[S]{
+			if !sendEvent(StreamEvent[S]{
 				Type:     EventTypeNodeEnd,
 				NodeName: currentNode,
 				State:    state,
+			}) {
+				return
 			}
 
 			// 获取下一个节点
 			executor := &graphExecutor[S]{graph: g, state: state, config: config}
 			nextNode, err := executor.getNextNode(currentNode)
 			if err != nil {
-				events <- StreamEvent[S]{
+				sendEvent(StreamEvent[S]{
 					Type:  EventTypeError,
 					Error: err,
-				}
+				})
 				return
 			}
 
