@@ -32,6 +32,90 @@ import (
 	"sync"
 )
 
+// ============== Timing 时机声明（借鉴 Eino TimingChecker 设计） ==============
+// 允许 Hook 声明关心的执行时机，Manager 只调用关心该时机的 Hook
+// 避免无效调用，提升性能
+
+// Timing 时机类型（位掩码，可组合多个时机）
+type Timing uint32
+
+const (
+	// TimingNone 无时机（不关心任何事件）
+	TimingNone Timing = 0
+
+	// Run 相关时机
+	TimingRunStart Timing = 1 << iota // Agent 开始执行
+	TimingRunEnd                       // Agent 执行完成
+	TimingRunError                     // 发生错误
+
+	// Tool 相关时机
+	TimingToolStart // 工具调用开始
+	TimingToolEnd   // 工具调用完成
+
+	// LLM 相关时机
+	TimingLLMStart  // LLM 调用开始
+	TimingLLMEnd    // LLM 调用完成
+	TimingLLMStream // LLM 流式输出
+
+	// Retriever 相关时机
+	TimingRetrieverStart // 检索开始
+	TimingRetrieverEnd   // 检索完成
+
+	// 便捷组合
+	TimingRunAll       = TimingRunStart | TimingRunEnd | TimingRunError
+	TimingToolAll      = TimingToolStart | TimingToolEnd
+	TimingLLMAll       = TimingLLMStart | TimingLLMEnd | TimingLLMStream
+	TimingRetrieverAll = TimingRetrieverStart | TimingRetrieverEnd
+	TimingAll          = TimingRunAll | TimingToolAll | TimingLLMAll | TimingRetrieverAll
+)
+
+// Has 检查是否包含指定时机
+func (t Timing) Has(timing Timing) bool {
+	return t&timing != 0
+}
+
+// String 返回时机的字符串表示
+func (t Timing) String() string {
+	if t == TimingNone {
+		return "none"
+	}
+	var s string
+	timings := []struct {
+		t Timing
+		n string
+	}{
+		{TimingRunStart, "run_start"},
+		{TimingRunEnd, "run_end"},
+		{TimingRunError, "run_error"},
+		{TimingToolStart, "tool_start"},
+		{TimingToolEnd, "tool_end"},
+		{TimingLLMStart, "llm_start"},
+		{TimingLLMEnd, "llm_end"},
+		{TimingLLMStream, "llm_stream"},
+		{TimingRetrieverStart, "retriever_start"},
+		{TimingRetrieverEnd, "retriever_end"},
+	}
+	for _, tt := range timings {
+		if t.Has(tt.t) {
+			if s != "" {
+				s += "|"
+			}
+			s += tt.n
+		}
+	}
+	return s
+}
+
+// TimingChecker 时机检查器接口
+// Hook 可选实现此接口来声明关心的时机
+// 如果未实现，默认关心所有时机
+type TimingChecker interface {
+	// Timings 返回关心的时机（位掩码）
+	// 返回 TimingAll 表示关心所有时机
+	// 返回 TimingNone 表示不关心任何时机（禁用）
+	Timings() Timing
+}
+
 // Hook 钩子接口
 type Hook interface {
 	// Name 返回钩子名称
@@ -132,6 +216,7 @@ type ToolEndEvent struct {
 // LLMStartEvent LLM 调用开始事件
 type LLMStartEvent struct {
 	RunID       string         `json:"run_id"`
+	RequestID   string         `json:"request_id"`
 	Model       string         `json:"model"`
 	Provider    string         `json:"provider"`
 	Messages    []any          `json:"messages"`
@@ -142,25 +227,29 @@ type LLMStartEvent struct {
 // LLMEndEvent LLM 调用完成事件
 type LLMEndEvent struct {
 	RunID            string         `json:"run_id"`
+	RequestID        string         `json:"request_id"`
 	Model            string         `json:"model"`
 	Response         any            `json:"response"`
 	PromptTokens     int            `json:"prompt_tokens"`
 	CompletionTokens int            `json:"completion_tokens"`
 	Duration         int64          `json:"duration_ms"`
+	Error            error          `json:"error,omitempty"`
 	Metadata         map[string]any `json:"metadata,omitempty"`
 }
 
 // LLMStreamEvent LLM 流式输出事件
 type LLMStreamEvent struct {
-	RunID   string `json:"run_id"`
-	Model   string `json:"model"`
-	Content string `json:"content"`
-	Index   int    `json:"index"`
+	RunID      string `json:"run_id"`
+	RequestID  string `json:"request_id"`
+	Model      string `json:"model"`
+	Content    string `json:"content"`
+	ChunkIndex int    `json:"chunk_index"`
 }
 
 // RetrieverStartEvent 检索开始事件
 type RetrieverStartEvent struct {
 	RunID    string         `json:"run_id"`
+	QueryID  string         `json:"query_id"`
 	Query    string         `json:"query"`
 	TopK     int            `json:"top_k"`
 	Metadata map[string]any `json:"metadata,omitempty"`
@@ -169,9 +258,12 @@ type RetrieverStartEvent struct {
 // RetrieverEndEvent 检索完成事件
 type RetrieverEndEvent struct {
 	RunID     string         `json:"run_id"`
+	QueryID   string         `json:"query_id"`
 	Query     string         `json:"query"`
 	Documents []any          `json:"documents"`
+	DocCount  int            `json:"doc_count"`
 	Duration  int64          `json:"duration_ms"`
+	Error     error          `json:"error,omitempty"`
 	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
@@ -224,9 +316,20 @@ func (m *Manager) RegisterRetrieverHook(hook RetrieverHook) {
 	m.retrieverHooks = append(m.retrieverHooks, hook)
 }
 
+// checkTiming 检查 Hook 是否关心指定时机
+// 如果 Hook 实现了 TimingChecker 接口，检查其声明的时机
+// 否则默认关心所有时机
+func checkTiming(hook Hook, timing Timing) bool {
+	if tc, ok := hook.(TimingChecker); ok {
+		return tc.Timings().Has(timing)
+	}
+	return true // 未实现 TimingChecker 则默认关心所有时机
+}
+
 // TriggerRunStart 触发运行开始事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingRunStart 时机的 Hook。
 func (m *Manager) TriggerRunStart(ctx context.Context, event *RunStartEvent) error {
 	m.mu.RLock()
 	hooks := make([]RunHook, len(m.runHooks))
@@ -234,7 +337,7 @@ func (m *Manager) TriggerRunStart(ctx context.Context, event *RunStartEvent) err
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingRunStart) {
 			if err := hook.OnStart(ctx, event); err != nil {
 				return err
 			}
@@ -246,6 +349,7 @@ func (m *Manager) TriggerRunStart(ctx context.Context, event *RunStartEvent) err
 // TriggerRunEnd 触发运行结束事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingRunEnd 时机的 Hook。
 func (m *Manager) TriggerRunEnd(ctx context.Context, event *RunEndEvent) error {
 	m.mu.RLock()
 	hooks := make([]RunHook, len(m.runHooks))
@@ -253,7 +357,7 @@ func (m *Manager) TriggerRunEnd(ctx context.Context, event *RunEndEvent) error {
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingRunEnd) {
 			if err := hook.OnEnd(ctx, event); err != nil {
 				return err
 			}
@@ -265,6 +369,7 @@ func (m *Manager) TriggerRunEnd(ctx context.Context, event *RunEndEvent) error {
 // TriggerError 触发错误事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingRunError 时机的 Hook。
 func (m *Manager) TriggerError(ctx context.Context, event *ErrorEvent) error {
 	m.mu.RLock()
 	hooks := make([]RunHook, len(m.runHooks))
@@ -272,7 +377,7 @@ func (m *Manager) TriggerError(ctx context.Context, event *ErrorEvent) error {
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingRunError) {
 			if err := hook.OnError(ctx, event); err != nil {
 				return err
 			}
@@ -284,6 +389,7 @@ func (m *Manager) TriggerError(ctx context.Context, event *ErrorEvent) error {
 // TriggerToolStart 触发工具开始事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingToolStart 时机的 Hook。
 func (m *Manager) TriggerToolStart(ctx context.Context, event *ToolStartEvent) error {
 	m.mu.RLock()
 	hooks := make([]ToolHook, len(m.toolHooks))
@@ -291,7 +397,7 @@ func (m *Manager) TriggerToolStart(ctx context.Context, event *ToolStartEvent) e
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingToolStart) {
 			if err := hook.OnToolStart(ctx, event); err != nil {
 				return err
 			}
@@ -303,6 +409,7 @@ func (m *Manager) TriggerToolStart(ctx context.Context, event *ToolStartEvent) e
 // TriggerToolEnd 触发工具结束事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingToolEnd 时机的 Hook。
 func (m *Manager) TriggerToolEnd(ctx context.Context, event *ToolEndEvent) error {
 	m.mu.RLock()
 	hooks := make([]ToolHook, len(m.toolHooks))
@@ -310,7 +417,7 @@ func (m *Manager) TriggerToolEnd(ctx context.Context, event *ToolEndEvent) error
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingToolEnd) {
 			if err := hook.OnToolEnd(ctx, event); err != nil {
 				return err
 			}
@@ -322,6 +429,7 @@ func (m *Manager) TriggerToolEnd(ctx context.Context, event *ToolEndEvent) error
 // TriggerLLMStart 触发 LLM 开始事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingLLMStart 时机的 Hook。
 func (m *Manager) TriggerLLMStart(ctx context.Context, event *LLMStartEvent) error {
 	m.mu.RLock()
 	hooks := make([]LLMHook, len(m.llmHooks))
@@ -329,7 +437,7 @@ func (m *Manager) TriggerLLMStart(ctx context.Context, event *LLMStartEvent) err
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingLLMStart) {
 			if err := hook.OnLLMStart(ctx, event); err != nil {
 				return err
 			}
@@ -341,6 +449,7 @@ func (m *Manager) TriggerLLMStart(ctx context.Context, event *LLMStartEvent) err
 // TriggerLLMEnd 触发 LLM 结束事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingLLMEnd 时机的 Hook。
 func (m *Manager) TriggerLLMEnd(ctx context.Context, event *LLMEndEvent) error {
 	m.mu.RLock()
 	hooks := make([]LLMHook, len(m.llmHooks))
@@ -348,7 +457,7 @@ func (m *Manager) TriggerLLMEnd(ctx context.Context, event *LLMEndEvent) error {
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingLLMEnd) {
 			if err := hook.OnLLMEnd(ctx, event); err != nil {
 				return err
 			}
@@ -360,6 +469,7 @@ func (m *Manager) TriggerLLMEnd(ctx context.Context, event *LLMEndEvent) error {
 // TriggerLLMStream 触发 LLM 流式事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingLLMStream 时机的 Hook。
 func (m *Manager) TriggerLLMStream(ctx context.Context, event *LLMStreamEvent) error {
 	m.mu.RLock()
 	hooks := make([]LLMHook, len(m.llmHooks))
@@ -367,7 +477,7 @@ func (m *Manager) TriggerLLMStream(ctx context.Context, event *LLMStreamEvent) e
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingLLMStream) {
 			if err := hook.OnLLMStream(ctx, event); err != nil {
 				return err
 			}
@@ -379,6 +489,7 @@ func (m *Manager) TriggerLLMStream(ctx context.Context, event *LLMStreamEvent) e
 // TriggerRetrieverStart 触发检索开始事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingRetrieverStart 时机的 Hook。
 func (m *Manager) TriggerRetrieverStart(ctx context.Context, event *RetrieverStartEvent) error {
 	m.mu.RLock()
 	hooks := make([]RetrieverHook, len(m.retrieverHooks))
@@ -386,7 +497,7 @@ func (m *Manager) TriggerRetrieverStart(ctx context.Context, event *RetrieverSta
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingRetrieverStart) {
 			if err := hook.OnRetrieverStart(ctx, event); err != nil {
 				return err
 			}
@@ -398,6 +509,7 @@ func (m *Manager) TriggerRetrieverStart(ctx context.Context, event *RetrieverSta
 // TriggerRetrieverEnd 触发检索结束事件
 //
 // 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingRetrieverEnd 时机的 Hook。
 func (m *Manager) TriggerRetrieverEnd(ctx context.Context, event *RetrieverEndEvent) error {
 	m.mu.RLock()
 	hooks := make([]RetrieverHook, len(m.retrieverHooks))
@@ -405,7 +517,7 @@ func (m *Manager) TriggerRetrieverEnd(ctx context.Context, event *RetrieverEndEv
 	m.mu.RUnlock()
 
 	for _, hook := range hooks {
-		if hook.Enabled() {
+		if hook.Enabled() && checkTiming(hook, TimingRetrieverEnd) {
 			if err := hook.OnRetrieverEnd(ctx, event); err != nil {
 				return err
 			}

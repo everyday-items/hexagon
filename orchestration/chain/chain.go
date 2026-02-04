@@ -11,7 +11,7 @@
 //	    Pipe(step3).
 //	    Build()
 //
-//	result, err := chain.Run(ctx, input)
+//	result, err := chain.Invoke(ctx, input)
 package chain
 
 import (
@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/everyday-items/hexagon/core"
+	"github.com/everyday-items/hexagon/stream"
 )
 
 // Chain 链式组件
@@ -66,16 +67,16 @@ func (b *ChainBuilder[I, O]) WithDescription(desc string) *ChainBuilder[I, O] {
 	return b
 }
 
-// Pipe 添加组件到链中
-func (b *ChainBuilder[I, O]) Pipe(c core.Component[any, any]) *ChainBuilder[I, O] {
+// Pipe 添加 Runnable 到链中
+func (b *ChainBuilder[I, O]) Pipe(r core.Runnable[any, any]) *ChainBuilder[I, O] {
 	if b.err != nil {
 		return b
 	}
 
 	b.chain.steps = append(b.chain.steps, step{
-		name: c.Name(),
+		name: r.Name(),
 		handler: func(ctx context.Context, input any) (any, error) {
-			return c.Run(ctx, input)
+			return r.Invoke(ctx, input)
 		},
 	})
 	return b
@@ -115,10 +116,18 @@ func (b *ChainBuilder[I, O]) Build() (*Chain[I, O], error) {
 }
 
 // MustBuild 构建链，失败时 panic
+//
+// ⚠️ 警告：构建失败时会 panic。
+// 仅在初始化时使用，不要在运行时调用。
+// 推荐使用 Build() 方法并正确处理错误。
+//
+// 使用场景：
+//   - 程序启动时的全局初始化
+//   - 测试代码中
 func (b *ChainBuilder[I, O]) MustBuild() *Chain[I, O] {
 	c, err := b.Build()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("chain build failed: %v", err))
 	}
 	return c
 }
@@ -133,8 +142,18 @@ func (c *Chain[I, O]) Description() string {
 	return c.description
 }
 
-// Run 执行链
-func (c *Chain[I, O]) Run(ctx context.Context, input I) (O, error) {
+// InputSchema 返回输入 Schema
+func (c *Chain[I, O]) InputSchema() *core.Schema {
+	return core.SchemaOf[I]()
+}
+
+// OutputSchema 返回输出 Schema
+func (c *Chain[I, O]) OutputSchema() *core.Schema {
+	return core.SchemaOf[O]()
+}
+
+// Invoke 执行链
+func (c *Chain[I, O]) Invoke(ctx context.Context, input I, opts ...core.Option) (O, error) {
 	var zero O
 	var current any = input
 
@@ -162,19 +181,19 @@ func (c *Chain[I, O]) Run(ctx context.Context, input I) (O, error) {
 }
 
 // Stream 流式执行链
-func (c *Chain[I, O]) Stream(ctx context.Context, input I) (core.Stream[O], error) {
-	output, err := c.Run(ctx, input)
+func (c *Chain[I, O]) Stream(ctx context.Context, input I, opts ...core.Option) (*stream.StreamReader[O], error) {
+	output, err := c.Invoke(ctx, input, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return core.NewSliceStream([]O{output}), nil
+	return stream.FromValue(output), nil
 }
 
 // Batch 批量执行链
-func (c *Chain[I, O]) Batch(ctx context.Context, inputs []I) ([]O, error) {
+func (c *Chain[I, O]) Batch(ctx context.Context, inputs []I, opts ...core.Option) ([]O, error) {
 	results := make([]O, len(inputs))
 	for i, input := range inputs {
-		output, err := c.Run(ctx, input)
+		output, err := c.Invoke(ctx, input, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("batch item %d failed: %w", i, err)
 		}
@@ -183,18 +202,49 @@ func (c *Chain[I, O]) Batch(ctx context.Context, inputs []I) ([]O, error) {
 	return results, nil
 }
 
-// InputSchema 返回输入 Schema
-func (c *Chain[I, O]) InputSchema() *core.Schema {
-	return core.SchemaOf[I]()
+// Collect 收集流式输入并执行
+func (c *Chain[I, O]) Collect(ctx context.Context, input *stream.StreamReader[I], opts ...core.Option) (O, error) {
+	var zero O
+	// 收集所有输入
+	collected, err := stream.Concat(ctx, input)
+	if err != nil {
+		return zero, err
+	}
+	return c.Invoke(ctx, collected, opts...)
 }
 
-// OutputSchema 返回输出 Schema
-func (c *Chain[I, O]) OutputSchema() *core.Schema {
-	return core.SchemaOf[O]()
+// Transform 转换流
+func (c *Chain[I, O]) Transform(ctx context.Context, input *stream.StreamReader[I], opts ...core.Option) (*stream.StreamReader[O], error) {
+	reader, writer := stream.Pipe[O](10)
+	go func() {
+		defer writer.Close()
+		for {
+			in, err := input.Recv()
+			if err != nil {
+				return
+			}
+			result, err := c.Invoke(ctx, in, opts...)
+			if err != nil {
+				writer.CloseWithError(err)
+				return
+			}
+			writer.Send(result)
+		}
+	}()
+	return reader, nil
 }
 
-// 确保实现了 Component 接口
-var _ core.Component[any, any] = (*Chain[any, any])(nil)
+// BatchStream 批量流式执行
+func (c *Chain[I, O]) BatchStream(ctx context.Context, inputs []I, opts ...core.Option) (*stream.StreamReader[O], error) {
+	results, err := c.Batch(ctx, inputs, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return stream.FromSlice(results), nil
+}
+
+// 确保实现了 Runnable 接口
+var _ core.Runnable[any, any] = (*Chain[any, any])(nil)
 
 // ============== 常用中间件 ==============
 
@@ -312,8 +362,8 @@ func (p *Parallel[I, O]) Add(handler func(ctx context.Context, input I) (O, erro
 	return p
 }
 
-// Run 执行并行处理
-func (p *Parallel[I, O]) Run(ctx context.Context, input I) (O, error) {
+// Invoke 执行并行处理
+func (p *Parallel[I, O]) Invoke(ctx context.Context, input I, opts ...core.Option) (O, error) {
 	var zero O
 	if len(p.handlers) == 0 {
 		return zero, fmt.Errorf("no handlers in parallel")

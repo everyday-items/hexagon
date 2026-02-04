@@ -328,10 +328,10 @@ func TestAllHooks(t *testing.T) {
 			Model:    "gpt-4",
 		})
 		_ = collector.OnLLMStream(ctx, &hooks.LLMStreamEvent{
-			RunID:   "run-1",
-			Model:   "gpt-4",
-			Content: "Hello",
-			Index:   0,
+			RunID:      "run-1",
+			Model:      "gpt-4",
+			Content:    "Hello",
+			ChunkIndex: 0,
 		})
 		_ = collector.OnLLMEnd(ctx, &hooks.LLMEndEvent{
 			RunID:            "run-1",

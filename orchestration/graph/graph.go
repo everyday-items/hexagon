@@ -214,10 +214,18 @@ func (b *GraphBuilder[S]) Build() (*Graph[S], error) {
 }
 
 // MustBuild 构建图，失败时 panic
+//
+// ⚠️ 警告：构建失败时会 panic。
+// 仅在初始化时使用，不要在运行时调用。
+// 推荐使用 Build() 方法并正确处理错误。
+//
+// 使用场景：
+//   - 程序启动时的全局初始化
+//   - 测试代码中
 func (b *GraphBuilder[S]) MustBuild() *Graph[S] {
 	g, err := b.Build()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("graph build failed: %v", err))
 	}
 	return g
 }

@@ -10,8 +10,10 @@ import (
 	"github.com/everyday-items/ai-core/llm"
 	"github.com/everyday-items/ai-core/memory"
 	"github.com/everyday-items/ai-core/tool"
+	"github.com/everyday-items/hexagon/core"
 	"github.com/everyday-items/hexagon/hooks"
 	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/everyday-items/hexagon/stream"
 )
 
 const defaultReActPrompt = `You are a helpful AI assistant with access to tools.
@@ -442,6 +444,73 @@ func (a *ReActAgent) saveToMemory(ctx context.Context, input Input, output Outpu
 	}
 
 	return nil
+}
+
+// Invoke 执行 ReAct Agent（实现 Runnable 接口）
+func (a *ReActAgent) Invoke(ctx context.Context, input Input, opts ...core.Option) (Output, error) {
+	return a.Run(ctx, input)
+}
+
+// Stream 流式执行 ReAct Agent
+func (a *ReActAgent) Stream(ctx context.Context, input Input, opts ...core.Option) (*stream.StreamReader[Output], error) {
+	output, err := a.Run(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	return stream.FromValue(output), nil
+}
+
+// Batch 批量执行 ReAct Agent
+func (a *ReActAgent) Batch(ctx context.Context, inputs []Input, opts ...core.Option) ([]Output, error) {
+	results := make([]Output, len(inputs))
+	for i, input := range inputs {
+		output, err := a.Run(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		results[i] = output
+	}
+	return results, nil
+}
+
+// Collect 收集流式输入并执行
+func (a *ReActAgent) Collect(ctx context.Context, input *stream.StreamReader[Input], opts ...core.Option) (Output, error) {
+	var zero Output
+	collected, err := stream.Concat(ctx, input)
+	if err != nil {
+		return zero, err
+	}
+	return a.Run(ctx, collected)
+}
+
+// Transform 转换流
+func (a *ReActAgent) Transform(ctx context.Context, input *stream.StreamReader[Input], opts ...core.Option) (*stream.StreamReader[Output], error) {
+	reader, writer := stream.Pipe[Output](10)
+	go func() {
+		defer writer.Close()
+		for {
+			in, err := input.Recv()
+			if err != nil {
+				return
+			}
+			result, err := a.Run(ctx, in)
+			if err != nil {
+				writer.CloseWithError(err)
+				return
+			}
+			writer.Send(result)
+		}
+	}()
+	return reader, nil
+}
+
+// BatchStream 批量流式执行
+func (a *ReActAgent) BatchStream(ctx context.Context, inputs []Input, opts ...core.Option) (*stream.StreamReader[Output], error) {
+	results, err := a.Batch(ctx, inputs, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return stream.FromSlice(results), nil
 }
 
 // 确保实现了 Agent 接口

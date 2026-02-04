@@ -301,7 +301,7 @@ func (c *Collector) OnLLMStream(ctx context.Context, evt *hooks.LLMStreamEvent) 
 	e.Data["run_id"] = evt.RunID
 	e.Data["model"] = evt.Model
 	e.Data["content"] = evt.Content
-	e.Data["index"] = evt.Index
+	e.Data["index"] = evt.ChunkIndex
 
 	c.emit(e)
 	ReleaseEvent(e)

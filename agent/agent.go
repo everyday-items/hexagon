@@ -31,6 +31,7 @@ import (
 	"github.com/everyday-items/ai-core/tool"
 	"github.com/everyday-items/hexagon/core"
 	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/everyday-items/hexagon/stream"
 )
 
 // Input 是 Agent 的输入
@@ -70,9 +71,9 @@ type ToolCallRecord struct {
 }
 
 // Agent 是 AI Agent 的核心接口
-// 继承 Component 接口，添加 Agent 特有的方法
+// 继承 Runnable 接口，添加 Agent 特有的方法
 type Agent interface {
-	core.Component[Input, Output]
+	core.Runnable[Input, Output]
 
 	// ID 返回 Agent 唯一标识
 	ID() string
@@ -88,6 +89,10 @@ type Agent interface {
 
 	// LLM 返回 Agent 使用的 LLM Provider
 	LLM() llm.Provider
+
+	// Run 执行 Agent（向后兼容方法）
+	// Deprecated: 请使用 Invoke
+	Run(ctx context.Context, input Input) (Output, error)
 }
 
 // Config 是 Agent 的配置
@@ -261,9 +266,9 @@ func (a *BaseAgent) Config() Config {
 	return a.config
 }
 
-// Run 执行 Agent
+// Invoke 执行 Agent
 // BaseAgent 提供简单的 LLM 对话实现，子类可以覆盖此方法实现更复杂的逻辑
-func (a *BaseAgent) Run(ctx context.Context, input Input) (Output, error) {
+func (a *BaseAgent) Invoke(ctx context.Context, input Input, opts ...core.Option) (Output, error) {
 	if a.config.LLM == nil {
 		return Output{}, fmt.Errorf("LLM provider not configured")
 	}
@@ -295,26 +300,73 @@ func (a *BaseAgent) Run(ctx context.Context, input Input) (Output, error) {
 	}, nil
 }
 
+// Run 是 Invoke 的别名（向后兼容）
+// Deprecated: 请使用 Invoke
+func (a *BaseAgent) Run(ctx context.Context, input Input) (Output, error) {
+	return a.Invoke(ctx, input)
+}
+
 // Stream 流式执行 Agent
-func (a *BaseAgent) Stream(ctx context.Context, input Input) (core.Stream[Output], error) {
-	output, err := a.Run(ctx, input)
+func (a *BaseAgent) Stream(ctx context.Context, input Input, opts ...core.Option) (*stream.StreamReader[Output], error) {
+	output, err := a.Invoke(ctx, input, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return core.NewSliceStream([]Output{output}), nil
+	return stream.FromValue(output), nil
 }
 
 // Batch 批量执行 Agent
-func (a *BaseAgent) Batch(ctx context.Context, inputs []Input) ([]Output, error) {
+func (a *BaseAgent) Batch(ctx context.Context, inputs []Input, opts ...core.Option) ([]Output, error) {
 	results := make([]Output, len(inputs))
 	for i, input := range inputs {
-		output, err := a.Run(ctx, input)
+		output, err := a.Invoke(ctx, input, opts...)
 		if err != nil {
 			return nil, err
 		}
 		results[i] = output
 	}
 	return results, nil
+}
+
+// Collect 收集流式输入并执行
+func (a *BaseAgent) Collect(ctx context.Context, input *stream.StreamReader[Input], opts ...core.Option) (Output, error) {
+	var zero Output
+	// 收集所有输入
+	collected, err := stream.Concat(ctx, input)
+	if err != nil {
+		return zero, err
+	}
+	return a.Invoke(ctx, collected, opts...)
+}
+
+// Transform 转换流
+func (a *BaseAgent) Transform(ctx context.Context, input *stream.StreamReader[Input], opts ...core.Option) (*stream.StreamReader[Output], error) {
+	reader, writer := stream.Pipe[Output](10)
+	go func() {
+		defer writer.Close()
+		for {
+			in, err := input.Recv()
+			if err != nil {
+				return
+			}
+			result, err := a.Invoke(ctx, in, opts...)
+			if err != nil {
+				writer.CloseWithError(err)
+				return
+			}
+			writer.Send(result)
+		}
+	}()
+	return reader, nil
+}
+
+// BatchStream 批量流式执行
+func (a *BaseAgent) BatchStream(ctx context.Context, inputs []Input, opts ...core.Option) (*stream.StreamReader[Output], error) {
+	results, err := a.Batch(ctx, inputs, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return stream.FromSlice(results), nil
 }
 
 // InputSchema 返回输入 Schema

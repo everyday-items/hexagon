@@ -9,6 +9,7 @@ import (
 	"github.com/everyday-items/ai-core/llm"
 	"github.com/everyday-items/hexagon/core"
 	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/everyday-items/hexagon/stream"
 )
 
 // TeamMode 团队工作模式
@@ -470,17 +471,22 @@ func (t *Team) getAgentNamesFromSlice(agents []Agent) string {
 	return fmt.Sprintf("%v", names)
 }
 
+// Invoke 执行 Team（实现 Runnable 接口）
+func (t *Team) Invoke(ctx context.Context, input Input, opts ...core.Option) (Output, error) {
+	return t.Run(ctx, input)
+}
+
 // Stream 流式执行
-func (t *Team) Stream(ctx context.Context, input Input) (core.Stream[Output], error) {
+func (t *Team) Stream(ctx context.Context, input Input, opts ...core.Option) (*stream.StreamReader[Output], error) {
 	output, err := t.Run(ctx, input)
 	if err != nil {
 		return nil, err
 	}
-	return core.NewSliceStream([]Output{output}), nil
+	return stream.FromValue(output), nil
 }
 
 // Batch 批量执行
-func (t *Team) Batch(ctx context.Context, inputs []Input) ([]Output, error) {
+func (t *Team) Batch(ctx context.Context, inputs []Input, opts ...core.Option) ([]Output, error) {
 	results := make([]Output, len(inputs))
 	for i, input := range inputs {
 		output, err := t.Run(ctx, input)
@@ -490,6 +496,46 @@ func (t *Team) Batch(ctx context.Context, inputs []Input) ([]Output, error) {
 		results[i] = output
 	}
 	return results, nil
+}
+
+// Collect 收集流式输入并执行
+func (t *Team) Collect(ctx context.Context, input *stream.StreamReader[Input], opts ...core.Option) (Output, error) {
+	var zero Output
+	collected, err := stream.Concat(ctx, input)
+	if err != nil {
+		return zero, err
+	}
+	return t.Run(ctx, collected)
+}
+
+// Transform 转换流
+func (t *Team) Transform(ctx context.Context, input *stream.StreamReader[Input], opts ...core.Option) (*stream.StreamReader[Output], error) {
+	reader, writer := stream.Pipe[Output](10)
+	go func() {
+		defer writer.Close()
+		for {
+			in, err := input.Recv()
+			if err != nil {
+				return
+			}
+			result, err := t.Run(ctx, in)
+			if err != nil {
+				writer.CloseWithError(err)
+				return
+			}
+			writer.Send(result)
+		}
+	}()
+	return reader, nil
+}
+
+// BatchStream 批量流式执行
+func (t *Team) BatchStream(ctx context.Context, inputs []Input, opts ...core.Option) (*stream.StreamReader[Output], error) {
+	results, err := t.Batch(ctx, inputs, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return stream.FromSlice(results), nil
 }
 
 // InputSchema 返回输入 Schema
@@ -502,5 +548,5 @@ func (t *Team) OutputSchema() *core.Schema {
 	return core.SchemaOf[Output]()
 }
 
-// 确保实现了 Component 接口
-var _ core.Component[Input, Output] = (*Team)(nil)
+// 确保实现了 Runnable 接口
+var _ core.Runnable[Input, Output] = (*Team)(nil)

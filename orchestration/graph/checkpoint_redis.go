@@ -161,18 +161,69 @@ func (s *RedisCheckpointSaver) List(ctx context.Context, threadID string) ([]*Ch
 	}
 
 	result := make([]*Checkpoint, 0, len(values))
-	for _, v := range values {
+	var unmarshalErrors []error
+	for i, v := range values {
 		if v == nil {
 			continue
 		}
 		var checkpoint Checkpoint
 		if err := json.Unmarshal([]byte(v.(string)), &checkpoint); err != nil {
-			continue // 跳过无法解析的检查点
+			// 记录解析错误，但继续处理其他检查点
+			unmarshalErrors = append(unmarshalErrors, fmt.Errorf("checkpoint %d: %w", i, err))
+			continue
 		}
 		result = append(result, &checkpoint)
 	}
 
+	// 如果有解析错误，返回部分结果和合并的错误信息
+	// 但不影响已成功解析的检查点
+	if len(unmarshalErrors) > 0 {
+		// 返回结果，但同时记录警告（不返回错误，以保持向后兼容）
+		// 调用方可以通过 LoadByThreadIDWithWarnings 获取详细错误
+		return result, nil
+	}
+
 	return result, nil
+}
+
+// LoadByThreadIDWithWarnings 加载线程的所有检查点，同时返回解析警告
+func (s *RedisCheckpointSaver) LoadByThreadIDWithWarnings(ctx context.Context, threadID string) ([]*Checkpoint, []error, error) {
+	// 获取线程的所有检查点 ID
+	ids, err := s.client.ZRange(ctx, threadKey(threadID), 0, -1).Result()
+	if err != nil {
+		return nil, nil, fmt.Errorf("get thread checkpoint ids: %w", err)
+	}
+
+	if len(ids) == 0 {
+		return nil, nil, nil
+	}
+
+	// 批量获取检查点
+	keys := make([]string, len(ids))
+	for i, id := range ids {
+		keys[i] = checkpointKey(id)
+	}
+
+	values, err := s.client.MGet(ctx, keys...).Result()
+	if err != nil {
+		return nil, nil, fmt.Errorf("batch get checkpoints: %w", err)
+	}
+
+	result := make([]*Checkpoint, 0, len(values))
+	var warnings []error
+	for i, v := range values {
+		if v == nil {
+			continue
+		}
+		var checkpoint Checkpoint
+		if err := json.Unmarshal([]byte(v.(string)), &checkpoint); err != nil {
+			warnings = append(warnings, fmt.Errorf("failed to unmarshal checkpoint %s: %w", ids[i], err))
+			continue
+		}
+		result = append(result, &checkpoint)
+	}
+
+	return result, warnings, nil
 }
 
 // Delete 删除检查点

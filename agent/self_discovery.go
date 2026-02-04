@@ -11,6 +11,7 @@ import (
 	"github.com/everyday-items/hexagon/core"
 	"github.com/everyday-items/hexagon/hooks"
 	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/everyday-items/hexagon/stream"
 )
 
 // SelfDiscoveryAgent 自我发现 Agent
@@ -529,13 +530,71 @@ func (a *SelfDiscoveryAgent) triggerError(ctx context.Context, hookManager *hook
 	}
 }
 
+// Invoke 执行 SelfDiscovery Agent（实现 Runnable 接口）
+func (a *SelfDiscoveryAgent) Invoke(ctx context.Context, input Input, opts ...core.Option) (Output, error) {
+	return a.Run(ctx, input)
+}
+
 // Stream 流式执行 Agent
-func (a *SelfDiscoveryAgent) Stream(ctx context.Context, input Input) (core.Stream[Output], error) {
+func (a *SelfDiscoveryAgent) Stream(ctx context.Context, input Input, opts ...core.Option) (*stream.StreamReader[Output], error) {
 	output, err := a.Run(ctx, input)
 	if err != nil {
 		return nil, err
 	}
-	return core.NewSliceStream([]Output{output}), nil
+	return stream.FromValue(output), nil
+}
+
+// Batch 批量执行 Agent
+func (a *SelfDiscoveryAgent) Batch(ctx context.Context, inputs []Input, opts ...core.Option) ([]Output, error) {
+	results := make([]Output, len(inputs))
+	for i, input := range inputs {
+		output, err := a.Run(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		results[i] = output
+	}
+	return results, nil
+}
+
+// Collect 收集流式输入并执行
+func (a *SelfDiscoveryAgent) Collect(ctx context.Context, input *stream.StreamReader[Input], opts ...core.Option) (Output, error) {
+	var zero Output
+	collected, err := stream.Concat(ctx, input)
+	if err != nil {
+		return zero, err
+	}
+	return a.Run(ctx, collected)
+}
+
+// Transform 转换流
+func (a *SelfDiscoveryAgent) Transform(ctx context.Context, input *stream.StreamReader[Input], opts ...core.Option) (*stream.StreamReader[Output], error) {
+	reader, writer := stream.Pipe[Output](10)
+	go func() {
+		defer writer.Close()
+		for {
+			in, err := input.Recv()
+			if err != nil {
+				return
+			}
+			result, err := a.Run(ctx, in)
+			if err != nil {
+				writer.CloseWithError(err)
+				return
+			}
+			writer.Send(result)
+		}
+	}()
+	return reader, nil
+}
+
+// BatchStream 批量流式执行
+func (a *SelfDiscoveryAgent) BatchStream(ctx context.Context, inputs []Input, opts ...core.Option) (*stream.StreamReader[Output], error) {
+	results, err := a.Batch(ctx, inputs, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return stream.FromSlice(results), nil
 }
 
 // 辅助函数

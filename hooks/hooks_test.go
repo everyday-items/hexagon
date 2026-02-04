@@ -220,3 +220,198 @@ func TestToolStartEvent(t *testing.T) {
 		t.Error("expected input query to be 'golang'")
 	}
 }
+
+// ============== TimingChecker 测试 ==============
+
+// timingAwareHook 实现 TimingChecker 的钩子
+// 只关心 RunEnd 和 RunError，不关心 RunStart
+type timingAwareHook struct {
+	name       string
+	enabled    bool
+	timings    Timing
+	startCount int32
+	endCount   int32
+	errorCount int32
+}
+
+func (h *timingAwareHook) Name() string  { return h.name }
+func (h *timingAwareHook) Enabled() bool { return h.enabled }
+func (h *timingAwareHook) Timings() Timing { return h.timings }
+
+func (h *timingAwareHook) OnStart(ctx context.Context, event *RunStartEvent) error {
+	atomic.AddInt32(&h.startCount, 1)
+	return nil
+}
+func (h *timingAwareHook) OnEnd(ctx context.Context, event *RunEndEvent) error {
+	atomic.AddInt32(&h.endCount, 1)
+	return nil
+}
+func (h *timingAwareHook) OnError(ctx context.Context, event *ErrorEvent) error {
+	atomic.AddInt32(&h.errorCount, 1)
+	return nil
+}
+
+func TestTimingChecker_OnlyEndTiming(t *testing.T) {
+	manager := NewManager()
+	// 这个 hook 只关心 RunEnd，不关心 RunStart 和 RunError
+	hook := &timingAwareHook{
+		name:    "end-only-hook",
+		enabled: true,
+		timings: TimingRunEnd,
+	}
+
+	manager.RegisterRunHook(hook)
+
+	ctx := context.Background()
+
+	// 触发 RunStart - 不应该被调用
+	manager.TriggerRunStart(ctx, &RunStartEvent{RunID: "run-1"})
+	if hook.startCount != 0 {
+		t.Errorf("expected startCount 0 (timing not in Timings), got %d", hook.startCount)
+	}
+
+	// 触发 RunEnd - 应该被调用
+	manager.TriggerRunEnd(ctx, &RunEndEvent{RunID: "run-1"})
+	if hook.endCount != 1 {
+		t.Errorf("expected endCount 1, got %d", hook.endCount)
+	}
+
+	// 触发 RunError - 不应该被调用
+	manager.TriggerError(ctx, &ErrorEvent{RunID: "run-1", Error: errors.New("test")})
+	if hook.errorCount != 0 {
+		t.Errorf("expected errorCount 0 (timing not in Timings), got %d", hook.errorCount)
+	}
+}
+
+func TestTimingChecker_MultipleTimings(t *testing.T) {
+	manager := NewManager()
+	// 这个 hook 关心 RunStart 和 RunError，不关心 RunEnd
+	hook := &timingAwareHook{
+		name:    "start-error-hook",
+		enabled: true,
+		timings: TimingRunStart | TimingRunError,
+	}
+
+	manager.RegisterRunHook(hook)
+
+	ctx := context.Background()
+
+	// 触发 RunStart - 应该被调用
+	manager.TriggerRunStart(ctx, &RunStartEvent{RunID: "run-1"})
+	if hook.startCount != 1 {
+		t.Errorf("expected startCount 1, got %d", hook.startCount)
+	}
+
+	// 触发 RunEnd - 不应该被调用
+	manager.TriggerRunEnd(ctx, &RunEndEvent{RunID: "run-1"})
+	if hook.endCount != 0 {
+		t.Errorf("expected endCount 0 (timing not in Timings), got %d", hook.endCount)
+	}
+
+	// 触发 RunError - 应该被调用
+	manager.TriggerError(ctx, &ErrorEvent{RunID: "run-1", Error: errors.New("test")})
+	if hook.errorCount != 1 {
+		t.Errorf("expected errorCount 1, got %d", hook.errorCount)
+	}
+}
+
+func TestTimingChecker_NoTimingChecker(t *testing.T) {
+	manager := NewManager()
+	// mockRunHook 没有实现 TimingChecker，应该默认关心所有时机
+	hook := &mockRunHook{name: "no-timing-hook", enabled: true}
+
+	manager.RegisterRunHook(hook)
+
+	ctx := context.Background()
+
+	// 所有事件都应该被调用
+	manager.TriggerRunStart(ctx, &RunStartEvent{RunID: "run-1"})
+	manager.TriggerRunEnd(ctx, &RunEndEvent{RunID: "run-1"})
+	manager.TriggerError(ctx, &ErrorEvent{RunID: "run-1", Error: errors.New("test")})
+
+	if hook.startCount != 1 {
+		t.Errorf("expected startCount 1, got %d", hook.startCount)
+	}
+	if hook.endCount != 1 {
+		t.Errorf("expected endCount 1, got %d", hook.endCount)
+	}
+	if hook.errorCount != 1 {
+		t.Errorf("expected errorCount 1, got %d", hook.errorCount)
+	}
+}
+
+func TestTimingChecker_TimingNone(t *testing.T) {
+	manager := NewManager()
+	// TimingNone 意味着不关心任何事件
+	hook := &timingAwareHook{
+		name:    "none-timing-hook",
+		enabled: true,
+		timings: TimingNone,
+	}
+
+	manager.RegisterRunHook(hook)
+
+	ctx := context.Background()
+
+	// 所有事件都不应该被调用
+	manager.TriggerRunStart(ctx, &RunStartEvent{RunID: "run-1"})
+	manager.TriggerRunEnd(ctx, &RunEndEvent{RunID: "run-1"})
+	manager.TriggerError(ctx, &ErrorEvent{RunID: "run-1", Error: errors.New("test")})
+
+	if hook.startCount != 0 || hook.endCount != 0 || hook.errorCount != 0 {
+		t.Errorf("expected all counts 0 with TimingNone, got start=%d end=%d error=%d",
+			hook.startCount, hook.endCount, hook.errorCount)
+	}
+}
+
+func TestTiming_Has(t *testing.T) {
+	tests := []struct {
+		timing   Timing
+		check    Timing
+		expected bool
+	}{
+		{TimingRunStart, TimingRunStart, true},
+		{TimingRunStart, TimingRunEnd, false},
+		{TimingRunStart | TimingRunEnd, TimingRunStart, true},
+		{TimingRunStart | TimingRunEnd, TimingRunEnd, true},
+		{TimingRunStart | TimingRunEnd, TimingRunError, false},
+		{TimingRunAll, TimingRunStart, true},
+		{TimingRunAll, TimingRunEnd, true},
+		{TimingRunAll, TimingRunError, true},
+		{TimingRunAll, TimingToolStart, false},
+		{TimingAll, TimingLLMStream, true},
+		{TimingNone, TimingRunStart, false},
+	}
+
+	for _, tt := range tests {
+		result := tt.timing.Has(tt.check)
+		if result != tt.expected {
+			t.Errorf("Timing(%s).Has(%s) = %v, want %v",
+				tt.timing.String(), tt.check.String(), result, tt.expected)
+		}
+	}
+}
+
+func TestTiming_String(t *testing.T) {
+	tests := []struct {
+		timing   Timing
+		contains string
+	}{
+		{TimingNone, "none"},
+		{TimingRunStart, "run_start"},
+		{TimingRunEnd, "run_end"},
+		{TimingRunStart | TimingRunEnd, "run_start"},
+		{TimingLLMStream, "llm_stream"},
+	}
+
+	for _, tt := range tests {
+		s := tt.timing.String()
+		if tt.timing == TimingNone {
+			if s != tt.contains {
+				t.Errorf("Timing.String() = %s, want %s", s, tt.contains)
+			}
+		} else if len(s) == 0 {
+			t.Errorf("Timing.String() returned empty string for %d", tt.timing)
+		}
+	}
+}
