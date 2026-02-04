@@ -192,15 +192,54 @@ func (c *BaseComponent[I, O]) Stream(ctx context.Context, input I) (Stream[O], e
 }
 
 // Batch 批量执行组件
+// 并发执行所有输入，返回结果切片（保持顺序）
+// 如果任一执行失败，返回遇到的第一个错误
 func (c *BaseComponent[I, O]) Batch(ctx context.Context, inputs []I) ([]O, error) {
-	results := make([]O, len(inputs))
-	for i, input := range inputs {
-		result, err := c.Run(ctx, input)
+	if len(inputs) == 0 {
+		return nil, nil
+	}
+
+	// 单个输入直接执行，避免 goroutine 开销
+	if len(inputs) == 1 {
+		result, err := c.Run(ctx, inputs[0])
 		if err != nil {
 			return nil, err
 		}
-		results[i] = result
+		return []O{result}, nil
 	}
+
+	results := make([]O, len(inputs))
+	errs := make([]error, len(inputs))
+	var wg sync.WaitGroup
+
+	// 并发执行所有输入
+	for i, input := range inputs {
+		wg.Add(1)
+		go func(idx int, in I) {
+			defer wg.Done()
+			// 检查 context 是否已取消
+			if ctx.Err() != nil {
+				errs[idx] = ctx.Err()
+				return
+			}
+			result, err := c.Run(ctx, in)
+			if err != nil {
+				errs[idx] = err
+				return
+			}
+			results[idx] = result
+		}(i, input)
+	}
+
+	wg.Wait()
+
+	// 返回遇到的第一个错误
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return results, nil
 }
 

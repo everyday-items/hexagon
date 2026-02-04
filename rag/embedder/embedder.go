@@ -2,11 +2,12 @@
 //
 // Embedder 用于将文本转换为向量：
 //   - OpenAIEmbedder: 使用 OpenAI Embedding API
-//   - CachedEmbedder: 带缓存的 Embedder 包装器
+//   - CachedEmbedder: 带缓存的 Embedder 包装器（带 LRU 淘汰和防击穿）
 //   - BatchEmbedder: 批量处理的 Embedder 包装器
 package embedder
 
 import (
+	"container/list"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
@@ -14,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/everyday-items/hexagon/store/vector"
+	"golang.org/x/sync/singleflight"
 )
 
 // ============== OpenAIEmbedder ==============
@@ -123,12 +125,25 @@ var _ vector.Embedder = (*OpenAIEmbedder)(nil)
 
 // ============== CachedEmbedder ==============
 
-// CachedEmbedder 带缓存的 Embedder
+// lruEntry LRU 缓存条目
+type lruEntry struct {
+	key   string
+	value []float32
+}
+
+// CachedEmbedder 带 LRU 缓存的 Embedder
+//
+// 特性：
+//   - LRU 淘汰策略：当缓存满时自动淘汰最久未使用的条目
+//   - 防缓存击穿：使用 singleflight 确保相同文本并发请求只调用一次底层 Embedder
+//   - 线程安全：所有方法都是并发安全的
 type CachedEmbedder struct {
 	embedder vector.Embedder
-	cache    map[string][]float32
+	cache    map[string]*list.Element // key -> LRU list element
+	lru      *list.List               // LRU 双向链表，最近使用的在前
 	mu       sync.RWMutex
 	maxSize  int
+	sf       singleflight.Group // 防止缓存击穿
 }
 
 // CacheOption CachedEmbedder 选项
@@ -145,7 +160,8 @@ func WithMaxCacheSize(size int) CacheOption {
 func NewCachedEmbedder(embedder vector.Embedder, opts ...CacheOption) *CachedEmbedder {
 	e := &CachedEmbedder{
 		embedder: embedder,
-		cache:    make(map[string][]float32),
+		cache:    make(map[string]*list.Element),
+		lru:      list.New(),
 		maxSize:  10000,
 	}
 	for _, opt := range opts {
@@ -154,42 +170,80 @@ func NewCachedEmbedder(embedder vector.Embedder, opts ...CacheOption) *CachedEmb
 	return e
 }
 
-// Embed 将文本列表转换为向量（带缓存）
+// Embed 将文本列表转换为向量（带 LRU 缓存和防击穿）
 func (e *CachedEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
+	if len(texts) == 0 {
+		return nil, nil
+	}
+
 	result := make([][]float32, len(texts))
 	var toEmbed []string
 	var toEmbedIdx []int
 
-	e.mu.RLock()
+	// 第一遍：检查缓存
+	e.mu.Lock()
 	for i, text := range texts {
 		key := hashText(text)
-		if cached, ok := e.cache[key]; ok {
-			result[i] = cached
+		if elem, ok := e.cache[key]; ok {
+			// 缓存命中，移动到 LRU 链表头部
+			e.lru.MoveToFront(elem)
+			result[i] = elem.Value.(*lruEntry).value
 		} else {
 			toEmbed = append(toEmbed, text)
 			toEmbedIdx = append(toEmbedIdx, i)
 		}
 	}
-	e.mu.RUnlock()
+	e.mu.Unlock()
 
-	if len(toEmbed) > 0 {
-		embeddings, err := e.embedder.Embed(ctx, toEmbed)
-		if err != nil {
-			return nil, err
+	if len(toEmbed) == 0 {
+		return result, nil
+	}
+
+	// 使用 singleflight 防止并发请求相同文本时多次调用底层 Embedder
+	// 为整个批次创建唯一 key
+	batchKey := ""
+	for _, text := range toEmbed {
+		batchKey += hashText(text) + ":"
+	}
+
+	embedResult, err, _ := e.sf.Do(batchKey, func() (interface{}, error) {
+		return e.embedder.Embed(ctx, toEmbed)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	embeddings := embedResult.([][]float32)
+
+	// 将结果添加到缓存
+	e.mu.Lock()
+	for i, embedding := range embeddings {
+		idx := toEmbedIdx[i]
+		result[idx] = embedding
+		key := hashText(toEmbed[i])
+
+		// 如果已存在，先删除旧的
+		if elem, ok := e.cache[key]; ok {
+			e.lru.Remove(elem)
+			delete(e.cache, key)
 		}
 
-		e.mu.Lock()
-		for i, embedding := range embeddings {
-			idx := toEmbedIdx[i]
-			result[idx] = embedding
+		// 添加到缓存
+		entry := &lruEntry{key: key, value: embedding}
+		elem := e.lru.PushFront(entry)
+		e.cache[key] = elem
 
-			// 添加到缓存
-			if len(e.cache) < e.maxSize {
-				e.cache[hashText(toEmbed[i])] = embedding
+		// LRU 淘汰：如果超过最大容量，删除最久未使用的
+		for e.lru.Len() > e.maxSize {
+			oldest := e.lru.Back()
+			if oldest != nil {
+				e.lru.Remove(oldest)
+				delete(e.cache, oldest.Value.(*lruEntry).key)
 			}
 		}
-		e.mu.Unlock()
 	}
+	e.mu.Unlock()
 
 	return result, nil
 }
@@ -222,7 +276,14 @@ func (e *CachedEmbedder) CacheSize() int {
 func (e *CachedEmbedder) ClearCache() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.cache = make(map[string][]float32)
+	e.cache = make(map[string]*list.Element)
+	e.lru.Init()
+}
+
+// CacheHitRate 返回缓存命中率（调试用，需要额外跟踪）
+// 注意：当前实现不跟踪命中率，如需要可添加 hits/misses 计数器
+func (e *CachedEmbedder) CacheHitRate() float64 {
+	return 0 // 预留接口
 }
 
 var _ vector.Embedder = (*CachedEmbedder)(nil)

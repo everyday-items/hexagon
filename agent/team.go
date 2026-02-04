@@ -270,11 +270,21 @@ func (t *Team) runSequential(ctx context.Context, input Input) (Output, error) {
 }
 
 // runHierarchical 层级执行
+//
+// 由 Manager Agent 协调和分配任务给其他 Agent。
+// 线程安全：在执行前获取 agents 的快照
 func (t *Team) runHierarchical(ctx context.Context, input Input) (Output, error) {
 	if t.manager == nil {
 		return Output{}, fmt.Errorf("hierarchical mode requires a manager")
 	}
-	if len(t.agents) == 0 {
+
+	// 获取 agents 的快照（线程安全）
+	t.mu.RLock()
+	agents := make([]Agent, len(t.agents))
+	copy(agents, t.agents)
+	t.mu.RUnlock()
+
+	if len(agents) == 0 {
 		return Output{}, fmt.Errorf("team has no agents")
 	}
 
@@ -282,16 +292,22 @@ func (t *Team) runHierarchical(ctx context.Context, input Input) (Output, error)
 	// 这里简化实现：Manager 决定执行顺序
 	managerOutput, err := t.manager.Run(ctx, Input{
 		Query: fmt.Sprintf("As team manager, analyze this task and coordinate team: %s\nTeam members: %s",
-			input.Query, t.getAgentNames()),
+			input.Query, t.getAgentNamesFromSlice(agents)),
 		Context: input.Context,
 	})
 	if err != nil {
 		return Output{}, fmt.Errorf("manager failed: %w", err)
 	}
 
-	// 简化：让所有 Agent 处理任务
-	results := make([]string, 0, len(t.agents))
-	for _, agent := range t.agents {
+	// 让所有 Agent 处理任务
+	results := make([]string, 0, len(agents))
+	for _, agent := range agents {
+		select {
+		case <-ctx.Done():
+			return Output{}, ctx.Err()
+		default:
+		}
+
 		output, err := agent.Run(ctx, Input{
 			Query:   input.Query,
 			Context: map[string]any{"manager_guidance": managerOutput.Content},
@@ -314,8 +330,17 @@ func (t *Team) runHierarchical(ctx context.Context, input Input) (Output, error)
 }
 
 // runCollaborative 协作执行
+//
+// 所有 Agent 并行工作，通过消息传递协作。
+// 线程安全：在执行前获取 agents 的快照
 func (t *Team) runCollaborative(ctx context.Context, input Input) (Output, error) {
-	if len(t.agents) == 0 {
+	// 获取 agents 的快照（线程安全）
+	t.mu.RLock()
+	agents := make([]Agent, len(t.agents))
+	copy(agents, t.agents)
+	t.mu.RUnlock()
+
+	if len(agents) == 0 {
 		return Output{}, fmt.Errorf("team has no agents")
 	}
 
@@ -326,10 +351,10 @@ func (t *Team) runCollaborative(ctx context.Context, input Input) (Output, error
 		err    error
 	}
 
-	results := make(chan result, len(t.agents))
+	results := make(chan result, len(agents))
 	var wg sync.WaitGroup
 
-	for _, agent := range t.agents {
+	for _, agent := range agents {
 		wg.Add(1)
 		go func(a Agent) {
 			defer wg.Done()
@@ -376,14 +401,23 @@ func (t *Team) runCollaborative(ctx context.Context, input Input) (Output, error
 		Usage:     totalUsage,
 		Metadata: map[string]any{
 			"mode":        "collaborative",
-			"agent_count": len(t.agents),
+			"agent_count": len(agents),
 		},
 	}, nil
 }
 
 // runRoundRobin 轮询执行
+//
+// Agent 轮流执行，直到达到目标或达到最大轮次。
+// 线程安全：在执行前获取 agents 的快照
 func (t *Team) runRoundRobin(ctx context.Context, input Input) (Output, error) {
-	if len(t.agents) == 0 {
+	// 获取 agents 的快照（线程安全）
+	t.mu.RLock()
+	agents := make([]Agent, len(t.agents))
+	copy(agents, t.agents)
+	t.mu.RUnlock()
+
+	if len(agents) == 0 {
 		return Output{}, fmt.Errorf("team has no agents")
 	}
 
@@ -391,7 +425,7 @@ func (t *Team) runRoundRobin(ctx context.Context, input Input) (Output, error) {
 	var lastOutput Output
 
 	for round := 0; round < t.maxRounds; round++ {
-		for _, agent := range t.agents {
+		for _, agent := range agents {
 			select {
 			case <-ctx.Done():
 				return Output{}, ctx.Err()
@@ -418,7 +452,7 @@ func (t *Team) runRoundRobin(ctx context.Context, input Input) (Output, error) {
 				Context: map[string]any{
 					"round":     round,
 					"agent":     agent.Name(),
-					"iteration": round*len(t.agents) + 1,
+					"iteration": round*len(agents) + 1,
 				},
 			}
 		}
@@ -427,10 +461,10 @@ func (t *Team) runRoundRobin(ctx context.Context, input Input) (Output, error) {
 	return lastOutput, nil
 }
 
-// getAgentNames 获取所有 Agent 名称
-func (t *Team) getAgentNames() string {
-	names := make([]string, len(t.agents))
-	for i, a := range t.agents {
+// getAgentNamesFromSlice 从 Agent 切片获取名称列表
+func (t *Team) getAgentNamesFromSlice(agents []Agent) string {
+	names := make([]string, len(agents))
+	for i, a := range agents {
 		names[i] = a.Name()
 	}
 	return fmt.Sprintf("%v", names)
