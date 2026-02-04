@@ -14,10 +14,10 @@ import (
 
 // mockVectorStore 模拟向量存储
 type mockVectorStore struct {
-	docs    []vector.Document
-	mu      sync.Mutex
-	addErr  error
-	delErr  error
+	docs   []vector.Document
+	mu     sync.Mutex
+	addErr error
+	delErr error
 }
 
 func newMockVectorStore() *mockVectorStore {
@@ -36,11 +36,18 @@ func (s *mockVectorStore) Add(ctx context.Context, docs []vector.Document) error
 	return nil
 }
 
-func (s *mockVectorStore) Search(ctx context.Context, query []float32, topK int) ([]vector.SearchResult, error) {
+func (s *mockVectorStore) Search(ctx context.Context, query []float32, topK int, opts ...vector.SearchOption) ([]vector.Document, error) {
 	return nil, nil
 }
 
-func (s *mockVectorStore) Get(ctx context.Context, ids []string) ([]vector.Document, error) {
+func (s *mockVectorStore) Get(ctx context.Context, id string) (*vector.Document, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.docs {
+		if s.docs[i].ID == id {
+			return &s.docs[i], nil
+		}
+	}
 	return nil, nil
 }
 
@@ -92,12 +99,23 @@ func (e *mockEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, 
 	return result, nil
 }
 
+func (e *mockEmbedder) EmbedOne(ctx context.Context, text string) ([]float32, error) {
+	if e.embedErr != nil {
+		return nil, e.embedErr
+	}
+	result := make([]float32, e.dim)
+	for j := 0; j < e.dim; j++ {
+		result[j] = float32(j)
+	}
+	return result, nil
+}
+
 func (e *mockEmbedder) EmbedQuery(ctx context.Context, query string) ([]float32, error) {
 	result := make([]float32, e.dim)
 	return result, nil
 }
 
-func (e *mockEmbedder) Dimensions() int {
+func (e *mockEmbedder) Dimension() int {
 	return e.dim
 }
 

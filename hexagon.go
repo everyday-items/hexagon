@@ -25,7 +25,9 @@ package hexagon
 
 import (
 	"context"
+	"errors"
 	"os"
+	"sync"
 
 	"github.com/everyday-items/ai-core/llm"
 	"github.com/everyday-items/ai-core/llm/openai"
@@ -98,21 +100,35 @@ type (
 // ============== QuickStart API ==============
 
 // defaultProvider 默认 LLM Provider（延迟初始化）
-var defaultProvider llm.Provider
+var (
+	defaultProvider     llm.Provider
+	defaultProviderOnce sync.Once
+	defaultProviderMu   sync.RWMutex
+)
 
-// getDefaultProvider 获取默认 Provider
+// ErrNoProvider 表示没有配置 LLM Provider
+var ErrNoProvider = errors.New("no LLM provider configured: set OPENAI_API_KEY environment variable or use WithProvider() option")
+
+// getDefaultProvider 获取默认 Provider（并发安全）
 func getDefaultProvider() llm.Provider {
-	if defaultProvider == nil {
-		// 尝试从环境变量获取 API Key
+	// 使用 sync.Once 确保只初始化一次
+	defaultProviderOnce.Do(func() {
 		if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+			defaultProviderMu.Lock()
 			defaultProvider = openai.New(key)
+			defaultProviderMu.Unlock()
 		}
-	}
+	})
+
+	defaultProviderMu.RLock()
+	defer defaultProviderMu.RUnlock()
 	return defaultProvider
 }
 
-// SetDefaultProvider 设置默认 LLM Provider
+// SetDefaultProvider 设置默认 LLM Provider（并发安全）
 func SetDefaultProvider(p llm.Provider) {
+	defaultProviderMu.Lock()
+	defer defaultProviderMu.Unlock()
 	defaultProvider = p
 }
 
@@ -156,6 +172,13 @@ func WithMemory(m memory.Memory) QuickStartOption {
 
 // QuickStart 快速创建一个 ReAct Agent
 //
+// 注意：需要配置 LLM Provider，可以通过以下方式之一：
+//   - 设置 OPENAI_API_KEY 环境变量
+//   - 使用 WithProvider() 选项
+//   - 调用 SetDefaultProvider()
+//
+// 如果没有配置 Provider，将会 panic。
+//
 // 示例：
 //
 //	agent := hexagon.QuickStart(
@@ -171,6 +194,11 @@ func QuickStart(opts ...QuickStartOption) *agent.ReActAgent {
 
 	for _, opt := range opts {
 		opt(cfg)
+	}
+
+	// 检查 provider 是否配置
+	if cfg.provider == nil {
+		panic(ErrNoProvider)
 	}
 
 	agentOpts := []agent.Option{

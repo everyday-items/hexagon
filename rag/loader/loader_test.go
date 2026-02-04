@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/everyday-items/hexagon/rag"
 )
 
 // ============== TextLoader 测试 ==============
@@ -241,7 +243,7 @@ func TestNewDirectoryLoader(t *testing.T) {
 }
 
 func TestNewDirectoryLoader_WithOptions(t *testing.T) {
-	customLoader := func(path string) Loader {
+	customLoader := func(path string) rag.Loader {
 		return NewTextLoader(path)
 	}
 
@@ -639,16 +641,10 @@ func TestRemoveMarkdownLinks(t *testing.T) {
 // ============== 接口实现测试 ==============
 
 func TestInterfaceImplementation(t *testing.T) {
-	var _ Loader = (*TextLoader)(nil)
-	var _ Loader = (*MarkdownLoader)(nil)
-	var _ Loader = (*DirectoryLoader)(nil)
-	var _ Loader = (*URLLoader)(nil)
-	var _ Loader = (*ReaderLoader)(nil)
-	var _ Loader = (*StringLoader)(nil)
-}
-
-// Loader 接口定义（用于本地测试）
-type Loader interface {
-	Load(ctx context.Context) ([]interface{ GetContent() string }, error)
-	Name() string
+	var _ rag.Loader = (*TextLoader)(nil)
+	var _ rag.Loader = (*MarkdownLoader)(nil)
+	var _ rag.Loader = (*DirectoryLoader)(nil)
+	var _ rag.Loader = (*URLLoader)(nil)
+	var _ rag.Loader = (*ReaderLoader)(nil)
+	var _ rag.Loader = (*StringLoader)(nil)
 }
