@@ -1,8 +1,21 @@
 // Package milvus 提供 Milvus 向量数据库集成
 //
+// ⚠️ 警告: 当前为实验性内存模拟实现，不适用于生产环境！
+//
+// 当前状态: EXPERIMENTAL (实验性)
+// - 所有操作使用内存模拟，不会连接真实的 Milvus 服务器
+// - 数据不会持久化，重启后丢失
+// - 仅用于开发测试和功能验证
+//
+// 生产环境使用说明:
+// 如需在生产环境使用 Milvus，请：
+// 1. 引入 milvus-sdk-go: go get github.com/milvus-io/milvus-sdk-go/v2
+// 2. 实现真实的 Milvus 客户端连接
+// 3. 或使用已经完整实现的 Qdrant/Chroma 向量存储
+//
 // Milvus 是一个开源的云原生向量数据库，专为海量向量数据的存储、索引和管理而设计。
 //
-// 特性：
+// 特性（完整实现后）：
 //   - 支持十亿级向量检索
 //   - 多种索引类型 (FLAT, IVF_FLAT, HNSW)
 //   - 分布式架构
@@ -29,10 +42,13 @@ import (
 
 // Store Milvus 向量存储
 //
+// ⚠️ 警告: 当前为实验性内存模拟实现！
+//
 // 封装 Milvus 客户端，实现 vector.Store 接口
 //
-// 注意：这是基础实现，使用内存模拟。
-// 生产环境应该使用真实的 milvus-sdk-go 客户端。
+// 当前状态: EXPERIMENTAL
+// - 使用内存模拟，不连接真实 Milvus
+// - 生产环境请使用 Qdrant 或 Chroma
 type Store struct {
 	address    string
 	collection string
@@ -100,14 +116,32 @@ func WithMetricType(metricType string) Option {
 	}
 }
 
+// DefaultDimension 默认向量维度
+const DefaultDimension = 1536
+
+// DefaultAddress 默认 Milvus 地址
+const DefaultAddress = "localhost:19530"
+
+// DefaultCollection 默认集合名称
+const DefaultCollection = "hexagon_documents"
+
+// DefaultIndexType 默认索引类型
+const DefaultIndexType = "HNSW"
+
+// DefaultMetricType 默认距离度量类型
+const DefaultMetricType = "COSINE"
+
 // NewStore 创建 Milvus 向量存储
+//
+// ⚠️ 警告: 当前为实验性内存模拟实现，不连接真实 Milvus 服务器！
+// 生产环境请使用 Qdrant 或 Chroma 向量存储。
 func NewStore(ctx context.Context, opts ...Option) (*Store, error) {
 	s := &Store{
-		address:    "localhost:19530",
-		collection: "hexagon_documents",
-		dimension:  1536,
-		indexType:  "HNSW",
-		metricType: "COSINE",
+		address:    DefaultAddress,
+		collection: DefaultCollection,
+		dimension:  DefaultDimension,
+		indexType:  DefaultIndexType,
+		metricType: DefaultMetricType,
 		indexParams: map[string]any{
 			"M":              16,
 			"efConstruction": 200,
@@ -119,9 +153,9 @@ func NewStore(ctx context.Context, opts ...Option) (*Store, error) {
 		opt(s)
 	}
 
-	// TODO: 实际连接 Milvus
-	// 这里使用内存模拟，生产环境应该：
-	// 1. 引入 milvus-sdk-go
+	// ⚠️ 实验性实现：使用内存模拟
+	// 生产环境应该：
+	// 1. 引入 milvus-sdk-go: go get github.com/milvus-io/milvus-sdk-go/v2
 	// 2. 连接到 Milvus 服务器
 	// 3. 确保集合存在
 	//
@@ -135,6 +169,11 @@ func NewStore(ctx context.Context, opts ...Option) (*Store, error) {
 	s.connected = true
 
 	return s, nil
+}
+
+// IsExperimental 返回当前实现是否为实验性
+func (s *Store) IsExperimental() bool {
+	return true // 当前为内存模拟实现
 }
 
 // Add 添加文档

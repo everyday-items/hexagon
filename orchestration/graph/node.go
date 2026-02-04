@@ -21,6 +21,14 @@ const (
 	NodeTypeParallel
 	// NodeTypeSubgraph 子图节点
 	NodeTypeSubgraph
+	// NodeTypeCatch 错误捕获节点
+	NodeTypeCatch
+	// NodeTypeRetry 重试节点
+	NodeTypeRetry
+	// NodeTypeFallback 降级节点
+	NodeTypeFallback
+	// NodeTypeLoop 循环节点
+	NodeTypeLoop
 )
 
 // Node 图节点
@@ -223,4 +231,212 @@ func ConditionalNode[S State](name string, router ConditionalHandler[S]) *Node[S
 			"router": router,
 		},
 	}
+}
+
+// ============== 错误处理节点 ==============
+
+// ErrorHandler 错误处理函数类型
+// 接收原始状态和错误，返回处理后的状态和是否已处理
+type ErrorHandler[S State] func(ctx context.Context, state S, err error) (S, bool, error)
+
+// CatchNode 创建错误捕获节点
+// 用于捕获上游节点的错误并进行处理
+//
+// 参数:
+//   - name: 节点名称
+//   - handler: 错误处理函数，返回 (新状态, 是否继续执行, 错误)
+//   - errorTypes: 要捕获的错误类型（可选，nil 表示捕获所有错误）
+func CatchNode[S State](name string, handler ErrorHandler[S], errorTypes ...error) *Node[S] {
+	return &Node[S]{
+		Name: name,
+		Type: NodeTypeCatch,
+		Handler: func(ctx context.Context, state S) (S, error) {
+			// 获取上游错误
+			nodeErr, hasErr := ctx.Value(nodeErrorKey{}).(error)
+			if !hasErr || nodeErr == nil {
+				return state, nil
+			}
+
+			// 检查是否匹配错误类型
+			if len(errorTypes) > 0 {
+				matched := false
+				for _, et := range errorTypes {
+					if et == nodeErr || fmt.Sprintf("%T", et) == fmt.Sprintf("%T", nodeErr) {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					return state, nodeErr // 不匹配，继续传播错误
+				}
+			}
+
+			// 执行错误处理
+			newState, handled, err := handler(ctx, state, nodeErr)
+			if err != nil {
+				return newState, err
+			}
+			if !handled {
+				return newState, nodeErr // 未处理，继续传播错误
+			}
+			return newState, nil // 错误已处理
+		},
+		Metadata: map[string]any{
+			"error_handler": handler,
+			"error_types":   errorTypes,
+		},
+	}
+}
+
+// FallbackNode 创建降级节点
+// 当主节点执行失败时，执行降级逻辑
+//
+// 参数:
+//   - name: 节点名称
+//   - primaryHandler: 主处理函数
+//   - fallbackHandler: 降级处理函数
+func FallbackNode[S State](name string, primaryHandler, fallbackHandler NodeHandler[S]) *Node[S] {
+	return &Node[S]{
+		Name: name,
+		Type: NodeTypeFallback,
+		Handler: func(ctx context.Context, state S) (S, error) {
+			// 尝试主处理函数
+			newState, err := primaryHandler(ctx, state)
+			if err == nil {
+				return newState, nil
+			}
+
+			// 主处理失败，执行降级
+			fallbackState, fallbackErr := fallbackHandler(ctx, state)
+			if fallbackErr != nil {
+				// 降级也失败，返回原始错误
+				return state, fmt.Errorf("primary error: %v, fallback error: %v", err, fallbackErr)
+			}
+			return fallbackState, nil
+		},
+		Metadata: map[string]any{
+			"primary_handler":  primaryHandler,
+			"fallback_handler": fallbackHandler,
+		},
+	}
+}
+
+// RetryNode 创建带重试的节点
+// 包装一个普通节点，添加重试能力
+//
+// 参数:
+//   - name: 节点名称
+//   - handler: 节点处理函数
+//   - policy: 重试策略
+func RetryNode[S State](name string, handler NodeHandler[S], policy *RetryPolicy) *Node[S] {
+	if policy == nil {
+		policy = DefaultRetryPolicy()
+	}
+
+	return &Node[S]{
+		Name:        name,
+		Type:        NodeTypeRetry,
+		RetryPolicy: policy,
+		Handler:     handler,
+		Metadata: map[string]any{
+			"retry_policy": policy,
+		},
+	}
+}
+
+// CircuitBreakerConfig 熔断器配置
+type CircuitBreakerConfig struct {
+	// FailureThreshold 失败阈值（连续失败多少次后熔断）
+	FailureThreshold int
+	// SuccessThreshold 成功阈值（连续成功多少次后恢复）
+	SuccessThreshold int
+	// Timeout 熔断超时时间（毫秒）
+	Timeout int64
+	// HalfOpenRequests 半开状态允许的请求数
+	HalfOpenRequests int
+}
+
+// DefaultCircuitBreakerConfig 默认熔断器配置
+func DefaultCircuitBreakerConfig() *CircuitBreakerConfig {
+	return &CircuitBreakerConfig{
+		FailureThreshold: 5,
+		SuccessThreshold: 3,
+		Timeout:          30000,
+		HalfOpenRequests: 3,
+	}
+}
+
+// CircuitBreakerNode 创建熔断器节点
+// 当失败次数达到阈值时，自动熔断，一段时间后进入半开状态尝试恢复
+//
+// 参数:
+//   - name: 节点名称
+//   - handler: 节点处理函数
+//   - config: 熔断器配置
+func CircuitBreakerNode[S State](name string, handler NodeHandler[S], config *CircuitBreakerConfig) *Node[S] {
+	if config == nil {
+		config = DefaultCircuitBreakerConfig()
+	}
+
+	return &Node[S]{
+		Name: name,
+		Type: NodeTypeNormal,
+		Handler: handler,
+		Metadata: map[string]any{
+			"circuit_breaker": config,
+		},
+	}
+}
+
+// TimeoutNode 创建带超时的节点
+// 包装一个普通节点，添加超时控制
+//
+// 参数:
+//   - name: 节点名称
+//   - handler: 节点处理函数
+//   - timeoutMs: 超时时间（毫秒）
+func TimeoutNode[S State](name string, handler NodeHandler[S], timeoutMs int64) *Node[S] {
+	return &Node[S]{
+		Name:    name,
+		Type:    NodeTypeNormal,
+		Handler: handler,
+		Timeout: timeoutMs,
+	}
+}
+
+// BulkheadConfig 舱壁配置（并发隔离）
+type BulkheadConfig struct {
+	// MaxConcurrent 最大并发数
+	MaxConcurrent int
+	// MaxWait 最大等待时间（毫秒）
+	MaxWait int64
+}
+
+// BulkheadNode 创建舱壁节点
+// 限制并发执行数量，实现资源隔离
+func BulkheadNode[S State](name string, handler NodeHandler[S], config *BulkheadConfig) *Node[S] {
+	return &Node[S]{
+		Name:    name,
+		Type:    NodeTypeNormal,
+		Handler: handler,
+		Metadata: map[string]any{
+			"bulkhead": config,
+		},
+	}
+}
+
+// nodeErrorKey 用于在 context 中传递错误的 key
+type nodeErrorKey struct{}
+
+// ContextWithNodeError 将节点错误添加到 context
+func ContextWithNodeError(ctx context.Context, err error) context.Context {
+	return context.WithValue(ctx, nodeErrorKey{}, err)
+}
+
+// NodeErrorFromContext 从 context 获取节点错误
+func NodeErrorFromContext(ctx context.Context) error {
+	if err, ok := ctx.Value(nodeErrorKey{}).(error); ok {
+		return err
+	}
+	return nil
 }

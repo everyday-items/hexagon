@@ -145,10 +145,10 @@ func simulateAgentRun(ctx context.Context, hookMgr *hooks.Manager, runID string)
 
 	for i, char := range response {
 		hookMgr.TriggerLLMStream(ctx, &hooks.LLMStreamEvent{
-			RunID:   runID,
-			Model:   model,
-			Content: string(char),
-			Index:   i,
+			RunID:      runID,
+			Model:      model,
+			Content:    string(char),
+			ChunkIndex: i,
 		})
 		time.Sleep(20 * time.Millisecond)
 	}

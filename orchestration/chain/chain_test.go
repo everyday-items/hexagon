@@ -122,7 +122,7 @@ func TestChainRun(t *testing.T) {
 		}).
 		Build()
 
-	result, err := chain.Run(context.Background(), "test")
+	result, err := chain.Invoke(context.Background(), "test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestChainRunWithError(t *testing.T) {
 		}).
 		Build()
 
-	_, err := chain.Run(context.Background(), "test")
+	_, err := chain.Invoke(context.Background(), "test")
 	if err == nil {
 		t.Error("expected error from chain")
 	}
@@ -155,7 +155,7 @@ func TestChainRunTypeMismatch(t *testing.T) {
 		}).
 		Build()
 
-	_, err := chain.Run(context.Background(), "test")
+	_, err := chain.Invoke(context.Background(), "test")
 	if err == nil {
 		t.Error("expected type mismatch error")
 	}
@@ -178,21 +178,13 @@ func TestChainStream(t *testing.T) {
 	}
 
 	// 收集结果
-	var results []string
-	for {
-		item, ok := stream.Next(context.Background())
-		if !ok {
-			break
-		}
-		results = append(results, item)
+	item, err := stream.Recv()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(results) != 1 {
-		t.Errorf("expected 1 result, got %d", len(results))
-	}
-
-	if results[0] != "test" {
-		t.Errorf("expected 'test', got '%s'", results[0])
+	if item != "test" {
+		t.Errorf("expected 'test', got '%s'", item)
 	}
 }
 
@@ -276,7 +268,7 @@ func TestChainWithMiddleware(t *testing.T) {
 		}).
 		Build()
 
-	_, _ = chain.Run(context.Background(), "test")
+	_, _ = chain.Invoke(context.Background(), "test")
 
 	expected := []string{"before", "step", "after"}
 	if len(logs) != len(expected) {
@@ -542,7 +534,7 @@ func TestParallelRun(t *testing.T) {
 		return input * 3, nil
 	})
 
-	result, err := parallel.Run(context.Background(), 10)
+	result, err := parallel.Invoke(context.Background(), 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -558,7 +550,7 @@ func TestParallelRunNoHandlers(t *testing.T) {
 		return 0
 	})
 
-	_, err := parallel.Run(context.Background(), 10)
+	_, err := parallel.Invoke(context.Background(), 10)
 	if err == nil {
 		t.Error("expected error for parallel with no handlers")
 	}
@@ -573,7 +565,7 @@ func TestParallelRunWithError(t *testing.T) {
 		return 0, errors.New("handler failed")
 	})
 
-	_, err := parallel.Run(context.Background(), 10)
+	_, err := parallel.Invoke(context.Background(), 10)
 	if err == nil {
 		t.Error("expected error from parallel handler")
 	}

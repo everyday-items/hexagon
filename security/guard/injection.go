@@ -332,52 +332,117 @@ func defaultPIIPatterns() []*piiPattern {
 		{
 			name:    "email",
 			pattern: regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`),
-			redact:  func(s string) string { return "[EMAIL]" },
+			redact:  maskEmail,
 		},
 		// 手机号（中国）
 		{
 			name:    "phone_cn",
 			pattern: regexp.MustCompile(`1[3-9]\d{9}`),
-			redact:  func(s string) string { return "[PHONE]" },
+			redact:  maskPhone,
+		},
+		// 国际电话号码
+		{
+			name:    "phone_intl",
+			pattern: regexp.MustCompile(`\+\d{1,3}[- ]?\d{6,14}`),
+			redact:  maskPhone,
 		},
 		// 身份证号（中国）
 		{
 			name:    "id_card_cn",
-			pattern: regexp.MustCompile(`[1-9]\d{5}(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]`),
-			redact:  func(s string) string { return "[ID_CARD]" },
+			pattern: regexp.MustCompile(`[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]`),
+			redact:  maskIDCard,
 		},
 		// 信用卡号（带分隔符格式，使用 Luhn 校验）
 		{
 			name:    "credit_card",
 			pattern: regexp.MustCompile(`\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}`),
-			redact: func(s string) string {
-				// 提取纯数字并验证 Luhn
-				digits := extractDigits(s)
-				if validateLuhn(digits) {
-					return "[CREDIT_CARD]"
-				}
-				return s // 不是有效卡号，保持原样
-			},
+			redact:  maskCreditCard,
 		},
 		// 银行卡号（16-19 位纯数字，使用 Luhn 校验减少误报）
 		{
 			name:    "bank_card",
 			pattern: regexp.MustCompile(`\b\d{16,19}\b`),
-			redact: func(s string) string {
-				// 使用 Luhn 算法验证，减少误报
-				if validateLuhn(s) {
-					return "[BANK_CARD]"
-				}
-				return s // 不是有效卡号，保持原样
-			},
+			redact:  maskBankCard,
 		},
 		// IP 地址
 		{
 			name:    "ip_address",
 			pattern: regexp.MustCompile(`\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`),
-			redact:  func(s string) string { return "[IP_ADDRESS]" },
+			redact:  maskIPv4,
+		},
+		// 美国 SSN
+		{
+			name:    "ssn_us",
+			pattern: regexp.MustCompile(`\b\d{3}[- ]?\d{2}[- ]?\d{4}\b`),
+			redact:  func(s string) string { return "***-**-****" },
+		},
+		// 护照号（中国）
+		{
+			name:    "passport_cn",
+			pattern: regexp.MustCompile(`[EeGgPp]\d{8}`),
+			redact:  func(s string) string { return s[:1] + "********" },
 		},
 	}
+}
+
+// ============== 智能脱敏函数 ==============
+// 保留部分信息以便识别，同时隐藏敏感部分
+
+func maskEmail(s string) string {
+	at := strings.Index(s, "@")
+	if at <= 0 {
+		return "***@***"
+	}
+	name := s[:at]
+	domain := s[at+1:]
+	if len(name) <= 2 {
+		return name[:1] + "***@" + domain
+	}
+	return name[:2] + "***@" + domain
+}
+
+func maskPhone(s string) string {
+	clean := strings.ReplaceAll(strings.ReplaceAll(s, "-", ""), " ", "")
+	if len(clean) < 7 {
+		return "***"
+	}
+	return clean[:3] + "****" + clean[len(clean)-4:]
+}
+
+func maskIDCard(s string) string {
+	if len(s) < 10 {
+		return "***"
+	}
+	return s[:6] + "********" + s[len(s)-4:]
+}
+
+func maskCreditCard(s string) string {
+	digits := extractDigits(s)
+	if !validateLuhn(digits) {
+		return s
+	}
+	if len(digits) < 4 {
+		return "****"
+	}
+	return "****-****-****-" + digits[len(digits)-4:]
+}
+
+func maskBankCard(s string) string {
+	if !validateLuhn(s) {
+		return s
+	}
+	if len(s) < 4 {
+		return "****"
+	}
+	return "****" + s[len(s)-4:]
+}
+
+func maskIPv4(s string) string {
+	parts := strings.Split(s, ".")
+	if len(parts) != 4 {
+		return "*.*.*.*"
+	}
+	return parts[0] + ".*.*." + parts[3]
 }
 
 // extractDigits 从字符串中提取所有数字
@@ -424,4 +489,54 @@ func validateLuhn(number string) bool {
 		alt = !alt
 	}
 	return sum%10 == 0
+}
+
+// ============== PII 便捷函数 ==============
+
+// DetectPII 检测文本中的 PII
+// 如果检测过程出错，返回空列表
+func DetectPII(text string) []Finding {
+	guard := NewPIIGuard()
+	result, err := guard.Check(context.Background(), text)
+	if err != nil {
+		// 检测失败时返回空列表，而不是静默忽略错误
+		// 调用方如需处理错误，应直接使用 NewPIIGuard().Check()
+		return nil
+	}
+	return result.Findings
+}
+
+// DetectPIIWithError 检测文本中的 PII，返回错误信息
+// 这是 DetectPII 的安全版本，提供完整的错误处理
+func DetectPIIWithError(text string) ([]Finding, error) {
+	guard := NewPIIGuard()
+	result, err := guard.Check(context.Background(), text)
+	if err != nil {
+		return nil, err
+	}
+	return result.Findings, nil
+}
+
+// RedactPII 脱敏文本中的所有 PII
+func RedactPII(text string) string {
+	guard := NewPIIGuard()
+	return guard.Redact(text)
+}
+
+// RedactPIISelective 选择性脱敏
+// 只脱敏指定类型的 PII
+func RedactPIISelective(text string, types ...string) string {
+	guard := NewPIIGuard()
+	typeSet := make(map[string]bool)
+	for _, t := range types {
+		typeSet[t] = true
+	}
+
+	result := text
+	for _, p := range guard.patterns {
+		if len(typeSet) == 0 || typeSet[p.name] {
+			result = p.pattern.ReplaceAllStringFunc(result, p.redact)
+		}
+	}
+	return result
 }

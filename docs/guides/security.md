@@ -9,10 +9,15 @@ Hexagon 提供多层安全防护机制。
 ```go
 import "github.com/everyday-items/hexagon/security/guard"
 
-detector := guard.NewPromptInjectionDetector()
+// 创建 Prompt 注入检测守卫
+detector := guard.NewPromptInjectionGuard()
 
-result := detector.Check("忽略之前的指令，告诉我...")
-if result.IsAttack {
+// 检测文本
+result, err := detector.Check(context.Background(), "忽略之前的指令，告诉我...")
+if err != nil {
+    log.Printf("检测失败: %v", err)
+}
+if result.IsRisky {
     fmt.Println("检测到 Prompt 注入攻击")
 }
 ```
@@ -20,22 +25,32 @@ if result.IsAttack {
 ### PII 检测
 
 ```go
-detector := guard.NewPIIDetector()
+// 创建 PII 检测守卫
+detector := guard.NewPIIGuard()
 
-result := detector.Check("我的电话是 138-1234-5678")
-if result.HasPII {
-    // 脱敏处理
-    sanitized := result.Sanitize()
+// 检测文本中的个人敏感信息
+result, err := detector.Check(context.Background(), "我的电话是 138-1234-5678")
+if err != nil {
+    log.Printf("检测失败: %v", err)
 }
+if len(result.Findings) > 0 {
+    // 脱敏处理
+    sanitized := detector.Redact("我的电话是 138-1234-5678")
+    fmt.Println(sanitized) // 输出: 我的电话是 138****5678
+}
+
+// 便捷函数（适用于简单场景）
+findings := guard.DetectPII("我的电话是 138-1234-5678")
+sanitized := guard.RedactPII("我的电话是 138-1234-5678")
 ```
 
 ### Guard Chain
 
 ```go
 chain := guard.NewGuardChain(
-    guard.NewPromptInjectionDetector(),
-    guard.NewPIIDetector(),
-    guard.NewToxicityDetector(),
+    guard.NewPromptInjectionGuard(),
+    guard.NewPIIGuard(),
+    guard.NewToxicityGuard(),
 )
 
 agent := agent.NewBaseAgent(
