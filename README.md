@@ -243,7 +243,7 @@ output, _ := team.Run(ctx, hexagon.Input{Query: "写一篇技术文章"})
 
 ### 📐 整体架构
 
-<img src=".github/assets/architecture.jpg" alt="Hexagon 整体架构" width="800" style="height: auto;">
+<img src=".github/assets/architecture.png" alt="Hexagon 整体架构" width="800" style="height: auto;">
 
 ### 🔗 生态系统依赖
 
