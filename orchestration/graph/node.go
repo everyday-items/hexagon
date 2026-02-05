@@ -179,37 +179,66 @@ func EndNode[S State]() *Node[S] {
 
 // ParallelNode 创建并行执行节点
 // 将多个节点的处理函数并行执行，并合并结果
+//
+// 警告：默认只保留最后一个结果。
+// 如果需要正确合并多个 handler 的结果，请使用 ParallelNodeWithMerger。
 func ParallelNode[S State](name string, handlers ...NodeHandler[S]) *Node[S] {
+	return ParallelNodeWithMerger(name, nil, handlers...)
+}
+
+// ParallelNodeWithMerger 创建带自定义状态合并器的并行执行节点
+//
+// 参数:
+//   - name: 节点名称
+//   - merger: 状态合并函数，用于合并所有 handler 的执行结果。
+//     如果为 nil，默认返回最后一个结果（向后兼容）
+//   - handlers: 要并行执行的处理函数列表
+//
+// StateMerger 定义在 subgraph.go 中：func(original S, outputs []S) S
+func ParallelNodeWithMerger[S State](name string, merger StateMerger[S], handlers ...NodeHandler[S]) *Node[S] {
 	return &Node[S]{
 		Name: name,
 		Type: NodeTypeParallel,
 		Handler: func(ctx context.Context, state S) (S, error) {
+			if len(handlers) == 0 {
+				return state, nil
+			}
+
 			// 并行执行所有处理函数
 			type result struct {
+				index int
 				state S
 				err   error
 			}
 			results := make(chan result, len(handlers))
 
-			for _, h := range handlers {
-				h := h // 捕获变量
+			for i, h := range handlers {
+				i, h := i, h // 捕获变量
 				go func() {
 					s, err := h(ctx, state.Clone().(S))
-					results <- result{state: s, err: err}
+					results <- result{index: i, state: s, err: err}
 				}()
 			}
 
-			// 收集结果
-			var finalState S = state
-			for i := 0; i < len(handlers); i++ {
+			// 收集所有结果，保持顺序
+			states := make([]S, len(handlers))
+			for range handlers {
 				r := <-results
 				if r.err != nil {
-					return finalState, fmt.Errorf("parallel execution failed: %w", r.err)
+					return state, fmt.Errorf("parallel execution failed at handler %d: %w", r.index, r.err)
 				}
-				// 这里简单使用最后一个结果，实际应该合并
-				finalState = r.state
+				states[r.index] = r.state
 			}
-			return finalState, nil
+
+			// 使用合并器合并所有状态
+			if merger == nil {
+				// 默认返回最后一个结果（向后兼容）
+				return states[len(states)-1], nil
+			}
+			return merger(state, states), nil
+		},
+		Metadata: map[string]any{
+			"handler_count": len(handlers),
 		},
 	}
 }

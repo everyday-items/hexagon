@@ -24,6 +24,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"sync"
 	"time"
 )
@@ -671,19 +672,7 @@ func cosineSimilarity(a, b []float32) float64 {
 		return 0
 	}
 
-	return dotProduct / (sqrtFloat(normA) * sqrtFloat(normB))
-}
-
-func sqrtFloat(x float64) float64 {
-	// 简单的牛顿迭代法计算平方根
-	if x <= 0 {
-		return 0
-	}
-	z := x
-	for i := 0; i < 10; i++ {
-		z = z - (z*z-x)/(2*z)
-	}
-	return z
+	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
 // ============== 缓存中间件 ==============

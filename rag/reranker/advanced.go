@@ -7,7 +7,6 @@ import (
 	"math"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/everyday-items/hexagon/rag"
 )
@@ -27,15 +26,15 @@ import (
 //     MMR = λ × Sim(Doc, Query) - (1-λ) × max(Sim(Doc, Selected))
 //  3. 选择 MMR 分数最高的文档加入结果
 //  4. 重复直到达到 TopK
+//
+// 缓存机制：
+//   - 相似度缓存仅在单次 Rerank 调用期间有效
+//   - 每次调用 Rerank 时会清空缓存，避免内存无限增长
 type MMRReranker struct {
-	lambda    float32 // 相关性权重 (0-1)，越大越注重相关性，越小越注重多样性
-	topK      int     // 返回数量
+	lambda    float32  // 相关性权重 (0-1)，越大越注重相关性，越小越注重多样性
+	topK      int      // 返回数量
 	embedder  Embedder // 向量嵌入器，用于计算文档相似度
-	useCache  bool    // 是否缓存嵌入向量
-
-	// 相似度缓存（优化性能）
-	simCache map[string]float32
-	mu       sync.RWMutex
+	useCache  bool     // 是否在单次 Rerank 调用中缓存相似度计算
 }
 
 // Embedder 向量嵌入器接口
@@ -82,7 +81,6 @@ func NewMMRReranker(embedder Embedder, opts ...MMROption) *MMRReranker {
 		topK:     10,
 		embedder: embedder,
 		useCache: true,
-		simCache: make(map[string]float32),
 	}
 	for _, opt := range opts {
 		opt(r)
@@ -119,6 +117,12 @@ func (r *MMRReranker) Rerank(ctx context.Context, query string, docs []rag.Docum
 		querySims[i] = cosineSimilarity(queryEmbed, docEmbed)
 	}
 
+	// 创建局部缓存（仅在本次 Rerank 调用中有效，避免内存泄漏）
+	var simCache map[string]float32
+	if r.useCache {
+		simCache = make(map[string]float32)
+	}
+
 	// MMR 选择
 	selected := make([]int, 0, r.topK)
 	remaining := make(map[int]bool)
@@ -151,7 +155,7 @@ func (r *MMRReranker) Rerank(ctx context.Context, query string, docs []rag.Docum
 			maxSelectedSim := float32(0.0)
 			for _, selIdx := range selected {
 				// 使用缓存的相似度（如果启用）
-				sim := r.getCachedSimilarity(idx, selIdx, docEmbeds)
+				sim := getCachedSimilarity(idx, selIdx, docEmbeds, simCache)
 				if sim > maxSelectedSim {
 					maxSelectedSim = sim
 				}
@@ -192,8 +196,16 @@ func (r *MMRReranker) Name() string {
 }
 
 // getCachedSimilarity 获取缓存的相似度
-func (r *MMRReranker) getCachedSimilarity(i, j int, embeds [][]float32) float32 {
-	if !r.useCache {
+//
+// 使用局部缓存来避免重复计算相似度。缓存仅在单次 Rerank 调用期间有效，
+// 避免内存无限增长的问题。
+//
+// 参数：
+//   - i, j: 文档索引
+//   - embeds: 文档嵌入向量
+//   - cache: 局部缓存 map（可以为 nil 表示不使用缓存）
+func getCachedSimilarity(i, j int, embeds [][]float32, cache map[string]float32) float32 {
+	if cache == nil {
 		return cosineSimilarity(embeds[i], embeds[j])
 	}
 
@@ -205,19 +217,13 @@ func (r *MMRReranker) getCachedSimilarity(i, j int, embeds [][]float32) float32 
 	cacheKey := fmt.Sprintf("%d-%d", i, j)
 
 	// 尝试从缓存读取
-	r.mu.RLock()
-	if sim, ok := r.simCache[cacheKey]; ok {
-		r.mu.RUnlock()
+	if sim, ok := cache[cacheKey]; ok {
 		return sim
 	}
-	r.mu.RUnlock()
 
 	// 计算并缓存
 	sim := cosineSimilarity(embeds[i], embeds[j])
-
-	r.mu.Lock()
-	r.simCache[cacheKey] = sim
-	r.mu.Unlock()
+	cache[cacheKey] = sim
 
 	return sim
 }

@@ -15,6 +15,12 @@ import (
 	"github.com/everyday-items/ai-core/tool"
 )
 
+const (
+	// MaxResponseBodySize 最大响应体大小（10MB）
+	// 防止恶意服务器返回超大响应导致 OOM
+	MaxResponseBodySize = 10 * 1024 * 1024
+)
+
 // HTTPTool HTTP API 调用工具
 type HTTPTool struct {
 	client  *http.Client
@@ -161,10 +167,21 @@ func (t *HTTPTool) request(ctx context.Context, method, url string, headers map[
 	}
 	defer resp.Body.Close()
 
-	// 读取响应体
-	respBody, err := io.ReadAll(resp.Body)
+	// 检查 Content-Length（如果服务器提供）
+	if resp.ContentLength > MaxResponseBodySize {
+		return RequestOutput{}, fmt.Errorf("响应体过大: %d bytes (最大: %d)", resp.ContentLength, MaxResponseBodySize)
+	}
+
+	// 使用 LimitReader 限制读取大小，防止 OOM
+	limitedReader := io.LimitReader(resp.Body, MaxResponseBodySize+1)
+	respBody, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return RequestOutput{}, fmt.Errorf("读取响应失败: %w", err)
+	}
+
+	// 检查是否超过限制
+	if len(respBody) > MaxResponseBodySize {
+		return RequestOutput{}, fmt.Errorf("响应体过大: 超过 %d bytes 限制", MaxResponseBodySize)
 	}
 
 	// 构建输出
@@ -254,6 +271,14 @@ func (t *GraphQLTool) Tool() tool.Tool {
 			}
 			defer resp.Body.Close()
 
+			// 检查 Content-Length
+			if resp.ContentLength > MaxResponseBodySize {
+				return GraphQLOutput{}, fmt.Errorf("响应体过大: %d bytes (最大: %d)", resp.ContentLength, MaxResponseBodySize)
+			}
+
+			// 使用 LimitReader 限制读取大小
+			limitedReader := io.LimitReader(resp.Body, MaxResponseBodySize)
+
 			// 解析响应
 			var result struct {
 				Data   any `json:"data"`
@@ -262,7 +287,7 @@ func (t *GraphQLTool) Tool() tool.Tool {
 				} `json:"errors,omitempty"`
 			}
 
-			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			if err := json.NewDecoder(limitedReader).Decode(&result); err != nil {
 				return GraphQLOutput{}, fmt.Errorf("解析响应失败: %w", err)
 			}
 

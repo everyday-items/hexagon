@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/everyday-items/hexagon/internal/util"
@@ -771,15 +772,15 @@ func (n *AgentNetwork) Stats() NetworkStats {
 	}
 
 	return NetworkStats{
-		TotalNodes:    len(n.nodes),
-		OnlineNodes:   online,
-		OfflineNodes:  offline,
-		BusyNodes:     busy,
-		TotalEdges:    totalEdges / 2, // 每条边计算了两次
-		Topology:      n.topology.String(),
-		MessagesSent:  n.router.messagesSent,
-		MessagesRecv:  n.router.messagesRecv,
-		MessagesFailed: n.router.messagesFailed,
+		TotalNodes:     len(n.nodes),
+		OnlineNodes:    online,
+		OfflineNodes:   offline,
+		BusyNodes:      busy,
+		TotalEdges:     totalEdges / 2, // 每条边计算了两次
+		Topology:       n.topology.String(),
+		MessagesSent:   n.router.messagesSent.Load(),
+		MessagesRecv:   n.router.messagesRecv.Load(),
+		MessagesFailed: n.router.messagesFailed.Load(),
 	}
 }
 
@@ -818,10 +819,10 @@ type MessageRouter struct {
 	// closeOnce 确保只关闭一次
 	closeOnce sync.Once
 
-	// Stats
-	messagesSent   int64
-	messagesRecv   int64
-	messagesFailed int64
+	// Stats (使用原子类型确保并发安全)
+	messagesSent   atomic.Int64
+	messagesRecv   atomic.Int64
+	messagesFailed atomic.Int64
 
 	mu sync.RWMutex
 }
@@ -948,40 +949,41 @@ func (r *MessageRouter) RequestResponse(ctx context.Context, msg *NetworkMessage
 // deliver 投递消息
 //
 // 线程安全：此方法会检查收件箱是否已关闭，避免向已关闭的 channel 发送消息导致 panic。
+// 计数器使用原子操作确保并发安全。
 func (r *MessageRouter) deliver(ctx context.Context, msg *NetworkMessage) error {
 	node, ok := r.network.GetNode(msg.To)
 	if !ok {
-		r.messagesFailed++
+		r.messagesFailed.Add(1)
 		return fmt.Errorf("target agent %s not found", msg.To)
 	}
 
 	// 检查收件箱是否已关闭
 	if node.IsClosed() {
-		r.messagesFailed++
+		r.messagesFailed.Add(1)
 		return fmt.Errorf("inbox closed for agent %s", msg.To)
 	}
 
 	// 检查节点状态
 	if node.Status == NodeStatusOffline {
-		r.messagesFailed++
+		r.messagesFailed.Add(1)
 		return fmt.Errorf("target agent %s is offline", msg.To)
 	}
 
 	// 投递到收件箱（使用 defer recover 防止并发关闭导致的 panic）
 	defer func() {
-		if r := recover(); r != nil {
+		if rec := recover(); rec != nil {
 			// channel 已关闭，忽略 panic
 		}
 	}()
 
 	select {
 	case node.Inbox <- msg:
-		r.messagesSent++
+		r.messagesSent.Add(1)
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		r.messagesFailed++
+		r.messagesFailed.Add(1)
 		return fmt.Errorf("inbox full for agent %s", msg.To)
 	}
 }
@@ -1019,8 +1021,10 @@ func (r *MessageRouter) Stop() {
 }
 
 // processMessage 处理消息
+//
+// 计数器使用原子操作确保并发安全。
 func (r *MessageRouter) processMessage(ctx context.Context, msg *NetworkMessage) {
-	r.messagesRecv++
+	r.messagesRecv.Add(1)
 
 	// 检查是否是响应消息
 	if msg.Type == MessageTypeResponse && msg.ReplyTo != "" {
@@ -1037,7 +1041,7 @@ func (r *MessageRouter) processMessage(ctx context.Context, msg *NetworkMessage)
 	// 调用网络的消息处理器
 	response, err := r.network.HandleMessage(ctx, msg)
 	if err != nil {
-		r.messagesFailed++
+		r.messagesFailed.Add(1)
 		return
 	}
 

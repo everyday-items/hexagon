@@ -200,34 +200,40 @@ func (c *Controller) CheckRequest(ctx context.Context, estimatedTokens int64) er
 }
 
 // RecordUsage 记录使用量
+//
+// 注意：此方法采用"先检查后扣费"的原子操作模式，确保不会超额消费。
+// 如果预算不足，会返回错误且不会记录使用量。
 func (c *Controller) RecordUsage(model string, usage TokenUsage) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// 注意：请求已在 CheckRequest 的 TryAllow 中记录，此处不再重复记录
-
-	// 累加 Token
-	c.usedTokens += int64(usage.TotalTokens)
-
-	// 计算成本
+	// 计算成本（使用整数运算避免浮点精度问题）
+	// 将价格转换为微美元（百万分之一美元）进行计算
 	pricing, ok := c.pricing[model]
 	if !ok {
 		pricing = c.pricing["default"]
 	}
 
-	cost := (float64(usage.PromptTokens) / 1000 * pricing.PromptPrice) +
-		(float64(usage.CompletionTokens) / 1000 * pricing.CompletionPrice)
+	// 成本计算：(tokens / 1000) * price = tokens * price / 1000
+	// 使用微美元：tokens * (price * 1_000_000) / 1000 = tokens * price * 1000
+	promptCostMicro := int64(usage.PromptTokens) * int64(pricing.PromptPrice*1_000_000) / 1000
+	completionCostMicro := int64(usage.CompletionTokens) * int64(pricing.CompletionPrice*1_000_000) / 1000
+	totalCostMicro := promptCostMicro + completionCostMicro
+	cost := float64(totalCostMicro) / 1_000_000
 
+	// 先检查预算是否足够（原子性：检查和扣费在同一个锁内）
+	if c.budget > 0 && c.used+cost > c.budget {
+		if c.onBudgetExceeded != nil {
+			c.onBudgetExceeded(c.used+cost, c.budget)
+		}
+		return fmt.Errorf("budget exceeded: $%.4f + $%.4f would exceed $%.4f budget",
+			c.used, cost, c.budget)
+	}
+
+	// 预算足够，执行扣费
+	c.usedTokens += int64(usage.TotalTokens)
 	c.used += cost
 	c.remaining = c.budget - c.used
-
-	// 检查预算
-	if c.budget > 0 && c.used > c.budget {
-		if c.onBudgetExceeded != nil {
-			c.onBudgetExceeded(c.used, c.budget)
-		}
-		return fmt.Errorf("budget exceeded: $%.4f used of $%.4f budget", c.used, c.budget)
-	}
 
 	return nil
 }
