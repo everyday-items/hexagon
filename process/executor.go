@@ -210,7 +210,6 @@ func (p *ProcessInstance) SendEvent(ctx context.Context, event Event) error {
 	currentStateName := p.currentState.Name()
 	p.mu.Unlock()
 
-<<<<<<< HEAD
 	// 查找所有匹配的转换
 	transitions := p.definition.GetTransitionsByEvent(currentStateName, event.Name)
 	if len(transitions) == 0 {
@@ -238,16 +237,6 @@ func (p *ProcessInstance) SendEvent(ctx context.Context, event Event) error {
 
 	// 执行转换
 	return p.executeTransition(ctx, matchedTransition, event)
-=======
-	// 查找匹配的转换
-	transition := p.definition.GetTransitionByEvent(currentStateName, event.Name)
-	if transition == nil {
-		return fmt.Errorf("%w: 状态 %s 没有事件 %s 的转换", ErrInvalidTransition, currentStateName, event.Name)
-	}
-
-	// 执行转换
-	return p.executeTransition(ctx, transition, event)
->>>>>>> 328d3e1f27a00415642a735f323edf094cd0aa46
 }
 
 // Pause 暂停流程
@@ -261,11 +250,7 @@ func (p *ProcessInstance) Pause(ctx context.Context) error {
 
 	p.status = StatusPaused
 
-<<<<<<< HEAD
 	p.publishEventLocked(ProcessEvent{
-=======
-	p.publishEvent(ProcessEvent{
->>>>>>> 328d3e1f27a00415642a735f323edf094cd0aa46
 		Type:      EventTypeProcessPaused,
 		ProcessID: p.id,
 		StateName: p.currentState.Name(),
@@ -286,11 +271,7 @@ func (p *ProcessInstance) Resume(ctx context.Context) error {
 
 	p.status = StatusRunning
 
-<<<<<<< HEAD
 	p.publishEventLocked(ProcessEvent{
-=======
-	p.publishEvent(ProcessEvent{
->>>>>>> 328d3e1f27a00415642a735f323edf094cd0aa46
 		Type:      EventTypeProcessResumed,
 		ProcessID: p.id,
 		StateName: p.currentState.Name(),
@@ -316,11 +297,7 @@ func (p *ProcessInstance) Cancel(ctx context.Context) error {
 		p.cancelFunc()
 	}
 
-<<<<<<< HEAD
 	p.publishEventLocked(ProcessEvent{
-=======
-	p.publishEvent(ProcessEvent{
->>>>>>> 328d3e1f27a00415642a735f323edf094cd0aa46
 		Type:      EventTypeProcessEnd,
 		ProcessID: p.id,
 		StateName: p.currentState.Name(),

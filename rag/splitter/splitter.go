@@ -105,6 +105,19 @@ func (s *CharacterSplitter) splitText(text string) []string {
 		partLen := utf8.RuneCountInString(part)
 		currentLen := utf8.RuneCountInString(currentChunk.String())
 
+		// 如果单个 part 超过 chunkSize，需要进一步按字符分割
+		if partLen > s.chunkSize {
+			// 先保存当前块
+			if currentLen > 0 {
+				chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
+				currentChunk.Reset()
+			}
+			// 按字符硬分割这个大块
+			subChunks := s.splitBySize(part)
+			chunks = append(chunks, subChunks...)
+			continue
+		}
+
 		if currentLen+partLen > s.chunkSize && currentLen > 0 {
 			// 保存当前块
 			chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
@@ -128,6 +141,33 @@ func (s *CharacterSplitter) splitText(text string) []string {
 	// 添加最后一块
 	if currentChunk.Len() > 0 {
 		chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
+	}
+
+	return chunks
+}
+
+// splitBySize 按字符大小硬分割文本
+func (s *CharacterSplitter) splitBySize(text string) []string {
+	runes := []rune(text)
+	var chunks []string
+
+	step := s.chunkSize - s.chunkOverlap
+	if step <= 0 {
+		step = s.chunkSize
+	}
+
+	for i := 0; i < len(runes); i += step {
+		end := i + s.chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunk := string(runes[i:end])
+		if strings.TrimSpace(chunk) != "" {
+			chunks = append(chunks, chunk)
+		}
+		if end >= len(runes) {
+			break
+		}
 	}
 
 	return chunks
