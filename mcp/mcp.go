@@ -68,25 +68,25 @@ const (
 
 // MCPRequest MCP 请求
 type MCPRequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id,omitempty"`
-	Method  Method      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+	ID      any    `json:"id,omitempty"`
+	Method  Method `json:"method"`
+	Params  any    `json:"params,omitempty"`
 }
 
 // MCPResponse MCP 响应
 type MCPResponse struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id,omitempty"`
-	Result  interface{} `json:"result,omitempty"`
-	Error   *MCPError   `json:"error,omitempty"`
+	JSONRPC string    `json:"jsonrpc"`
+	ID      any       `json:"id,omitempty"`
+	Result  any       `json:"result,omitempty"`
+	Error   *MCPError `json:"error,omitempty"`
 }
 
 // MCPError MCP 错误
 type MCPError struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }
 
 // 标准错误码
@@ -113,7 +113,7 @@ type JSONSchema struct {
 	Properties  map[string]*JSONSchema `json:"properties,omitempty"`
 	Required    []string               `json:"required,omitempty"`
 	Description string                 `json:"description,omitempty"`
-	Enum        []interface{}          `json:"enum,omitempty"`
+	Enum        []any                  `json:"enum,omitempty"`
 	Items       *JSONSchema            `json:"items,omitempty"`
 }
 
@@ -247,14 +247,14 @@ func NewClient(endpoint string, opts ...ClientOption) *Client {
 
 // Initialize 初始化客户端
 func (c *Client) Initialize(ctx context.Context) error {
-	resp, err := c.call(ctx, MethodInitialize, map[string]interface{}{
+	resp, err := c.call(ctx, MethodInitialize, map[string]any{
 		"protocolVersion": MCPVersion,
-		"capabilities": map[string]interface{}{
-			"roots": map[string]interface{}{
+		"capabilities": map[string]any{
+			"roots": map[string]any{
 				"listChanged": true,
 			},
 		},
-		"clientInfo": map[string]interface{}{
+		"clientInfo": map[string]any{
 			"name":    "hexagon-mcp-client",
 			"version": "1.0.0",
 		},
@@ -264,7 +264,7 @@ func (c *Client) Initialize(ctx context.Context) error {
 	}
 
 	// 解析服务器能力
-	if result, ok := resp.Result.(map[string]interface{}); ok {
+	if result, ok := resp.Result.(map[string]any); ok {
 		if caps, ok := result["capabilities"]; ok {
 			capsBytes, _ := json.Marshal(caps)
 			var serverCaps ServerCapabilities
@@ -283,7 +283,7 @@ func (c *Client) ListTools(ctx context.Context) ([]Tool, error) {
 		return nil, fmt.Errorf("list tools: %w", err)
 	}
 
-	result, ok := resp.Result.(map[string]interface{})
+	result, ok := resp.Result.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid response format")
 	}
@@ -328,7 +328,7 @@ func (c *Client) ListResources(ctx context.Context) ([]Resource, error) {
 		return nil, fmt.Errorf("list resources: %w", err)
 	}
 
-	result, ok := resp.Result.(map[string]interface{})
+	result, ok := resp.Result.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid response format")
 	}
@@ -349,14 +349,14 @@ func (c *Client) ListResources(ctx context.Context) ([]Resource, error) {
 
 // ReadResource 读取资源
 func (c *Client) ReadResource(ctx context.Context, uri string) (*ResourceContent, error) {
-	resp, err := c.call(ctx, MethodResourcesRead, map[string]interface{}{
+	resp, err := c.call(ctx, MethodResourcesRead, map[string]any{
 		"uri": uri,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("read resource: %w", err)
 	}
 
-	result, ok := resp.Result.(map[string]interface{})
+	result, ok := resp.Result.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid response format")
 	}
@@ -366,7 +366,7 @@ func (c *Client) ReadResource(ctx context.Context, uri string) (*ResourceContent
 		return nil, fmt.Errorf("no contents in response")
 	}
 
-	contentsList, ok := contentsRaw.([]interface{})
+	contentsList, ok := contentsRaw.([]any)
 	if !ok || len(contentsList) == 0 {
 		return nil, fmt.Errorf("empty contents")
 	}
@@ -387,7 +387,7 @@ func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
 		return nil, fmt.Errorf("list prompts: %w", err)
 	}
 
-	result, ok := resp.Result.(map[string]interface{})
+	result, ok := resp.Result.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid response format")
 	}
@@ -408,7 +408,7 @@ func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
 
 // GetPrompt 获取提示
 func (c *Client) GetPrompt(ctx context.Context, name string, args map[string]string) ([]PromptMessage, error) {
-	resp, err := c.call(ctx, MethodPromptsGet, map[string]interface{}{
+	resp, err := c.call(ctx, MethodPromptsGet, map[string]any{
 		"name":      name,
 		"arguments": args,
 	})
@@ -416,7 +416,7 @@ func (c *Client) GetPrompt(ctx context.Context, name string, args map[string]str
 		return nil, fmt.Errorf("get prompt: %w", err)
 	}
 
-	result, ok := resp.Result.(map[string]interface{})
+	result, ok := resp.Result.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid response format")
 	}
@@ -436,7 +436,7 @@ func (c *Client) GetPrompt(ctx context.Context, name string, args map[string]str
 }
 
 // call 发送 RPC 调用
-func (c *Client) call(ctx context.Context, method Method, params interface{}) (*MCPResponse, error) {
+func (c *Client) call(ctx context.Context, method Method, params any) (*MCPResponse, error) {
 	c.mu.Lock()
 	c.nextID++
 	id := c.nextID
