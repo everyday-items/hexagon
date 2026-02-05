@@ -482,7 +482,11 @@ func (d *ProcessDefinition) GetTransitions(fromState string) []*Transition {
 	return result
 }
 
+<<<<<<< HEAD
 // GetTransitionByEvent 获取指定状态和事件的转换（返回第一个匹配的，不推荐用于有守卫条件的场景）
+=======
+// GetTransitionByEvent 获取指定状态和事件的转换
+>>>>>>> 328d3e1f27a00415642a735f323edf094cd0aa46
 func (d *ProcessDefinition) GetTransitionByEvent(fromState, event string) *Transition {
 	for _, t := range d.transitions {
 		if t.From == fromState && t.Event == event {
@@ -492,6 +496,7 @@ func (d *ProcessDefinition) GetTransitionByEvent(fromState, event string) *Trans
 	return nil
 }
 
+<<<<<<< HEAD
 // GetTransitionsByEvent 获取指定状态和事件的所有转换（支持多个带守卫的转换）
 func (d *ProcessDefinition) GetTransitionsByEvent(fromState, event string) []*Transition {
 	var result []*Transition
@@ -503,3 +508,5 @@ func (d *ProcessDefinition) GetTransitionsByEvent(fromState, event string) []*Tr
 	return result
 }
 
+=======
+>>>>>>> 328d3e1f27a00415642a735f323edf094cd0aa46
