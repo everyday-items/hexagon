@@ -479,6 +479,94 @@ consensus.OnVote(func(agent string, vote string) {
 })
 ```
 
+## A2A 协议：跨框架 Agent 协作
+
+Hexagon 支持 Google A2A (Agent-to-Agent) 协议，使你的 Agent 能够与其他框架、其他语言实现的 Agent 进行标准化通信。
+
+### 什么是 A2A 协议
+
+A2A 是一个开放协议，定义了 AI Agent 之间通信的标准方式：
+
+- **Agent Card**: Agent 能力描述 (`.well-known/agent-card.json`)
+- **Task**: 任务生命周期管理 (提交 → 执行 → 完成)
+- **Message**: 多模态消息 (文本、文件、数据)
+- **Streaming**: 实时流式响应
+- **Push Notification**: 任务状态推送
+
+### A2A 与 Hexagon 多 Agent 的关系
+
+| 场景 | 使用方式 |
+|------|---------|
+| 同进程 Agent 协作 | 使用 Team、Network、Handoff |
+| 跨服务 Agent 协作 | 使用 A2A 协议 |
+| 混合场景 | 两者结合使用 |
+
+### 暴露 Agent 为 A2A 服务
+
+```go
+import (
+    "github.com/everyday-items/hexagon/agent"
+    "github.com/everyday-items/hexagon/a2a"
+)
+
+// 创建 Hexagon Agent
+myAgent := agent.NewBaseAgent(
+    agent.WithName("assistant"),
+    agent.WithRole(agent.Role{
+        Name: "助手",
+        Goal: "帮助用户解决问题",
+    }),
+    agent.WithLLM(provider),
+)
+
+// 暴露为 A2A 服务
+server := a2a.ExposeAgent(myAgent, ":8080")
+defer server.Stop(ctx)
+```
+
+### 连接远程 A2A Agent
+
+```go
+// 连接远程 A2A Agent
+remoteAgent := a2a.ConnectToA2AAgent("http://remote-agent:8080")
+
+// 像使用本地 Agent 一样使用
+result, _ := remoteAgent.Run(ctx, agent.Input{
+    Messages: []llm.Message{{Role: "user", Content: "你好"}},
+})
+```
+
+### 混合团队：本地 + 远程 Agent
+
+```go
+// 本地 Agent
+localAgent := agent.NewBaseAgent(...)
+
+// 远程 A2A Agent
+remoteAgent1 := a2a.ConnectToA2AAgent("http://python-agent:8080")
+remoteAgent2 := a2a.ConnectToA2AAgent("http://nodejs-agent:8080")
+
+// 组成混合团队
+team := agent.NewTeam(
+    agent.WithTeamMode(agent.TeamModeSequential),
+    agent.WithTeamAgents(localAgent, remoteAgent1, remoteAgent2),
+)
+
+// 执行任务
+result, _ := team.Run(ctx, agent.TeamInput{
+    Task: "分析数据并生成报告",
+})
+```
+
+### A2A 适用场景
+
+1. **跨语言协作**: Go Agent 与 Python/Node.js Agent 协作
+2. **微服务架构**: Agent 作为独立服务部署
+3. **多团队协作**: 不同团队开发的 Agent 集成
+4. **第三方 Agent**: 接入外部 A2A 兼容服务
+
+> 📖 详细信息请参阅 [A2A 协议指南](./a2a-protocol.md)
+
 ## 下一步
 
 - 学习 [图编排中的多 Agent](./graph-orchestration.md#多-agent-节点)
