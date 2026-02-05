@@ -348,6 +348,44 @@ for _, doc := range output.Documents {
 - 完整验证：类型/格式/范围/枚举/正则
 - 并发处理 + 钩子系统
 
+### 🌐 A2A 协议 (Agent-to-Agent)
+
+实现 Google A2A 协议，支持标准化的 Agent 间通信：
+
+```go
+import "github.com/everyday-items/hexagon/a2a"
+
+// 将 Hexagon Agent 暴露为 A2A 服务
+server := a2a.ExposeAgent(myAgent, "http://localhost:8080")
+server.Start(":8080")
+
+// 连接远程 A2A Agent
+client := a2a.NewClient("http://remote-agent.example.com")
+card, _ := client.GetAgentCard(ctx)
+
+// 发送消息
+task, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
+    Message: a2a.NewUserMessage("你好"),
+})
+
+// 流式交互
+events, _ := client.SendMessageStream(ctx, req)
+for event := range events {
+    switch e := event.(type) {
+    case *a2a.ArtifactEvent:
+        fmt.Print(e.Artifact.GetTextContent())
+    }
+}
+```
+
+**特性：**
+- 完整 A2A 协议实现 (AgentCard/Task/Message/Artifact)
+- JSON-RPC 2.0 + SSE 流式响应
+- 多种认证方式 (Bearer Token/API Key/Basic Auth/RBAC)
+- Agent 发现服务 (Registry/Static/Remote)
+- 推送通知支持
+- 与 Hexagon Agent 无缝桥接
+
 ## 💡 设计理念
 
 1. **渐进式复杂度** - 入门 3 行代码，进阶声明式配置，专家图编排
@@ -387,6 +425,7 @@ for _, doc := range output.Documents {
 ```
 hexagon/
 ├── agent/              # Agent 核心 (ReAct/Role/Team/Handoff/State)
+├── a2a/                # A2A 协议 (Client/Server/Handler/Discovery)
 ├── core/               # 统一接口 (Component[I,O], Stream[T])
 ├── orchestration/      # 编排引擎
 │   ├── graph/          # 图编排 (状态图 + 检查点)
