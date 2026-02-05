@@ -55,6 +55,7 @@ import "github.com/everyday-items/ai-core/memory"
 
 **主要模块：**
 - `llm/` - LLM Provider 接口 + 实现 (OpenAI, DeepSeek, Anthropic, Gemini, 通义, 豆包, Ollama)
+- `llm/router/` - 智能模型路由 (任务感知 + 模型能力档案)
 - `tool/` - 工具系统，支持函数式定义
 - `memory/` - 记忆系统，支持向量存储
 - `schema/` - JSON Schema 自动生成
@@ -231,6 +232,122 @@ team := hexagon.NewTeam("research-team",
 output, _ := team.Run(ctx, hexagon.Input{Query: "写一篇技术文章"})
 ```
 
+## 🚀 高级能力
+
+### 🔀 智能模型路由 (Smart Router)
+
+根据任务类型、复杂度自动选择最优模型：
+
+```go
+import "github.com/everyday-items/ai-core/llm/router"
+
+// 创建智能路由器
+smartRouter := router.NewSmartRouter(baseRouter,
+    router.WithAutoClassify(true),
+)
+
+// 带路由上下文的请求
+routingCtx := router.NewRoutingContext(router.TaskTypeCoding, router.ComplexityMedium).
+    WithPriority(router.PriorityQuality).
+    RequireFunctions()
+
+resp, decision, _ := smartRouter.CompleteWithRouting(ctx, req, routingCtx)
+// decision 包含: 选择的模型、得分、原因、备选方案
+```
+
+**特性：**
+- 任务感知路由 (coding/reasoning/creative/analysis 等)
+- 质量/成本/延迟优先级策略
+- 20+ 预定义模型能力档案
+- 路由历史和统计分析
+
+### ⚙️ 确定性业务流程 (Process Framework)
+
+状态机驱动的业务流程框架：
+
+```go
+import "github.com/everyday-items/hexagon/process"
+
+// 定义订单处理流程
+p, _ := process.NewProcess("order-processing").
+    AddState("pending", process.AsInitial()).
+    AddState("validated").
+    AddState("processing").
+    AddState("completed", process.AsFinal()).
+    AddState("failed", process.AsFinal()).
+
+    // 状态转换
+    AddTransition("pending", "validate", "validated",
+        process.WithGuard(func(ctx context.Context, data *process.ProcessData) bool {
+            return data.Get("amount") != nil
+        })).
+    AddTransition("validated", "process", "processing").
+    AddTransition("processing", "complete", "completed").
+    AddTransition("processing", "fail", "failed").
+
+    // 绑定 Agent 到状态
+    OnStateEnter("validated", step.NewAgentStep("validator", validatorAgent)).
+    Build()
+
+// 执行流程
+output, _ := p.Invoke(ctx, process.ProcessInput{
+    Data: map[string]any{"order_id": "123", "amount": 100},
+})
+```
+
+**特性：**
+- 状态机驱动，确定性执行
+- 支持守卫条件和转换动作
+- 步骤类型：Action/Agent/Condition/Parallel/Sequence/Retry/Timeout
+- 流程生命周期：Start/Pause/Resume/Cancel
+- 完整实现 Runnable 六范式接口
+
+### 📄 智能文档工作流 (ADW)
+
+超越传统 RAG 的端到端文档自动化：
+
+```go
+import "github.com/everyday-items/hexagon/adw"
+import "github.com/everyday-items/hexagon/adw/extractor"
+import "github.com/everyday-items/hexagon/adw/validator"
+
+// 定义提取 Schema
+schema := adw.NewExtractionSchema("invoice").
+    AddStringField("invoice_number", "发票号码", true).
+    AddDateField("date", "日期", "YYYY-MM-DD", true).
+    AddMoneyField("amount", "金额", true).
+    AddStringField("vendor", "供应商", false)
+
+// 创建处理管道
+pipeline := adw.NewPipeline("invoice-processing").
+    AddStep(adw.NewDocumentTypeDetectorStep()).
+    AddStep(extractor.NewLLMExtractionStep(llmProvider, schema)).
+    AddStep(extractor.NewEntityExtractionStep(llmProvider)).
+    AddStep(validator.NewSchemaValidationStep(schema)).
+    AddStep(adw.NewConfidenceCalculatorStep()).
+    Build()
+
+// 处理文档
+output, _ := pipeline.Process(ctx, adw.PipelineInput{
+    Documents: documents,
+    Schema:    schema,
+})
+
+// 访问结果
+for _, doc := range output.Documents {
+    fmt.Println("发票号:", doc.StructuredData["invoice_number"])
+    fmt.Println("实体:", doc.Entities)
+    fmt.Println("验证:", doc.IsValid())
+}
+```
+
+**特性：**
+- Document 扩展：结构化数据/表格/实体/关系/验证错误
+- Schema 驱动的结构化提取
+- LLM 提取器：实体/关系提取
+- 完整验证：类型/格式/范围/枚举/正则
+- 并发处理 + 钩子系统
+
 ## 💡 设计理念
 
 1. **渐进式复杂度** - 入门 3 行代码，进阶声明式配置，专家图编排
@@ -276,6 +393,11 @@ hexagon/
 │   ├── chain/          # 链式编排
 │   ├── workflow/       # 工作流引擎
 │   └── planner/        # 规划器
+├── process/            # 确定性业务流程框架 (状态机驱动)
+│   └── step/           # 步骤类型 (Action/Agent/Condition/Parallel)
+├── adw/                # 智能文档工作流 (Agentic Document Workflows)
+│   ├── extractor/      # 结构化提取器
+│   └── validator/      # Schema 验证器
 ├── rag/                # RAG 系统
 │   ├── loader/         # 文档加载
 │   ├── splitter/       # 文档分割
