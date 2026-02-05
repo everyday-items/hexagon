@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -214,10 +215,32 @@ func (t *Tool) execute(ctx context.Context, input ExecuteInput) (*ExecuteOutput,
 }
 
 // validateCommand 验证命令
+//
+// 安全说明：
+//   - 检查命令链接符（&&, ||, ;, |）防止命令注入
+//   - 检查命令替换符（$(), ``）防止注入
+//   - 白名单模式下只允许指定的命令
 func (t *Tool) validateCommand(cmd string) error {
+	// 检查危险的命令链接符和命令替换符
+	dangerousPatterns := []string{
+		"&&", "||", ";", // 命令链接
+		"|",             // 管道（可能被滥用）
+		"$(", "`",       // 命令替换
+		"\n", "\r",      // 换行符注入
+		"\x00",          // 空字节注入
+	}
+	cmdLower := strings.ToLower(cmd)
+	for _, pattern := range dangerousPatterns {
+		if strings.Contains(cmd, pattern) {
+			return fmt.Errorf("command contains dangerous pattern: %s", pattern)
+		}
+	}
+
 	// 检查禁止的命令
 	for _, denied := range t.config.DeniedCommands {
-		if strings.Contains(strings.ToLower(cmd), strings.ToLower(denied)) {
+		// 使用更精确的匹配：检查命令是否包含禁止模式
+		deniedLower := strings.ToLower(denied)
+		if strings.Contains(cmdLower, deniedLower) {
 			return fmt.Errorf("command not allowed: contains forbidden pattern '%s'", denied)
 		}
 	}
@@ -228,8 +251,11 @@ func (t *Tool) validateCommand(cmd string) error {
 		cmdParts := strings.Fields(cmd)
 		if len(cmdParts) > 0 {
 			cmdName := cmdParts[0]
+			// 获取命令的基础名称（去掉路径）
+			baseName := filepath.Base(cmdName)
 			for _, allowedCmd := range t.config.AllowedCommands {
-				if cmdName == allowedCmd || strings.HasPrefix(cmd, allowedCmd) {
+				// 精确匹配命令名或基础名
+				if cmdName == allowedCmd || baseName == allowedCmd {
 					allowed = true
 					break
 				}

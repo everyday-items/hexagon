@@ -33,6 +33,8 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/everyday-items/toolkit/lang/conv"
 )
 
 // ============== 错误定义 ==============
@@ -343,57 +345,14 @@ func defaultValue(defaultVal, val any) any {
 	return val
 }
 
-func toString(v any) string {
-	return fmt.Sprintf("%v", v)
-}
-
-func toInt(v any) int {
-	switch val := v.(type) {
-	case int:
-		return val
-	case int64:
-		return int(val)
-	case float64:
-		return int(val)
-	case string:
-		i, _ := strconv.Atoi(val)
-		return i
-	default:
-		return 0
-	}
-}
-
-func toFloat(v any) float64 {
-	switch val := v.(type) {
-	case float64:
-		return val
-	case float32:
-		return float64(val)
-	case int:
-		return float64(val)
-	case int64:
-		return float64(val)
-	case string:
-		f, _ := strconv.ParseFloat(val, 64)
-		return f
-	default:
-		return 0
-	}
-}
-
-func toBool(v any) bool {
-	switch val := v.(type) {
-	case bool:
-		return val
-	case string:
-		b, _ := strconv.ParseBool(val)
-		return b
-	case int:
-		return val != 0
-	default:
-		return false
-	}
-}
+// 使用 toolkit/lang/conv 的类型转换函数
+// 这些函数比原有实现更健壮，支持更多类型
+var (
+	toString = conv.String
+	toInt    = conv.Int
+	toFloat  = conv.Float64
+	toBool   = conv.Bool
+)
 
 func formatDate(t time.Time, layout string) string {
 	return t.Format(layout)

@@ -526,6 +526,8 @@ func (b *GraphBuilder[S]) AddUntilLoop(name string, condition func(S) bool, body
 // AddLoopBackEdge 添加循环回边
 //
 // 创建从 from 到 to 的循环边，支持条件判断
+//
+// 并发安全说明：使用原子操作 IncrementAndGet 来避免 Get 和 Increment 之间的 TOCTOU 竞态条件
 func (b *GraphBuilder[S]) AddLoopBackEdge(from, to string, condition func(S) bool, maxIterations int) *GraphBuilder[S] {
 	if b.err != nil {
 		return b
@@ -536,17 +538,16 @@ func (b *GraphBuilder[S]) AddLoopBackEdge(from, to string, condition func(S) boo
 
 	// 添加条件边
 	return b.AddConditionalEdge(from, func(s S) string {
-		iteration := counter.Get()
-
-		// 检查最大迭代次数
-		if maxIterations > 0 && int(iteration) >= maxIterations {
-			counter.Reset()
-			return "exit"
-		}
-
 		// 检查条件
 		if condition(s) {
-			counter.Increment()
+			// 原子地增加并获取新值，避免 TOCTOU 竞态条件
+			newCount := counter.Increment()
+
+			// 检查最大迭代次数（使用增加后的值）
+			if maxIterations > 0 && int(newCount) > maxIterations {
+				counter.Reset()
+				return "exit"
+			}
 			return "loop"
 		}
 

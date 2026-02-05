@@ -22,6 +22,9 @@ import (
 // ============== Future 类型 ==============
 
 // Future 异步结果
+//
+// 线程安全：Future 使用 sync.Once 确保只完成一次，
+// 并使用 sync.RWMutex 保护结果的读写，确保并发安全。
 type Future[T any] struct {
 	// done 完成 channel
 	done chan struct{}
@@ -34,6 +37,9 @@ type Future[T any] struct {
 
 	// once 确保只完成一次
 	once sync.Once
+
+	// mu 保护 result 和 err 的读写
+	mu sync.RWMutex
 }
 
 // NewFuture 创建 Future
@@ -44,17 +50,25 @@ func NewFuture[T any]() *Future[T] {
 }
 
 // Complete 完成 Future
+//
+// 线程安全：可以被多个 goroutine 并发调用，但只有第一次调用会生效。
 func (f *Future[T]) Complete(result T, err error) {
 	f.once.Do(func() {
+		f.mu.Lock()
 		f.result = result
 		f.err = err
+		f.mu.Unlock()
 		close(f.done)
 	})
 }
 
 // Get 获取结果（阻塞）
+//
+// 线程安全：等待 Future 完成后返回结果，多个 goroutine 可以并发调用。
 func (f *Future[T]) Get() (T, error) {
 	<-f.done
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 	return f.result, f.err
 }
 
@@ -62,6 +76,8 @@ func (f *Future[T]) Get() (T, error) {
 func (f *Future[T]) GetWithTimeout(timeout time.Duration) (T, error) {
 	select {
 	case <-f.done:
+		f.mu.RLock()
+		defer f.mu.RUnlock()
 		return f.result, f.err
 	case <-time.After(timeout):
 		var zero T
@@ -73,6 +89,8 @@ func (f *Future[T]) GetWithTimeout(timeout time.Duration) (T, error) {
 func (f *Future[T]) GetWithContext(ctx context.Context) (T, error) {
 	select {
 	case <-f.done:
+		f.mu.RLock()
+		defer f.mu.RUnlock()
 		return f.result, f.err
 	case <-ctx.Done():
 		var zero T
@@ -255,12 +273,15 @@ func Race[T any](futures ...*Future[T]) *Future[T] {
 }
 
 // Any 任意成功（返回第一个成功的）
+//
+// 线程安全：使用互斥锁保护错误计数和错误列表。
 func Any[T any](futures ...*Future[T]) *Future[T] {
 	result := NewFuture[T]()
-	errCount := int32(0)
 
 	var mu sync.Mutex
 	var allErrs []error
+	errCount := 0
+	total := len(futures)
 
 	for _, f := range futures {
 		go func(future *Future[T]) {
@@ -271,11 +292,14 @@ func Any[T any](futures ...*Future[T]) *Future[T] {
 				mu.Lock()
 				allErrs = append(allErrs, err)
 				errCount++
-				if int(errCount) == len(futures) {
+				currentCount := errCount
+				mu.Unlock()
+
+				// 所有 future 都失败时才返回错误
+				if currentCount == total {
 					var zero T
 					result.Complete(zero, fmt.Errorf("all futures failed: %v", allErrs))
 				}
-				mu.Unlock()
 			}
 		}(f)
 	}

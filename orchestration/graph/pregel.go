@@ -443,28 +443,43 @@ func (pe *PregelExecutor[S]) executeNodesSequential(ctx context.Context, nodes [
 }
 
 // activateSuccessors 激活后继节点
+//
+// 安全说明：为避免死锁，此方法先在锁内获取状态副本，
+// 然后在锁外调用用户的 router 回调函数，最后再持锁更新活跃节点。
 func (pe *PregelExecutor[S]) activateSuccessors(nodeName string) {
+	// 第一阶段：在锁内获取状态副本和图信息
 	pe.mu.Lock()
-	defer pe.mu.Unlock()
+	stateCopy := pe.state // 获取状态副本
+	condEdges := pe.graph.conditionalEdges[nodeName]
+	adjacency := pe.graph.adjacency[nodeName]
+	pe.mu.Unlock()
 
-	// 检查条件边
-	if condEdges, ok := pe.graph.conditionalEdges[nodeName]; ok {
-		for _, ce := range condEdges {
-			label := ce.router(pe.state)
-			if target, ok := ce.edges[label]; ok {
-				if pe.shouldActivate(target, nodeName) {
-					pe.activeNodes[target] = true
-				}
-			}
+	// 第二阶段：在锁外计算路由结果（用户回调可能阻塞或获取其他锁）
+	type routeResult struct {
+		target   string
+		nodeName string
+	}
+	var toActivate []routeResult
+
+	// 检查条件边（在锁外调用 router）
+	for _, ce := range condEdges {
+		label := ce.router(stateCopy) // 用户回调在锁外调用
+		if target, ok := ce.edges[label]; ok {
+			toActivate = append(toActivate, routeResult{target: target, nodeName: nodeName})
 		}
 	}
 
 	// 检查普通边
-	if targets, ok := pe.graph.adjacency[nodeName]; ok {
-		for _, target := range targets {
-			if pe.shouldActivate(target, nodeName) {
-				pe.activeNodes[target] = true
-			}
+	for _, target := range adjacency {
+		toActivate = append(toActivate, routeResult{target: target, nodeName: nodeName})
+	}
+
+	// 第三阶段：在锁内更新活跃节点
+	pe.mu.Lock()
+	defer pe.mu.Unlock()
+	for _, route := range toActivate {
+		if pe.shouldActivate(route.target, route.nodeName) {
+			pe.activeNodes[route.target] = true
 		}
 	}
 }

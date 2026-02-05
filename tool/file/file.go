@@ -411,10 +411,35 @@ func (t *Tools) info(ctx context.Context, input InfoInput) (*InfoOutput, error) 
 }
 
 // validatePath 验证路径是否允许访问
+//
+// 安全说明：
+//   - 使用 filepath.EvalSymlinks 解析符号链接，防止符号链接绕过
+//   - 使用路径分隔符检查，防止 /tmp 匹配 /tmp123 这样的路径
+//   - 对于不存在的文件，使用 filepath.Clean 清理路径
 func (t *Tools) validatePath(path string) error {
+	// 获取绝对路径
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("invalid path: %w", err)
+	}
+
+	// 尝试解析符号链接（如果文件存在）
+	// 对于新文件，需要解析父目录的符号链接，以正确匹配允许的路径
+	realPath := absPath
+	if evaluated, err := filepath.EvalSymlinks(absPath); err == nil {
+		// 文件存在，使用完整的真实路径
+		realPath = evaluated
+	} else {
+		// 文件不存在，尝试解析父目录的符号链接
+		// 这对于在 macOS 上的 /var -> /private/var 等情况很重要
+		dir := filepath.Dir(absPath)
+		base := filepath.Base(absPath)
+		if realDir, err := filepath.EvalSymlinks(dir); err == nil {
+			realPath = filepath.Join(realDir, base)
+		} else {
+			// 父目录也不存在，清理路径防止 .. 攻击
+			realPath = filepath.Clean(absPath)
+		}
 	}
 
 	// 检查是否在允许的路径下
@@ -425,7 +450,21 @@ func (t *Tools) validatePath(path string) error {
 			if err != nil {
 				continue
 			}
-			if strings.HasPrefix(absPath, absAllowed) {
+
+			// 尝试解析允许路径的符号链接
+			realAllowed := absAllowed
+			if evaluated, err := filepath.EvalSymlinks(absAllowed); err == nil {
+				realAllowed = evaluated
+			}
+
+			// 检查路径是否在允许的目录下
+			// 必须完全匹配或以 允许路径 + 路径分隔符 开头
+			if realPath == realAllowed {
+				allowed = true
+				break
+			}
+			allowedPrefix := realAllowed + string(filepath.Separator)
+			if strings.HasPrefix(realPath, allowedPrefix) {
 				allowed = true
 				break
 			}

@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/everyday-items/ai-core/schema"
 	"github.com/everyday-items/ai-core/tool"
@@ -199,6 +200,9 @@ func (s *SwarmRunner) extractHandoff(output Output) *Handoff {
 
 // ContextVariables 上下文变量
 // 用于在 Agent 之间传递状态
+//
+// 注意：此类型（普通 map）不是线程安全的。
+// 如果需要并发访问，请使用 SafeContextVariables。
 type ContextVariables map[string]any
 
 // Get 获取值
@@ -254,4 +258,127 @@ func UpdateContextVariables(ctx context.Context, updates ContextVariables) conte
 		existing[k] = v
 	}
 	return ContextWithVariables(ctx, existing)
+}
+
+// ============== 线程安全的上下文变量 ==============
+
+// SafeContextVariables 线程安全的上下文变量
+// 用于在多个 goroutine 之间安全地传递和修改状态
+type SafeContextVariables struct {
+	data map[string]any
+	mu   sync.RWMutex
+}
+
+// NewSafeContextVariables 创建线程安全的上下文变量
+func NewSafeContextVariables() *SafeContextVariables {
+	return &SafeContextVariables{
+		data: make(map[string]any),
+	}
+}
+
+// Get 获取值（线程安全）
+func (s *SafeContextVariables) Get(key string) (any, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	v, ok := s.data[key]
+	return v, ok
+}
+
+// Set 设置值（线程安全）
+func (s *SafeContextVariables) Set(key string, value any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data[key] = value
+}
+
+// Delete 删除值（线程安全）
+func (s *SafeContextVariables) Delete(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.data, key)
+}
+
+// Merge 合并变量（线程安全）
+func (s *SafeContextVariables) Merge(other ContextVariables) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for k, v := range other {
+		s.data[k] = v
+	}
+}
+
+// MergeSafe 合并另一个 SafeContextVariables（线程安全）
+func (s *SafeContextVariables) MergeSafe(other *SafeContextVariables) {
+	// 获取 other 的快照
+	other.mu.RLock()
+	snapshot := make(map[string]any, len(other.data))
+	for k, v := range other.data {
+		snapshot[k] = v
+	}
+	other.mu.RUnlock()
+
+	// 合并到 s
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for k, v := range snapshot {
+		s.data[k] = v
+	}
+}
+
+// Clone 克隆变量（线程安全，返回普通 ContextVariables）
+func (s *SafeContextVariables) Clone() ContextVariables {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	clone := make(ContextVariables, len(s.data))
+	for k, v := range s.data {
+		clone[k] = v
+	}
+	return clone
+}
+
+// CloneSafe 克隆为新的 SafeContextVariables（线程安全）
+func (s *SafeContextVariables) CloneSafe() *SafeContextVariables {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	clone := &SafeContextVariables{
+		data: make(map[string]any, len(s.data)),
+	}
+	for k, v := range s.data {
+		clone.data[k] = v
+	}
+	return clone
+}
+
+// Len 返回变量数量（线程安全）
+func (s *SafeContextVariables) Len() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.data)
+}
+
+// Keys 返回所有键（线程安全）
+func (s *SafeContextVariables) Keys() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	keys := make([]string, 0, len(s.data))
+	for k := range s.data {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// safeContextVariablesKey context key for SafeContextVariables
+type safeContextVariablesKey struct{}
+
+// ContextWithSafeVariables 将线程安全的上下文变量添加到 context
+func ContextWithSafeVariables(ctx context.Context, vars *SafeContextVariables) context.Context {
+	return context.WithValue(ctx, safeContextVariablesKey{}, vars)
+}
+
+// SafeVariablesFromContext 从 context 中获取线程安全的上下文变量
+func SafeVariablesFromContext(ctx context.Context) *SafeContextVariables {
+	if v, ok := ctx.Value(safeContextVariablesKey{}).(*SafeContextVariables); ok {
+		return v
+	}
+	return nil
 }

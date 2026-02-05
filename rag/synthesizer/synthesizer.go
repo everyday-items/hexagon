@@ -392,6 +392,11 @@ func NewTreeSummarizeSynthesizer(opts ...TreeSynthesizerOption) *TreeSummarizeSy
 	for _, opt := range opts {
 		opt(s)
 	}
+	// 确保 chunkSize 至少为 2，否则会导致无限循环
+	// 当 chunkSize=1 时，每个 chunk 产生一个摘要，总数不会减少
+	if s.chunkSize < 2 {
+		s.chunkSize = 2
+	}
 	return s
 }
 
@@ -406,8 +411,12 @@ func WithTreeSynthesizerName(name string) TreeSynthesizerOption {
 }
 
 // WithTreeSynthesizerChunkSize 设置每组文档数量
+// 注意：chunkSize 最小为 2，否则会导致无限循环
 func WithTreeSynthesizerChunkSize(n int) TreeSynthesizerOption {
 	return func(s *TreeSummarizeSynthesizer) {
+		if n < 2 {
+			n = 2
+		}
 		s.chunkSize = n
 	}
 }

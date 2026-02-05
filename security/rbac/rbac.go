@@ -438,7 +438,11 @@ func (r *RBAC) RevokeRole(userID, roleName string) error {
 func (r *RBAC) GetUserRoles(userID string) []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	return r.getUserRolesLocked(userID)
+}
 
+// getUserRolesLocked 获取用户的所有角色（调用者必须已持有读锁）
+func (r *RBAC) getUserRolesLocked(userID string) []string {
 	user, ok := r.users[userID]
 	if !ok {
 		return nil
@@ -492,6 +496,10 @@ type AccessResult struct {
 }
 
 // Authorize 授权检查
+//
+// 安全说明：此方法要求 Subject 必须是已验证的用户 ID。
+// 调用者应该通过 AuthorizeFromContext 方法进行授权检查，
+// 该方法会从 context 中获取已验证的用户身份。
 func (r *RBAC) Authorize(req AccessRequest) AccessResult {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -514,8 +522,8 @@ func (r *RBAC) Authorize(req AccessRequest) AccessResult {
 		return result
 	}
 
-	// 获取用户的所有角色
-	allRoles := r.GetUserRoles(req.Subject)
+	// 获取用户的所有角色（使用内部方法避免死锁）
+	allRoles := r.getUserRolesLocked(req.Subject)
 
 	// 检查每个角色的权限
 	for _, roleName := range allRoles {
@@ -817,6 +825,15 @@ func (r *RBAC) evaluateCondition(cond PolicyCondition, ctx map[string]any) bool 
 	case OpMatches:
 		if str, ok := value.(string); ok {
 			if pattern, ok := cond.Value.(string); ok {
+				// 限制输入字符串长度防止 ReDoS
+				if len(str) > 10000 {
+					return false
+				}
+				// 限制正则表达式长度
+				if len(pattern) > 1000 {
+					return false
+				}
+				// 编译正则表达式（生产环境应该缓存编译后的正则）
 				if re, err := regexp.Compile(pattern); err == nil {
 					return re.MatchString(str)
 				}

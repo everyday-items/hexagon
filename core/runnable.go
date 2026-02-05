@@ -369,6 +369,9 @@ func (r *BaseRunnable[I, O]) Collect(ctx context.Context, input *StreamReader[I]
 }
 
 // Transform 流转换
+//
+// 注意：从 Invoke 推导时，goroutine 会正确处理 context 取消和 EOF，
+// 确保不会发生 goroutine 泄漏。
 func (r *BaseRunnable[I, O]) Transform(ctx context.Context, input *StreamReader[I], opts ...Option) (*StreamReader[O], error) {
 	if r.transformFn != nil {
 		return r.transformFn(ctx, input, opts...)
@@ -387,16 +390,41 @@ func (r *BaseRunnable[I, O]) Transform(ctx context.Context, input *StreamReader[
 		go func() {
 			defer writer.Close()
 			for {
+				// 先检查 context 是否已取消
+				select {
+				case <-ctx.Done():
+					writer.CloseWithError(ctx.Err())
+					return
+				default:
+				}
+
 				in, err := input.Recv()
 				if err != nil {
+					// 区分 EOF 和真正的错误
+					// EOF 表示输入流正常结束，不需要报错
+					// 其他错误需要传递给输出流
+					if err.Error() != "EOF" && err.Error() != "stream closed" {
+						writer.CloseWithError(err)
+					}
 					return
 				}
+
 				out, err := r.invokeFn(ctx, in, opts...)
 				if err != nil {
 					writer.CloseWithError(err)
 					return
 				}
-				writer.Send(out)
+
+				// 发送时也检查 context
+				select {
+				case <-ctx.Done():
+					writer.CloseWithError(ctx.Err())
+					return
+				default:
+					if err := writer.Send(out); err != nil {
+						return
+					}
+				}
 			}
 		}()
 		return reader, nil
