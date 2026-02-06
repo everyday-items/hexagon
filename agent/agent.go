@@ -201,9 +201,24 @@ func WithRole(role Role) Option {
 	}
 }
 
+// MemorySetter 允许外部替换 Agent 的记忆系统
+//
+// 用于共享记忆场景：Team 通过此接口将 Agent 原始记忆包装为 SharedMemoryProxy，
+// 实现跨 Agent 记忆自动共享。BaseAgent 和 ReActAgent 均实现此接口。
+type MemorySetter interface {
+	SetMemory(mem memory.Memory)
+}
+
 // BaseAgent 提供 Agent 的基础实现
 type BaseAgent struct {
 	config Config
+}
+
+// SetMemory 替换 Agent 的记忆系统
+//
+// 此方法用于共享记忆代理注入，不应在常规业务代码中调用。
+func (a *BaseAgent) SetMemory(mem memory.Memory) {
+	a.config.Memory = mem
 }
 
 // NewBaseAgent 创建基础 Agent
