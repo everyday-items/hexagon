@@ -78,6 +78,10 @@ type Team struct {
 	// GlobalState 全局状态
 	globalState GlobalState
 
+	// sharedMemory 团队共享记忆（可选）
+	// 设置后，所有 Agent 的 Memory 会被自动包装为 SharedMemoryProxy
+	sharedMemory *SharedMemory
+
 	// Verbose 详细输出
 	verbose bool
 
@@ -105,6 +109,11 @@ func NewTeam(name string, opts ...TeamOption) *Team {
 	// 注册所有 Agent 到全局状态
 	for _, agent := range t.agents {
 		t.globalState.RegisterAgent(agent.ID(), agent)
+	}
+
+	// 如果设置了共享记忆，为所有 Agent 安装共享记忆代理
+	if t.sharedMemory != nil {
+		t.installSharedMemory()
 	}
 
 	return t
@@ -153,6 +162,17 @@ func WithGlobalState(state GlobalState) TeamOption {
 	}
 }
 
+// WithSharedMemory 设置团队共享记忆
+//
+// 启用后，所有 Agent 的 Memory 会被自动包装为 SharedMemoryProxy，
+// Agent 的写入会同步到共享记忆，搜索会合并共享记忆的结果。
+// 后续通过 AddAgent 添加的 Agent 也会自动包装。
+func WithSharedMemory(sm *SharedMemory) TeamOption {
+	return func(t *Team) {
+		t.sharedMemory = sm
+	}
+}
+
 // WithTeamVerbose 设置详细输出
 func WithTeamVerbose(verbose bool) TeamOption {
 	return func(t *Team) {
@@ -189,10 +209,20 @@ func (t *Team) Mode() TeamMode {
 	return t.mode
 }
 
+// SharedMemory 返回团队共享记忆（如未设置则返回 nil）
+func (t *Team) SharedMemory() *SharedMemory {
+	return t.sharedMemory
+}
+
 // AddAgent 添加 Agent 到团队
+//
+// 如果团队启用了共享记忆，新添加的 Agent 会自动包装 SharedMemoryProxy。
 //
 // 线程安全：此方法是并发安全的
 func (t *Team) AddAgent(agent Agent) {
+	if t.sharedMemory != nil {
+		t.wrapAgentMemory(agent)
+	}
 	t.mu.Lock()
 	t.agents = append(t.agents, agent)
 	t.mu.Unlock()
