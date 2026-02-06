@@ -231,7 +231,7 @@ func (t *Tool) validateCommand(cmd string) error {
 	}
 	cmdLower := strings.ToLower(cmd)
 	for _, pattern := range dangerousPatterns {
-		if strings.Contains(cmd, pattern) {
+		if strings.Contains(cmdLower, pattern) {
 			return fmt.Errorf("command contains dangerous pattern: %s", pattern)
 		}
 	}
@@ -360,8 +360,11 @@ func GitTool(workDir string) tool.Tool {
 	return tool.NewFunc("git", "执行 Git 命令", func(ctx context.Context, input struct {
 		Args string `json:"args" desc:"Git 命令参数" required:"true"`
 	}) (*ExecuteOutput, error) {
+		// 使用 Args 切片传入参数，避免 shell 注入
+		args := strings.Fields(input.Args)
 		return t.execute(ctx, ExecuteInput{
-			Command: "git " + input.Args,
+			Command: "git",
+			Args:    args,
 		})
 	})
 }
@@ -395,8 +398,10 @@ func CurlTool() tool.Tool {
 
 		args = append(args, input.URL)
 
+		// 使用 Args 切片传入参数，避免 shell 注入
 		return t.execute(ctx, ExecuteInput{
-			Command: "curl " + strings.Join(args, " "),
+			Command: "curl",
+			Args:    args,
 		})
 	})
 }

@@ -249,7 +249,8 @@ func (l *DirectoryLoader) Load(ctx context.Context) ([]rag.Document, error) {
 		loader := l.loaderFunc(path)
 		fileDocs, err := loader.Load(ctx)
 		if err != nil {
-			// 记录错误但继续处理
+			// 记录加载失败的文件（便于排查问题），继续处理其他文件
+			fmt.Fprintf(os.Stderr, "[WARN] hexagon/rag/loader: 加载文件 %s 失败: %v\n", path, err)
 			return nil
 		}
 
@@ -499,42 +500,59 @@ func extractFrontMatter(content string, metadata map[string]any) (string, map[st
 }
 
 // removeMarkdownImages 移除 Markdown 图片
+// 使用 strings.Builder 避免 O(n²) 的循环字符串拼接
 func removeMarkdownImages(content string) string {
-	// 简单正则替换 ![alt](url)
-	result := content
-	for {
-		start := strings.Index(result, "![")
+	var b strings.Builder
+	b.Grow(len(content))
+	i := 0
+	for i < len(content) {
+		// 查找 ![
+		start := strings.Index(content[i:], "![")
 		if start == -1 {
+			b.WriteString(content[i:])
 			break
 		}
-		end := strings.Index(result[start:], ")")
+		b.WriteString(content[i : i+start])
+		// 查找配对的 )
+		end := strings.Index(content[i+start:], ")")
 		if end == -1 {
+			b.WriteString(content[i+start:])
 			break
 		}
-		result = result[:start] + result[start+end+1:]
+		i = i + start + end + 1
 	}
-	return result
+	return b.String()
 }
 
 // removeMarkdownLinks 移除 Markdown 链接，保留文字
+// 使用 strings.Builder 避免 O(n²) 的循环字符串拼接
 func removeMarkdownLinks(content string) string {
-	// 简单替换 [text](url) -> text
-	result := content
-	for {
-		start := strings.Index(result, "[")
+	var b strings.Builder
+	b.Grow(len(content))
+	i := 0
+	for i < len(content) {
+		// 查找 [
+		start := strings.Index(content[i:], "[")
 		if start == -1 {
+			b.WriteString(content[i:])
 			break
 		}
-		mid := strings.Index(result[start:], "](")
+		// 查找 ](
+		mid := strings.Index(content[i+start:], "](")
 		if mid == -1 {
+			b.WriteString(content[i:])
 			break
 		}
-		end := strings.Index(result[start+mid:], ")")
+		// 查找 )
+		end := strings.Index(content[i+start+mid:], ")")
 		if end == -1 {
+			b.WriteString(content[i:])
 			break
 		}
-		text := result[start+1 : start+mid]
-		result = result[:start] + text + result[start+mid+end+1:]
+		// 保留 [ 之前的内容和链接文字
+		b.WriteString(content[i : i+start])
+		b.WriteString(content[i+start+1 : i+start+mid]) // 链接文字
+		i = i + start + mid + end + 1
 	}
-	return result
+	return b.String()
 }

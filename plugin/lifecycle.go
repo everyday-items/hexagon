@@ -3,6 +3,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -224,19 +225,24 @@ func (l *Lifecycle) StartAll(ctx context.Context) error {
 }
 
 // StopAll 停止所有插件（按启动的逆序）
+// 即使某个插件停止失败，也会继续停止其他插件，最终返回所有错误的聚合。
 func (l *Lifecycle) StopAll(ctx context.Context) error {
 	l.mu.RLock()
 	order := make([]string, len(l.startOrder))
 	copy(order, l.startOrder)
 	l.mu.RUnlock()
 
-	// 逆序停止
+	// 逆序停止，收集所有错误
+	var errs []error
 	for i := len(order) - 1; i >= 0; i-- {
 		name := order[i]
 		if err := l.Stop(ctx, name); err != nil {
-			// 继续停止其他插件，但记录错误
-			continue
+			errs = append(errs, fmt.Errorf("stop plugin %s: %w", name, err))
 		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil

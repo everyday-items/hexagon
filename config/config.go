@@ -275,8 +275,25 @@ func (c *AgentConfig) Validate() error {
 	if c.Name == "" {
 		return fmt.Errorf("agent name is required")
 	}
-	if c.LLM.Provider == "" {
+	if err := c.LLM.Validate(); err != nil {
+		return fmt.Errorf("invalid LLM config: %w", err)
+	}
+	return nil
+}
+
+// Validate 验证 LLM 配置
+func (c *LLMConfig) Validate() error {
+	if c.Provider == "" {
 		return fmt.Errorf("LLM provider is required")
+	}
+	if c.Model == "" {
+		return fmt.Errorf("LLM model is required")
+	}
+	if c.Temperature < 0 || c.Temperature > 2 {
+		return fmt.Errorf("LLM temperature must be between 0 and 2")
+	}
+	if c.MaxTokens < 0 {
+		return fmt.Errorf("LLM max_tokens must be non-negative")
 	}
 	return nil
 }
@@ -288,6 +305,11 @@ func (c *TeamConfig) Validate() error {
 	}
 	if len(c.Agents) == 0 {
 		return fmt.Errorf("team must have at least one agent")
+	}
+	for i, agent := range c.Agents {
+		if err := agent.Validate(); err != nil {
+			return fmt.Errorf("invalid agent config at index %d: %w", i, err)
+		}
 	}
 	return nil
 }

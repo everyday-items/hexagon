@@ -179,11 +179,9 @@ func NewParentDocRetriever(childStore vector.Store, embedder vector.Embedder, op
 }
 
 // Index 索引文档
-// 将原始文档保存为父文档，分割成子块后存入向量存储
+// 将原始文档保存为父文档，分割成子块后存入向量存储。
+// 仅在访问内存状态时短暂持锁，Embed 等耗时操作在锁外执行，避免阻塞 Retrieve。
 func (r *ParentDocRetriever) Index(ctx context.Context, docs []rag.Document) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	for _, doc := range docs {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -197,10 +195,12 @@ func (r *ParentDocRetriever) Index(ctx context.Context, docs []rag.Document) err
 			doc.CreatedAt = time.Now()
 		}
 
-		// 保存父文档
+		// 短暂持锁保存父文档
+		r.mu.Lock()
 		r.parentStore.Save(doc)
+		r.mu.Unlock()
 
-		// 分割成子块
+		// 分割成子块（在锁外执行）
 		var childDocs []rag.Document
 		if r.childSplitter != nil {
 			var err error
@@ -225,7 +225,7 @@ func (r *ParentDocRetriever) Index(ctx context.Context, docs []rag.Document) err
 			childDocs[i].Metadata["chunk_index"] = i
 		}
 
-		// 向量化子文档
+		// 向量化子文档（在锁外执行，此操作可能耗时数秒）
 		texts := make([]string, len(childDocs))
 		for i, cd := range childDocs {
 			texts[i] = cd.Content
@@ -245,7 +245,7 @@ func (r *ParentDocRetriever) Index(ctx context.Context, docs []rag.Document) err
 			vectorDocs[i] = ragDocToVectorDoc(childDocs[i])
 		}
 
-		// 存入向量存储
+		// 存入向量存储（在锁外执行）
 		if err := r.childStore.Add(ctx, vectorDocs); err != nil {
 			return fmt.Errorf("存储文档 %s 的子块失败: %w", doc.ID, err)
 		}

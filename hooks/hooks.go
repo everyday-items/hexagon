@@ -332,6 +332,10 @@ func checkTiming(hook Hook, timing Timing) bool {
 // TimingChecker：只调用关心 TimingRunStart 时机的 Hook。
 func (m *Manager) TriggerRunStart(ctx context.Context, event *RunStartEvent) error {
 	m.mu.RLock()
+	if len(m.runHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]RunHook, len(m.runHooks))
 	copy(hooks, m.runHooks)
 	m.mu.RUnlock()
@@ -352,6 +356,10 @@ func (m *Manager) TriggerRunStart(ctx context.Context, event *RunStartEvent) err
 // TimingChecker：只调用关心 TimingRunEnd 时机的 Hook。
 func (m *Manager) TriggerRunEnd(ctx context.Context, event *RunEndEvent) error {
 	m.mu.RLock()
+	if len(m.runHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]RunHook, len(m.runHooks))
 	copy(hooks, m.runHooks)
 	m.mu.RUnlock()
@@ -372,6 +380,10 @@ func (m *Manager) TriggerRunEnd(ctx context.Context, event *RunEndEvent) error {
 // TimingChecker：只调用关心 TimingRunError 时机的 Hook。
 func (m *Manager) TriggerError(ctx context.Context, event *ErrorEvent) error {
 	m.mu.RLock()
+	if len(m.runHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]RunHook, len(m.runHooks))
 	copy(hooks, m.runHooks)
 	m.mu.RUnlock()
@@ -392,6 +404,10 @@ func (m *Manager) TriggerError(ctx context.Context, event *ErrorEvent) error {
 // TimingChecker：只调用关心 TimingToolStart 时机的 Hook。
 func (m *Manager) TriggerToolStart(ctx context.Context, event *ToolStartEvent) error {
 	m.mu.RLock()
+	if len(m.toolHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]ToolHook, len(m.toolHooks))
 	copy(hooks, m.toolHooks)
 	m.mu.RUnlock()
@@ -412,6 +428,10 @@ func (m *Manager) TriggerToolStart(ctx context.Context, event *ToolStartEvent) e
 // TimingChecker：只调用关心 TimingToolEnd 时机的 Hook。
 func (m *Manager) TriggerToolEnd(ctx context.Context, event *ToolEndEvent) error {
 	m.mu.RLock()
+	if len(m.toolHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]ToolHook, len(m.toolHooks))
 	copy(hooks, m.toolHooks)
 	m.mu.RUnlock()
@@ -432,6 +452,10 @@ func (m *Manager) TriggerToolEnd(ctx context.Context, event *ToolEndEvent) error
 // TimingChecker：只调用关心 TimingLLMStart 时机的 Hook。
 func (m *Manager) TriggerLLMStart(ctx context.Context, event *LLMStartEvent) error {
 	m.mu.RLock()
+	if len(m.llmHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]LLMHook, len(m.llmHooks))
 	copy(hooks, m.llmHooks)
 	m.mu.RUnlock()
@@ -452,6 +476,10 @@ func (m *Manager) TriggerLLMStart(ctx context.Context, event *LLMStartEvent) err
 // TimingChecker：只调用关心 TimingLLMEnd 时机的 Hook。
 func (m *Manager) TriggerLLMEnd(ctx context.Context, event *LLMEndEvent) error {
 	m.mu.RLock()
+	if len(m.llmHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]LLMHook, len(m.llmHooks))
 	copy(hooks, m.llmHooks)
 	m.mu.RUnlock()
@@ -472,6 +500,10 @@ func (m *Manager) TriggerLLMEnd(ctx context.Context, event *LLMEndEvent) error {
 // TimingChecker：只调用关心 TimingLLMStream 时机的 Hook。
 func (m *Manager) TriggerLLMStream(ctx context.Context, event *LLMStreamEvent) error {
 	m.mu.RLock()
+	if len(m.llmHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]LLMHook, len(m.llmHooks))
 	copy(hooks, m.llmHooks)
 	m.mu.RUnlock()
@@ -492,6 +524,10 @@ func (m *Manager) TriggerLLMStream(ctx context.Context, event *LLMStreamEvent) e
 // TimingChecker：只调用关心 TimingRetrieverStart 时机的 Hook。
 func (m *Manager) TriggerRetrieverStart(ctx context.Context, event *RetrieverStartEvent) error {
 	m.mu.RLock()
+	if len(m.retrieverHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]RetrieverHook, len(m.retrieverHooks))
 	copy(hooks, m.retrieverHooks)
 	m.mu.RUnlock()
@@ -512,6 +548,10 @@ func (m *Manager) TriggerRetrieverStart(ctx context.Context, event *RetrieverSta
 // TimingChecker：只调用关心 TimingRetrieverEnd 时机的 Hook。
 func (m *Manager) TriggerRetrieverEnd(ctx context.Context, event *RetrieverEndEvent) error {
 	m.mu.RLock()
+	if len(m.retrieverHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
 	hooks := make([]RetrieverHook, len(m.retrieverHooks))
 	copy(hooks, m.retrieverHooks)
 	m.mu.RUnlock()

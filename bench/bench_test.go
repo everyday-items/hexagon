@@ -2,6 +2,7 @@ package bench
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -77,11 +78,11 @@ func TestConcurrentRunner(t *testing.T) {
 		WithConcurrency(4),
 	)
 
-	var counter int
+	var counter atomic.Int64
 	runner.Add(Benchmark{
 		Name: "counter",
 		Fn: func(ctx context.Context) error {
-			counter++
+			counter.Add(1)
 			return nil
 		},
 	})
@@ -91,8 +92,6 @@ func TestConcurrentRunner(t *testing.T) {
 		t.Fatalf("Run failed: %v", err)
 	}
 
-	// 注意：由于并发，counter 可能小于 iterations（存在竞争）
-	// 这里只验证基准测试完成
 	if len(report.Results) != 1 {
 		t.Errorf("Expected 1 result, got %d", len(report.Results))
 	}
@@ -100,5 +99,10 @@ func TestConcurrentRunner(t *testing.T) {
 	result := report.Results[0]
 	if result.Iterations != 20 {
 		t.Errorf("Expected 20 iterations, got %d", result.Iterations)
+	}
+
+	// 验证所有迭代都实际执行了
+	if counter.Load() != 20 {
+		t.Errorf("Expected counter=20, got %d", counter.Load())
 	}
 }

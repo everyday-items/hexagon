@@ -16,6 +16,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -280,6 +281,11 @@ func (d *RegexDetector) Detect(ctx context.Context, text string) ([]*PIIEntity, 
 	return entities, nil
 }
 
+// posKey 位置去重键，比 fmt.Sprintf 更高效
+type posKey struct {
+	start, end int
+}
+
 // dedup 去重
 func (d *RegexDetector) dedup(entities []*PIIEntity) []*PIIEntity {
 	if len(entities) == 0 {
@@ -287,9 +293,9 @@ func (d *RegexDetector) dedup(entities []*PIIEntity) []*PIIEntity {
 	}
 
 	// 按位置分组，保留置信度最高的
-	posMap := make(map[string]*PIIEntity)
+	posMap := make(map[posKey]*PIIEntity)
 	for _, e := range entities {
-		key := fmt.Sprintf("%d-%d", e.Start, e.End)
+		key := posKey{start: e.Start, end: e.End}
 		if existing, ok := posMap[key]; ok {
 			if e.Score > existing.Score {
 				posMap[key] = e
@@ -494,16 +500,12 @@ func (a *Anonymizer) Anonymize(text string, entities []*PIIEntity) string {
 		return text
 	}
 
-	// 按位置倒序排序，从后往前替换
+	// 按位置倒序排序，从后往前替换（避免替换后偏移量变化）
 	sortedEntities := make([]*PIIEntity, len(entities))
 	copy(sortedEntities, entities)
-	for i := 0; i < len(sortedEntities)-1; i++ {
-		for j := i + 1; j < len(sortedEntities); j++ {
-			if sortedEntities[i].Start < sortedEntities[j].Start {
-				sortedEntities[i], sortedEntities[j] = sortedEntities[j], sortedEntities[i]
-			}
-		}
-	}
+	sort.Slice(sortedEntities, func(i, j int) bool {
+		return sortedEntities[i].Start > sortedEntities[j].Start
+	})
 
 	result := text
 	for _, entity := range sortedEntities {

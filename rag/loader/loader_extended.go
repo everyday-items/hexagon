@@ -151,7 +151,9 @@ func (l *GitHubLoader) Load(ctx context.Context) ([]rag.Document, error) {
 		// 加载文件内容
 		content, err := l.loadFile(ctx, item.Path)
 		if err != nil {
-			continue // 跳过加载失败的文件
+			// 记录加载失败的文件（便于排查问题），继续处理其他文件
+			fmt.Fprintf(os.Stderr, "[WARN] hexagon/rag/loader: 加载 GitHub 文件 %s 失败: %v\n", item.Path, err)
+			continue
 		}
 
 		doc := rag.Document{

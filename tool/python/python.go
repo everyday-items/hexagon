@@ -26,12 +26,17 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/everyday-items/ai-core/tool"
 )
+
+// validPythonIdentifier 验证 Python 变量名：只允许字母、数字、下划线，不能以数字开头，
+// 且不能是 Python 双下划线特殊属性
+var validPythonIdentifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 // Config Python REPL 工具配置
 type Config struct {
@@ -323,7 +328,10 @@ func (t *Tool) buildCode(code string, vars map[string]string) string {
 	// 添加预设变量
 	if len(vars) > 0 {
 		for k, v := range vars {
-			// 简单的变量赋值（字符串类型）
+			// 验证变量名安全性：仅允许合法 Python 标识符，且禁止双下划线属性
+			if !validPythonIdentifier.MatchString(k) || strings.HasPrefix(k, "__") {
+				continue
+			}
 			fmt.Fprintf(&builder, "%s = %q\n", k, v)
 		}
 		builder.WriteString("\n")
@@ -382,6 +390,7 @@ func CalculatorTool() tool.Tool {
 	return tool.NewFunc("python_calculator", "使用 Python 进行数学计算", func(ctx context.Context, input struct {
 		Expression string `json:"expression" desc:"数学表达式" required:"true"`
 	}) (*ExecuteOutput, error) {
+		// 将表达式直接作为代码执行，表达式本身会经过 validateCode 检查
 		code := fmt.Sprintf(`
 import math
 from decimal import Decimal
@@ -405,21 +414,23 @@ func JSONProcessorTool() tool.Tool {
 		Code string `json:"code" desc:"JSON 处理代码" required:"true"`
 		Data string `json:"data" desc:"输入的 JSON 数据"`
 	}) (*ExecuteOutput, error) {
-		fullCode := fmt.Sprintf(`
+		// 通过预设变量安全传递数据，避免三引号逃逸
+		fullCode := `
 import json
 from collections import defaultdict, Counter
 
-# 输入数据
-input_data = '''%s'''
-if input_data.strip():
-    data = json.loads(input_data)
+# 输入数据（通过预设变量安全传入）
+if _input_data.strip():
+    data = json.loads(_input_data)
 else:
     data = None
 
 # 用户代码
-%s
-`, strings.ReplaceAll(input.Data, "'", "\\'"), input.Code)
-		return t.execute(ctx, ExecuteInput{Code: fullCode})
+` + input.Code
+		return t.execute(ctx, ExecuteInput{
+			Code: fullCode,
+			Vars: map[string]string{"_input_data": input.Data},
+		})
 	})
 }
 
@@ -434,18 +445,21 @@ func TextProcessorTool() tool.Tool {
 		Code string `json:"code" desc:"文本处理代码" required:"true"`
 		Text string `json:"text" desc:"输入文本"`
 	}) (*ExecuteOutput, error) {
-		fullCode := fmt.Sprintf(`
+		// 通过预设变量安全传递文本，避免三引号逃逸
+		fullCode := `
 import re
 import string
 import textwrap
 import unicodedata
 
-# 输入文本
-text = '''%s'''
+# 输入文本（通过预设变量安全传入）
+text = _input_text
 
 # 用户代码
-%s
-`, strings.ReplaceAll(input.Text, "'", "\\'"), input.Code)
-		return t.execute(ctx, ExecuteInput{Code: fullCode})
+` + input.Code
+		return t.execute(ctx, ExecuteInput{
+			Code: fullCode,
+			Vars: map[string]string{"_input_text": input.Text},
+		})
 	})
 }

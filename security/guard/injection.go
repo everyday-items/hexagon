@@ -83,11 +83,11 @@ func (g *PromptInjectionGuard) Check(ctx context.Context, input string) (*CheckR
 	var findings []Finding
 	var maxScore float64 = 0
 
-	// 转换为小写进行检查
-	lowerInput := strings.ToLower(input)
-
+	// 直接在原始 input 上进行匹配
+	// 所有正则模式都已使用 (?i) 标志实现不区分大小写匹配，
+	// 避免 ToLower 后索引与原始字符串字节偏移不一致的 Unicode 安全问题
 	for _, p := range g.patterns {
-		matches := p.pattern.FindAllStringIndex(lowerInput, -1)
+		matches := p.pattern.FindAllStringIndex(input, -1)
 		for _, match := range matches {
 			findings = append(findings, Finding{
 				Type:     p.name,
@@ -101,7 +101,8 @@ func (g *PromptInjectionGuard) Check(ctx context.Context, input string) (*CheckR
 		}
 	}
 
-	// 额外检查：启发式规则
+	// 额外检查：启发式规则（使用小写文本进行关键词检查，此处不需要索引）
+	lowerInput := strings.ToLower(input)
 	heuristicScore := g.checkHeuristics(lowerInput)
 	if heuristicScore > maxScore {
 		maxScore = heuristicScore

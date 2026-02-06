@@ -32,6 +32,9 @@ type RBAC struct {
 	// Store 持久化存储
 	store RBACStore
 
+	// regexCache 缓存编译后的正则表达式，避免 OpMatches 每次重新编译
+	regexCache sync.Map // pattern -> *regexp.Regexp
+
 	mu sync.RWMutex
 }
 
@@ -166,11 +169,12 @@ type Permission struct {
 }
 
 // AddRole 添加角色
+// 先在内存中更新，然后释放锁后再持久化到 store，避免持锁调用外部函数导致死锁。
 func (r *RBAC) AddRole(role *Role) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 
 	if _, exists := r.roles[role.Name]; exists {
+		r.mu.Unlock()
 		return fmt.Errorf("role %s already exists", role.Name)
 	}
 
@@ -179,47 +183,79 @@ func (r *RBAC) AddRole(role *Role) error {
 	role.UpdatedAt = now
 
 	r.roles[role.Name] = role
+	r.mu.Unlock()
 
+	// 在锁外调用 store，避免持锁期间阻塞在外部 I/O 上
 	if r.store != nil {
-		return r.store.SaveRole(context.Background(), role)
+		if err := r.store.SaveRole(context.Background(), role); err != nil {
+			// store 持久化失败，回滚内存状态
+			r.mu.Lock()
+			delete(r.roles, role.Name)
+			r.mu.Unlock()
+			return err
+		}
 	}
 
 	return nil
 }
 
 // UpdateRole 更新角色
+// 先在内存中更新，然后释放锁后再持久化到 store，避免持锁调用外部函数导致死锁。
 func (r *RBAC) UpdateRole(role *Role) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 
-	if _, exists := r.roles[role.Name]; !exists {
+	oldRole, exists := r.roles[role.Name]
+	if !exists {
+		r.mu.Unlock()
 		return fmt.Errorf("role %s not found", role.Name)
 	}
 
 	role.UpdatedAt = time.Now()
 	r.roles[role.Name] = role
+	r.mu.Unlock()
 
+	// 在锁外调用 store
 	if r.store != nil {
-		return r.store.SaveRole(context.Background(), role)
+		if err := r.store.SaveRole(context.Background(), role); err != nil {
+			// store 持久化失败，回滚内存状态
+			r.mu.Lock()
+			r.roles[role.Name] = oldRole
+			r.mu.Unlock()
+			return err
+		}
 	}
 
 	return nil
 }
 
 // DeleteRole 删除角色
+// 先在内存中删除，然后释放锁后再持久化到 store，避免持锁调用外部函数导致死锁。
 func (r *RBAC) DeleteRole(name string) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 
-	if _, exists := r.roles[name]; !exists {
+	oldRole, exists := r.roles[name]
+	if !exists {
+		r.mu.Unlock()
 		return fmt.Errorf("role %s not found", name)
 	}
 
+	oldHierarchy := r.roleHierarchy[name]
 	delete(r.roles, name)
 	delete(r.roleHierarchy, name)
+	r.mu.Unlock()
 
+	// 在锁外调用 store
 	if r.store != nil {
-		return r.store.DeleteRole(context.Background(), name)
+		if err := r.store.DeleteRole(context.Background(), name); err != nil {
+			// store 持久化失败，回滚内存状态
+			r.mu.Lock()
+			r.roles[name] = oldRole
+			if oldHierarchy != nil {
+				r.roleHierarchy[name] = oldHierarchy
+			}
+			r.mu.Unlock()
+			return err
+		}
 	}
 
 	return nil
@@ -833,8 +869,9 @@ func (r *RBAC) evaluateCondition(cond PolicyCondition, ctx map[string]any) bool 
 				if len(pattern) > 1000 {
 					return false
 				}
-				// 编译正则表达式（生产环境应该缓存编译后的正则）
-				if re, err := regexp.Compile(pattern); err == nil {
+				// 使用缓存的编译后正则，避免每次重新编译
+				re := r.getOrCompileRegex(pattern)
+				if re != nil {
 					return re.MatchString(str)
 				}
 			}
@@ -850,6 +887,20 @@ func (r *RBAC) evaluateCondition(cond PolicyCondition, ctx map[string]any) bool 
 	}
 
 	return false
+}
+
+// getOrCompileRegex 获取或编译正则表达式（带缓存）
+// 编译后的正则会缓存在 sync.Map 中，避免重复编译开销。
+func (r *RBAC) getOrCompileRegex(pattern string) *regexp.Regexp {
+	if cached, ok := r.regexCache.Load(pattern); ok {
+		return cached.(*regexp.Regexp)
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil
+	}
+	r.regexCache.Store(pattern, re)
+	return re
 }
 
 // ============== Context Helpers ==============

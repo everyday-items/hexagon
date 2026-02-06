@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+	"unicode/utf8"
 )
 
 // ContentFilter 内容过滤器接口
@@ -276,9 +277,10 @@ func (f *SensitiveWordFilter) Filter(ctx context.Context, content string) (*Filt
 		return result, nil
 	}
 
-	// 检查白名单
+	// 检查白名单：仅当内容完全匹配白名单项时跳过检查
+	// 避免恶意内容通过附加白名单词汇绕过过滤
 	for _, allowed := range f.config.Allowlist {
-		if strings.Contains(content, allowed) {
+		if strings.TrimSpace(content) == allowed {
 			return result, nil
 		}
 	}
@@ -522,9 +524,27 @@ func severityLevel(s Severity) int {
 	}
 }
 
+// categoryToSeverity 将 ContentCategory 映射到 Severity
+// 避免 Severity(category) 的不安全类型强转
+func categoryToSeverity(c ContentCategory) Severity {
+	switch c {
+	case CategorySafe:
+		return SeverityLow
+	case CategorySensitive, CategorySpam:
+		return SeverityMedium
+	case CategoryAdult, CategoryViolence, CategoryHate, CategoryScam:
+		return SeverityHigh
+	case CategoryHarmful, CategoryIllegal:
+		return SeverityCritical
+	default:
+		return SeverityLow
+	}
+}
+
 func redactWord(content, word string, position int) string {
-	// 用 * 替换敏感词
-	replacement := strings.Repeat("*", len(word))
+	// 用 * 替换敏感词，使用字符数（而非字节数）确保中文脱敏正确
+	runeCount := utf8.RuneCountInString(word)
+	replacement := strings.Repeat("*", runeCount)
 	return content[:position] + replacement + content[position+len(word):]
 }
 
@@ -823,7 +843,7 @@ func (c *FilterChain) Filter(ctx context.Context, content string) (*FilterResult
 		case ChainModeAny:
 			if !result.Passed {
 				combinedResult.Passed = false
-				if severityLevel(Severity(result.Category)) > severityLevel(Severity(combinedResult.Category)) {
+				if severityLevel(categoryToSeverity(result.Category)) > severityLevel(categoryToSeverity(combinedResult.Category)) {
 					combinedResult.Category = result.Category
 				}
 			}

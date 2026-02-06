@@ -813,17 +813,29 @@ func (s *Server) unsubscribe(taskID string, ch chan StreamEvent) {
 }
 
 // notifySubscribers 通知订阅者
+//
+// 安全说明：使用 recover 防护 send-on-closed-channel panic。
+// 当 Server.Stop() 并发关闭 channel 时，此处的发送可能触发 panic，
+// 通过 recover 将其转为静默跳过。
 func (s *Server) notifySubscribers(taskID string, event StreamEvent) {
 	s.mu.RLock()
-	subs := s.subscribers[taskID]
+	// 复制一份切片引用，避免长时间持锁
+	subs := make([]chan StreamEvent, len(s.subscribers[taskID]))
+	copy(subs, s.subscribers[taskID])
 	s.mu.RUnlock()
 
 	for _, ch := range subs {
-		select {
-		case ch <- event:
-		default:
-			// 通道已满，跳过
-		}
+		func() {
+			defer func() {
+				// 防止向已关闭 channel 发送时 panic
+				recover()
+			}()
+			select {
+			case ch <- event:
+			default:
+				// 通道已满，跳过
+			}
+		}()
 	}
 }
 

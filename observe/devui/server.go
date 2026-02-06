@@ -169,18 +169,20 @@ func CORSMiddleware(allowOrigin string) func(http.Handler) http.Handler {
 
 // RateLimitMiddleware 简单的速率限制中间件
 type RateLimitMiddleware struct {
-	requests map[string][]time.Time
-	limit    int           // 限制请求数
-	window   time.Duration // 时间窗口
-	mu       sync.Mutex
+	requests    map[string][]time.Time
+	limit       int           // 限制请求数
+	window      time.Duration // 时间窗口
+	lastCleanup time.Time     // 上次全局清理时间
+	mu          sync.Mutex
 }
 
 // NewRateLimitMiddleware 创建速率限制中间件
 func NewRateLimitMiddleware(limit int, window time.Duration) *RateLimitMiddleware {
 	return &RateLimitMiddleware{
-		requests: make(map[string][]time.Time),
-		limit:    limit,
-		window:   window,
+		requests:    make(map[string][]time.Time),
+		limit:       limit,
+		window:      window,
+		lastCleanup: time.Now(),
 	}
 }
 
@@ -191,8 +193,27 @@ func (m *RateLimitMiddleware) Handler(next http.Handler) http.Handler {
 
 		m.mu.Lock()
 
-		// 清理过期的请求记录
 		now := time.Now()
+
+		// 定期全局清理过期 IP 记录，防止大量唯一 IP 导致内存泄漏
+		if now.Sub(m.lastCleanup) > m.window*2 {
+			for k, times := range m.requests {
+				var valid []time.Time
+				for _, t := range times {
+					if now.Sub(t) < m.window {
+						valid = append(valid, t)
+					}
+				}
+				if len(valid) == 0 {
+					delete(m.requests, k)
+				} else {
+					m.requests[k] = valid
+				}
+			}
+			m.lastCleanup = now
+		}
+
+		// 清理当前 IP 的过期请求记录
 		if times, ok := m.requests[ip]; ok {
 			var valid []time.Time
 			for _, t := range times {

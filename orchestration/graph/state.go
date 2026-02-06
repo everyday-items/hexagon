@@ -3,6 +3,8 @@ package graph
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 )
 
 // State 是图状态的约束接口
@@ -159,10 +161,12 @@ func deepCopy(v any) any {
 		// 对于复杂类型，使用 JSON 序列化/反序列化
 		data, err := json.Marshal(v)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "[WARN] deepCopy: JSON marshal failed for type %T, returning original reference: %v\n", v, err)
 			return v
 		}
 		var clone any
 		if err := json.Unmarshal(data, &clone); err != nil {
+			fmt.Fprintf(os.Stderr, "[WARN] deepCopy: JSON unmarshal failed for type %T, returning original reference: %v\n", v, err)
 			return v
 		}
 		return clone
