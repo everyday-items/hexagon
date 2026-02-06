@@ -462,7 +462,11 @@ func (c *Client) readSSEEvents(ctx context.Context, body io.ReadCloser, events c
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
-			events <- &ErrorEvent{Error: NewInternalError(ctx.Err().Error())}
+			// context 取消时尝试发送错误事件，但不阻塞
+			select {
+			case events <- &ErrorEvent{Error: NewInternalError(ctx.Err().Error())}:
+			default:
+			}
 			return
 		default:
 		}
@@ -474,7 +478,12 @@ func (c *Client) readSSEEvents(ctx context.Context, body io.ReadCloser, events c
 			if eventType != "" && data.Len() > 0 {
 				event := c.parseSSEEvent(eventType, data.String())
 				if event != nil {
-					events <- event
+					// 发送事件时检查 context 是否已取消，防止消费者停止消费后 goroutine 阻塞
+					select {
+					case <-ctx.Done():
+						return
+					case events <- event:
+					}
 				}
 
 				// 如果是完成事件，退出

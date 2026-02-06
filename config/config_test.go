@@ -16,14 +16,14 @@ func TestAgentConfig_Validate(t *testing.T) {
 			name: "valid config",
 			config: AgentConfig{
 				Name: "test-agent",
-				LLM:  LLMConfig{Provider: "openai"},
+				LLM:  LLMConfig{Provider: "openai", Model: "gpt-4"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "missing name",
 			config: AgentConfig{
-				LLM: LLMConfig{Provider: "openai"},
+				LLM: LLMConfig{Provider: "openai", Model: "gpt-4"},
 			},
 			wantErr: true,
 		},
@@ -57,7 +57,7 @@ func TestTeamConfig_Validate(t *testing.T) {
 			config: TeamConfig{
 				Name: "test-team",
 				Agents: []AgentConfig{
-					{Name: "agent-1", LLM: LLMConfig{Provider: "openai"}},
+					{Name: "agent-1", LLM: LLMConfig{Provider: "openai", Model: "gpt-4"}},
 				},
 			},
 			wantErr: false,

@@ -161,6 +161,8 @@ func (p *ProcessInstance) Start(ctx context.Context, input ProcessInput) error {
 	if input.InitialState != "" {
 		state, ok := p.definition.GetState(input.InitialState)
 		if !ok {
+			// 回滚状态：启动失败不应留下 StatusRunning
+			p.status = StatusPending
 			p.mu.Unlock()
 			return fmt.Errorf("%w: %s", ErrStateNotFound, input.InitialState)
 		}
@@ -170,6 +172,8 @@ func (p *ProcessInstance) Start(ctx context.Context, input ProcessInput) error {
 	}
 
 	if initialState == nil {
+		// 回滚状态：启动失败不应留下 StatusRunning
+		p.status = StatusPending
 		p.mu.Unlock()
 		return ErrNoInitialState
 	}
@@ -694,9 +698,13 @@ func (p *ProcessInstance) addRecord(record ExecutionRecord) {
 
 	p.history = append(p.history, record)
 
-	// 限制历史记录大小
-	if p.definition.options.MaxHistorySize > 0 && len(p.history) > p.definition.options.MaxHistorySize {
-		p.history = p.history[len(p.history)-p.definition.options.MaxHistorySize:]
+	// 限制历史记录大小（默认最多保留 1000 条，防止无限增长）
+	maxHistory := p.definition.options.MaxHistorySize
+	if maxHistory <= 0 {
+		maxHistory = 1000
+	}
+	if len(p.history) > maxHistory {
+		p.history = p.history[len(p.history)-maxHistory:]
 	}
 }
 

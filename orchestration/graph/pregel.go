@@ -175,10 +175,9 @@ type PregelExecutor[S State] struct {
 	activeNodes map[string]bool
 	nodeInputs  map[string][]S // 节点收到的输入消息
 
-	// 前驱统计
+	// 前驱统计（由 mu 保护，无需额外锁）
 	predecessors   map[string][]string // node -> predecessors
 	completedPreds map[string]int      // node -> completed predecessor count
-	predMu         sync.RWMutex
 
 	mu sync.Mutex
 }
@@ -315,9 +314,11 @@ func (pe *PregelExecutor[S]) executeSuperstep(ctx context.Context, activeNodes [
 		}
 	}
 
-	// 清除活跃节点（执行后重新激活后继节点）
+	// 清除活跃节点和上轮输入（执行后重新激活后继节点）
 	pe.mu.Lock()
 	pe.activeNodes = make(map[string]bool)
+	// 清理上一轮的节点输入，防止循环图中无限增长导致 OOM
+	pe.nodeInputs = make(map[string][]S)
 	pe.mu.Unlock()
 
 	if len(nodesToExecute) == 0 {
@@ -495,9 +496,7 @@ func (pe *PregelExecutor[S]) shouldActivate(node, completedPred string) bool {
 
 	case TriggerAllPredecessors:
 		// 所有前驱完成才激活
-		pe.predMu.Lock()
-		defer pe.predMu.Unlock()
-
+		// 注意：外层已持有 pe.mu，无需额外加锁
 		preds := pe.predecessors[node]
 		if len(preds) == 0 {
 			return true

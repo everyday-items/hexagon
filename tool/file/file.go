@@ -178,6 +178,21 @@ func (t *Tools) write(ctx context.Context, input WriteInput) (*WriteOutput, erro
 		return nil, fmt.Errorf("content too large: %d bytes (max: %d)", len(input.Content), t.config.MaxFileSize)
 	}
 
+	// 安全检查：若目标路径是已存在的符号链接，则拒绝写入
+	// 防止通过符号链接将数据写入允许路径之外的位置（TOCTOU 防护）
+	if info, err := os.Lstat(input.Path); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			// 解析符号链接的真实目标并重新验证
+			realTarget, err := filepath.EvalSymlinks(input.Path)
+			if err != nil {
+				return nil, fmt.Errorf("cannot resolve symlink target: %w", err)
+			}
+			if err := t.validatePath(realTarget); err != nil {
+				return nil, fmt.Errorf("symlink target not in allowed paths: %s -> %s", input.Path, realTarget)
+			}
+		}
+	}
+
 	// 确保目录存在
 	dir := filepath.Dir(input.Path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -344,6 +359,17 @@ type DeleteOutput struct {
 func (t *Tools) delete(ctx context.Context, input DeleteInput) (*DeleteOutput, error) {
 	if err := t.validatePath(input.Path); err != nil {
 		return nil, err
+	}
+
+	// 安全检查：若是符号链接，验证其真实目标也在允许路径内
+	if linfo, err := os.Lstat(input.Path); err == nil {
+		if linfo.Mode()&os.ModeSymlink != 0 {
+			if realTarget, err := filepath.EvalSymlinks(input.Path); err == nil {
+				if err := t.validatePath(realTarget); err != nil {
+					return nil, fmt.Errorf("symlink target not in allowed paths: %s -> %s", input.Path, realTarget)
+				}
+			}
+		}
 	}
 
 	info, err := os.Stat(input.Path)

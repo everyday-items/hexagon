@@ -200,11 +200,12 @@ func (e *CachedEmbedder) Embed(ctx context.Context, texts []string) ([][]float32
 	}
 
 	// 使用 singleflight 防止并发请求相同文本时多次调用底层 Embedder
-	// 为整个批次创建唯一 key
-	batchKey := ""
+	// 为整个批次创建聚合 hash key，避免大批量文本产生超长键
+	h := md5.New()
 	for _, text := range toEmbed {
-		batchKey += hashText(text) + ":"
+		h.Write([]byte(hashText(text)))
 	}
+	batchKey := hex.EncodeToString(h.Sum(nil))
 
 	embedResult, err, _ := e.sf.Do(batchKey, func() (interface{}, error) {
 		return e.embedder.Embed(ctx, toEmbed)

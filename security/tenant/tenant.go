@@ -449,8 +449,9 @@ func (t *UsageTracker) Track(tenantID, resource string, amount int64) {
 	}
 
 	if _, ok := t.usage[tenantID][resource]; !ok {
+		now := time.Now()
 		t.usage[tenantID][resource] = &UsageData{
-			PeriodStart: time.Now().Truncate(24 * time.Hour * 30), // 月初
+			PeriodStart: time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()), // 当月1号
 		}
 	}
 

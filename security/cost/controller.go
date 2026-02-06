@@ -9,6 +9,7 @@ package cost
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -298,10 +299,19 @@ func (c *Controller) RemainingBudget() float64 {
 }
 
 // RemainingTokens 返回剩余 Token
+// 如果未设置总 Token 限制（maxTokensTotal=0），返回 math.MaxInt64 表示无限制。
+// 结果不会为负数。
 func (c *Controller) RemainingTokens() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.maxTokensTotal - c.usedTokens
+	if c.maxTokensTotal <= 0 {
+		return math.MaxInt64
+	}
+	remaining := c.maxTokensTotal - c.usedTokens
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
 }
 
 // CanAfford 检查是否能负担指定成本

@@ -302,6 +302,7 @@ func (t *Team) runHierarchical(ctx context.Context, input Input) (Output, error)
 
 	// 让所有 Agent 处理任务
 	results := make([]string, 0, len(agents))
+	var agentErrors []string
 	for _, agent := range agents {
 		select {
 		case <-ctx.Done():
@@ -314,9 +315,16 @@ func (t *Team) runHierarchical(ctx context.Context, input Input) (Output, error)
 			Context: map[string]any{"manager_guidance": managerOutput.Content},
 		})
 		if err != nil {
-			continue // 继续执行其他 Agent
+			// 记录失败的 Agent 及错误信息，继续执行其他 Agent
+			agentErrors = append(agentErrors, fmt.Sprintf("[%s]: %v", agent.Name(), err))
+			continue
 		}
 		results = append(results, fmt.Sprintf("[%s]: %s", agent.Name(), output.Content))
+	}
+
+	// 如果所有 Agent 都失败了，返回错误
+	if len(results) == 0 && len(agentErrors) > 0 {
+		return Output{}, fmt.Errorf("all agents failed: %s", strings.Join(agentErrors, "; "))
 	}
 
 	// Manager 汇总结果

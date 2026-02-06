@@ -356,8 +356,7 @@ func (p *SequentialPlanner) Plan(ctx context.Context, goal string, opts ...PlanO
 	// 解析 LLM 响应
 	steps, err := p.parseStepsFromResponse(resp.Content)
 	if err != nil {
-		// 解析失败时返回空计划
-		return plan, nil
+		return nil, fmt.Errorf("解析规划步骤失败: %w", err)
 	}
 
 	plan.Steps = steps

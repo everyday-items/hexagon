@@ -819,24 +819,50 @@ func Timeout[T any](sr *StreamReader[T], d time.Duration) *StreamReader[T] {
 	}
 }
 
+// timeoutReader 带超时的流读取器
+// 使用持久化 goroutine 避免每次 recv() 泄漏 goroutine。
+// 后台 goroutine 持续从 source 读取并放入 resultCh，
+// recv() 只需从 resultCh 中带超时地读取即可。
 type timeoutReader[T any] struct {
-	source  *StreamReader[T]
-	timeout time.Duration
+	source   *StreamReader[T]
+	timeout  time.Duration
+	resultCh chan recvResult[T] // 后台 goroutine 的结果缓冲
+	initOnce sync.Once
+}
+
+// recvResult 封装一次 Recv 的结果
+type recvResult[T any] struct {
+	item T
+	err  error
+}
+
+// init 启动后台读取 goroutine（只启动一次）
+func (tr *timeoutReader[T]) init() {
+	tr.initOnce.Do(func() {
+		tr.resultCh = make(chan recvResult[T], 1)
+		go func() {
+			defer close(tr.resultCh)
+			for {
+				item, err := tr.source.Recv()
+				tr.resultCh <- recvResult[T]{item: item, err: err}
+				if err != nil {
+					return
+				}
+			}
+		}()
+	})
 }
 
 func (tr *timeoutReader[T]) recv() (T, error) {
-	done := make(chan struct{})
-	var item T
-	var err error
-
-	go func() {
-		item, err = tr.source.Recv()
-		close(done)
-	}()
+	tr.init()
 
 	select {
-	case <-done:
-		return item, err
+	case result, ok := <-tr.resultCh:
+		if !ok {
+			var zero T
+			return zero, io.EOF
+		}
+		return result.item, result.err
 	case <-time.After(tr.timeout):
 		var zero T
 		return zero, ErrStreamTimeout
@@ -1356,11 +1382,15 @@ func Distinct[T any](sr *StreamReader[T], equals func(T, T) bool) *StreamReader[
 	}
 }
 
+// distinctReader 去重流读取器
+// maxSeen 限制已见元素的最大数量，防止无限流场景下 OOM。
+// 当超过 maxSeen 时，清除最早的一半记录（LRU 策略）。
 type distinctReader[T any] struct {
-	source *StreamReader[T]
-	equals func(T, T) bool
-	seen   []T
-	mu     sync.Mutex
+	source  *StreamReader[T]
+	equals  func(T, T) bool
+	seen    []T
+	maxSeen int // 最大记录数，默认 10000
+	mu      sync.Mutex
 }
 
 func (dr *distinctReader[T]) recv() (T, error) {
@@ -1384,6 +1414,15 @@ func (dr *distinctReader[T]) recv() (T, error) {
 
 		if !found {
 			dr.seen = append(dr.seen, item)
+			// 防止无限流场景下 seen 列表无限增长导致 OOM
+			maxSeen := dr.maxSeen
+			if maxSeen <= 0 {
+				maxSeen = 10000
+			}
+			if len(dr.seen) > maxSeen {
+				// 保留后半部分（较新的元素）
+				dr.seen = dr.seen[len(dr.seen)/2:]
+			}
 			return item, nil
 		}
 	}

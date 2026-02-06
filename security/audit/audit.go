@@ -6,6 +6,7 @@ package audit
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -165,11 +166,18 @@ func (l *AuditLogger) Start(ctx context.Context) {
 }
 
 // Stop 停止审计日志
+//
+// 在锁内同时设置 running=false 和关闭 buffer，确保原子性。
+// 这样 Log() 方法在检查 running 状态时不会向已关闭的 channel 发送。
 func (l *AuditLogger) Stop() {
 	l.mu.Lock()
+	if !l.running {
+		l.mu.Unlock()
+		return
+	}
 	l.running = false
-	l.mu.Unlock()
 	close(l.buffer)
+	l.mu.Unlock()
 }
 
 // processLoop 处理循环
@@ -213,7 +221,9 @@ func (l *AuditLogger) flush(events []*AuditEvent) {
 	for _, event := range events {
 		// 写入存储
 		if l.store != nil {
-			l.store.Save(context.Background(), event)
+			if err := l.store.Save(context.Background(), event); err != nil {
+				fmt.Fprintf(os.Stderr, "[WARN] audit: failed to save event %s to store: %v\n", event.ID, err)
+			}
 		}
 
 		// 写入 writers
@@ -221,9 +231,15 @@ func (l *AuditLogger) flush(events []*AuditEvent) {
 		writers := l.writers
 		l.mu.RUnlock()
 
-		data, _ := json.Marshal(event)
+		data, err := json.Marshal(event)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[WARN] audit: failed to marshal event %s: %v\n", event.ID, err)
+			continue
+		}
 		for _, w := range writers {
-			w.Write(data)
+			if _, err := w.Write(data); err != nil {
+				fmt.Fprintf(os.Stderr, "[WARN] audit: failed to write event %s: %v\n", event.ID, err)
+			}
 			w.Write([]byte("\n"))
 		}
 	}
@@ -430,6 +446,17 @@ func (l *AuditLogger) Log(event *AuditEvent) {
 	}
 
 	// 发送到缓冲区
+	// 在锁内检查 running 状态并发送，防止向已关闭的 channel 发送
+	l.mu.RLock()
+	running := l.running
+	l.mu.RUnlock()
+
+	if !running {
+		// 审计已停止，直接同步写入
+		l.writeEventDirect(event)
+		return
+	}
+
 	select {
 	case l.buffer <- event:
 		// 成功加入缓冲区

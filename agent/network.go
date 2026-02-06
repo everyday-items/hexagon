@@ -251,6 +251,9 @@ type AgentNetwork struct {
 	// InboxSize 收件箱大小
 	inboxSize int
 
+	// RouterQueueSize 路由器消息队列大小（默认 10000）
+	routerQueueSize int
+
 	// HeartbeatInterval 心跳间隔
 	heartbeatInterval time.Duration
 
@@ -273,6 +276,7 @@ func NewAgentNetwork(name string, opts ...NetworkOption) *AgentNetwork {
 		handlers:          make(map[string]MessageHandler),
 		globalState:       NewGlobalState(),
 		inboxSize:         100,
+		routerQueueSize:   10000,
 		heartbeatInterval: 30 * time.Second,
 	}
 
@@ -304,6 +308,14 @@ func WithNetworkHub(hubID string) NetworkOption {
 func WithNetworkInboxSize(size int) NetworkOption {
 	return func(n *AgentNetwork) {
 		n.inboxSize = size
+	}
+}
+
+// WithRouterQueueSize 设置路由器消息队列大小
+// 默认 10000，高负载场景可适当增大。
+func WithRouterQueueSize(size int) NetworkOption {
+	return func(n *AgentNetwork) {
+		n.routerQueueSize = size
 	}
 }
 
@@ -828,10 +840,15 @@ type MessageRouter struct {
 }
 
 // NewMessageRouter 创建消息路由器
+// 队列大小从 network.routerQueueSize 获取，默认 10000。
 func NewMessageRouter(network *AgentNetwork) *MessageRouter {
+	queueSize := network.routerQueueSize
+	if queueSize <= 0 {
+		queueSize = 10000
+	}
 	return &MessageRouter{
 		network: network,
-		queue:   make(chan *NetworkMessage, 1000),
+		queue:   make(chan *NetworkMessage, queueSize),
 	}
 }
 

@@ -563,9 +563,9 @@ func TestComputeChecksum(t *testing.T) {
 		expected string
 	}{
 		{"", "empty"},
-		{"a", "1:a:a"},
-		{"hello", "5:h:o"},
-		{"world!", "6:w:!"},
+		{"a", "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"},
+		{"hello", "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"},
+		{"world!", "711e9609339e92b03ddc0a211827dba421f38f9ed8b9d806e1ffdd8c15ffa03d"},
 	}
 
 	for _, tt := range tests {

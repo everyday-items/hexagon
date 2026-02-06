@@ -37,6 +37,8 @@ type TaskStore interface {
 
 // MemoryTaskStore 内存任务存储
 // 用于开发和测试，生产环境应使用持久化存储。
+//
+// 重要：使用完毕后必须调用 Close() 释放清理协程，否则会导致 goroutine 泄漏。
 type MemoryTaskStore struct {
 	// tasks 任务映射 (id -> task)
 	tasks map[string]*Task
@@ -53,6 +55,9 @@ type MemoryTaskStore struct {
 	// taskTTL 任务过期时间（0 表示永不过期）
 	taskTTL time.Duration
 
+	// done 用于通知清理协程停止
+	done chan struct{}
+
 	mu sync.RWMutex
 }
 
@@ -67,6 +72,7 @@ func NewMemoryTaskStore(opts ...MemoryStoreOption) *MemoryTaskStore {
 		pushConfigs:  make(map[string]*PushNotificationConfig),
 		maxTasks:     10000,
 		taskTTL:      24 * time.Hour,
+		done:         make(chan struct{}),
 	}
 
 	for _, opt := range opts {
@@ -295,13 +301,25 @@ func (s *MemoryTaskStore) cleanupOldTasks() {
 	}
 }
 
+// Close 关闭内存任务存储，停止清理协程
+// 必须在不再使用 MemoryTaskStore 时调用，否则清理协程会泄漏。
+func (s *MemoryTaskStore) Close() {
+	close(s.done)
+}
+
 // cleanupLoop 定期清理过期任务
+// 通过 done channel 接收停止信号，避免 goroutine 泄漏。
 func (s *MemoryTaskStore) cleanupLoop() {
 	ticker := time.NewTicker(s.taskTTL / 10)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		s.cleanupExpiredTasks()
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-ticker.C:
+			s.cleanupExpiredTasks()
+		}
 	}
 }
 

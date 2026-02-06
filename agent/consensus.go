@@ -399,13 +399,29 @@ func (p *ConsensusProtocol) requestVote(ctx context.Context, poll *Poll, agentID
 // parseVoteValue 解析投票值
 //
 // 检查 LLM 返回的内容中是否包含任何选项，如果包含则返回该选项。
+// 匹配策略：优先精确匹配，其次选择最长的子字符串匹配，避免短选项误匹配。
 func (p *ConsensusProtocol) parseVoteValue(content string, options []any) any {
-	// 简单实现：检查内容中是否包含选项（子字符串匹配）
+	// 第一轮：尝试精确匹配（去除两端空白后整体比较）
+	trimmed := strings.TrimSpace(content)
 	for _, opt := range options {
 		optStr := fmt.Sprintf("%v", opt)
-		if strings.Contains(content, optStr) {
+		if trimmed == optStr {
 			return opt
 		}
+	}
+
+	// 第二轮：子字符串匹配，优先选择最长匹配（避免 "AB" 误匹配 "ABC" 场景）
+	var bestMatch any
+	bestLen := 0
+	for _, opt := range options {
+		optStr := fmt.Sprintf("%v", opt)
+		if strings.Contains(content, optStr) && len(optStr) > bestLen {
+			bestMatch = opt
+			bestLen = len(optStr)
+		}
+	}
+	if bestMatch != nil {
+		return bestMatch
 	}
 
 	// 默认返回内容本身

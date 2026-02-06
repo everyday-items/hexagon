@@ -7,6 +7,8 @@ package indexer
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -369,11 +371,11 @@ var _ rag.Indexer = (*IncrementalIndexer)(nil)
 // ============== 辅助函数 ==============
 
 // computeChecksum 计算内容校验和
+// 使用 SHA256 哈希，确保内容任意位置的变化都能被检测到
 func computeChecksum(content string) string {
-	// 简单使用内容长度和首尾字符作为快速校验
-	// 生产环境应使用 MD5 或 SHA256
 	if len(content) == 0 {
 		return "empty"
 	}
-	return fmt.Sprintf("%d:%c:%c", len(content), content[0], content[len(content)-1])
+	h := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(h[:])
 }
