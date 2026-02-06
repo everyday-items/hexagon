@@ -36,6 +36,7 @@ type DevUI struct {
 	collector  *Collector
 	hookMgr    *hooks.Manager
 	options    *Options
+	graphStore *GraphStore
 	running    bool
 	mu         sync.Mutex
 	startTime  time.Time
@@ -169,9 +170,10 @@ func New(opts ...Option) *DevUI {
 	hookMgr.RegisterRetrieverHook(collector)
 
 	return &DevUI{
-		collector: collector,
-		hookMgr:   hookMgr,
-		options:   options,
+		collector:  collector,
+		hookMgr:    hookMgr,
+		options:    options,
+		graphStore: NewGraphStore(),
 	}
 }
 
@@ -283,7 +285,7 @@ func (d *DevUI) setupRoutes() *http.ServeMux {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if d.options.CORSEnabled {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
 
 				if r.Method == "OPTIONS" {
@@ -296,6 +298,7 @@ func (d *DevUI) setupRoutes() *http.ServeMux {
 	}
 
 	handler := newHandler(d)
+	bHandler := newBuilderHandler(d.graphStore, d.collector)
 
 	// API 路由
 	prefix := d.options.APIPrefix
@@ -313,6 +316,11 @@ func (d *DevUI) setupRoutes() *http.ServeMux {
 		mux.HandleFunc(prefix+"/metrics", corsMiddleware(handler.handleMetrics))
 		mux.HandleFunc(prefix+"/stats", corsMiddleware(handler.handleStats))
 	}
+
+	// Builder API
+	mux.HandleFunc(prefix+"/builder/graphs", corsMiddleware(bHandler.handleGraphs))
+	mux.HandleFunc(prefix+"/builder/graphs/", corsMiddleware(bHandler.handleGraph))
+	mux.HandleFunc(prefix+"/builder/node-types", corsMiddleware(bHandler.handleNodeTypes))
 
 	// SSE 事件流
 	if d.options.EnableSSE {
