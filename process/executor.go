@@ -51,8 +51,13 @@ type ProcessInstance struct {
 	// 错误信息
 	lastError error
 
-	// 互斥锁
+	// mu 保护字段的并发读写，仅用于短时间持有
+	// 重要：持有 mu 时绝不能调用事件处理器（handler），否则会因 Go RWMutex 不可重入而死锁
 	mu sync.RWMutex
+
+	// transitionMu 序列化所有状态变更操作（Start/SendEvent/Pause/Resume/Cancel）
+	// 确保同一时刻只有一个状态变更在执行，防止并发 SendEvent 导致状态机语义被破坏
+	transitionMu sync.Mutex
 
 	// 暂停通道
 	pauseCh chan struct{}
@@ -135,6 +140,9 @@ func (p *ProcessInstance) Subscribe(handler EventHandler) {
 
 // Start 启动流程
 func (p *ProcessInstance) Start(ctx context.Context, input ProcessInput) error {
+	p.transitionMu.Lock()
+	defer p.transitionMu.Unlock()
+
 	p.mu.Lock()
 
 	// 检查状态
@@ -169,7 +177,7 @@ func (p *ProcessInstance) Start(ctx context.Context, input ProcessInput) error {
 	p.currentState = initialState
 	p.mu.Unlock()
 
-	// 发布流程开始事件
+	// 发布流程开始事件（无锁状态下调用，handler 可安全读取流程状态）
 	p.publishEvent(ProcessEvent{
 		Type:      EventTypeProcessStart,
 		ProcessID: p.id,
@@ -191,29 +199,38 @@ func (p *ProcessInstance) Start(ctx context.Context, input ProcessInput) error {
 
 // SendEvent 发送事件触发状态转换
 func (p *ProcessInstance) SendEvent(ctx context.Context, event Event) error {
-	p.mu.Lock()
+	// 序列化所有状态变更，防止并发 SendEvent 导致同一状态发生多次转换
+	p.transitionMu.Lock()
+	defer p.transitionMu.Unlock()
+
+	// 读取当前状态（只需读锁，transitionMu 已保证无并发写入）
+	p.mu.RLock()
+	status := p.status
+	currentStateName := p.currentState.Name()
+	p.mu.RUnlock()
 
 	// 检查状态
-	if p.status == StatusPending {
-		p.mu.Unlock()
+	if status == StatusPending {
 		return ErrProcessNotStarted
 	}
-	if p.status == StatusPaused {
-		p.mu.Unlock()
+	if status == StatusPaused {
 		return ErrProcessPaused
 	}
-	if p.status.IsTerminal() {
-		p.mu.Unlock()
+	if status.IsTerminal() {
 		return ErrProcessCompleted
 	}
-
-	currentStateName := p.currentState.Name()
-	p.mu.Unlock()
 
 	// 查找所有匹配的转换
 	transitions := p.definition.GetTransitionsByEvent(currentStateName, event.Name)
 	if len(transitions) == 0 {
 		return fmt.Errorf("%w: 状态 %s 没有事件 %s 的转换", ErrInvalidTransition, currentStateName, event.Name)
+	}
+
+	// 按优先级排序（高优先级优先），与 processAutoTransitions 行为一致
+	if len(transitions) > 1 {
+		sort.Slice(transitions, func(i, j int) bool {
+			return transitions[i].Priority > transitions[j].Priority
+		})
 	}
 
 	// 遍历所有转换，找到第一个守卫条件通过的
@@ -235,25 +252,30 @@ func (p *ProcessInstance) SendEvent(ctx context.Context, event Event) error {
 		return fmt.Errorf("%w: 状态 %s 的事件 %s 没有满足条件的转换", ErrInvalidTransition, currentStateName, event.Name)
 	}
 
-	// 执行转换
+	// 执行转换（Guard 已在此处检查，executeTransition 不再重复检查）
 	return p.executeTransition(ctx, matchedTransition, event)
 }
 
 // Pause 暂停流程
 func (p *ProcessInstance) Pause(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.transitionMu.Lock()
+	defer p.transitionMu.Unlock()
 
+	p.mu.Lock()
 	if p.status != StatusRunning {
+		p.mu.Unlock()
 		return fmt.Errorf("流程不在运行状态，无法暂停")
 	}
 
 	p.status = StatusPaused
+	stateName := p.currentState.Name()
+	p.mu.Unlock()
 
-	p.publishEventLocked(ProcessEvent{
+	// 先释放 mu 再发布事件，handler 可安全调用 Status()/GetData() 等读方法
+	p.publishEvent(ProcessEvent{
 		Type:      EventTypeProcessPaused,
 		ProcessID: p.id,
-		StateName: p.currentState.Name(),
+		StateName: stateName,
 		Timestamp: time.Now(),
 	})
 
@@ -262,19 +284,24 @@ func (p *ProcessInstance) Pause(ctx context.Context) error {
 
 // Resume 恢复流程
 func (p *ProcessInstance) Resume(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.transitionMu.Lock()
+	defer p.transitionMu.Unlock()
 
+	p.mu.Lock()
 	if p.status != StatusPaused {
+		p.mu.Unlock()
 		return fmt.Errorf("流程不在暂停状态，无法恢复")
 	}
 
 	p.status = StatusRunning
+	stateName := p.currentState.Name()
+	p.mu.Unlock()
 
-	p.publishEventLocked(ProcessEvent{
+	// 先释放 mu 再发布事件
+	p.publishEvent(ProcessEvent{
 		Type:      EventTypeProcessResumed,
 		ProcessID: p.id,
-		StateName: p.currentState.Name(),
+		StateName: stateName,
 		Timestamp: time.Now(),
 	})
 
@@ -283,24 +310,29 @@ func (p *ProcessInstance) Resume(ctx context.Context) error {
 
 // Cancel 取消流程
 func (p *ProcessInstance) Cancel(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.transitionMu.Lock()
+	defer p.transitionMu.Unlock()
 
+	p.mu.Lock()
 	if p.status.IsTerminal() {
+		p.mu.Unlock()
 		return fmt.Errorf("流程已结束，无法取消")
 	}
 
 	p.status = StatusCancelled
 	p.endTime = time.Now()
+	stateName := p.currentState.Name()
 
 	if p.cancelFunc != nil {
 		p.cancelFunc()
 	}
+	p.mu.Unlock()
 
-	p.publishEventLocked(ProcessEvent{
+	// 先释放 mu 再发布事件
+	p.publishEvent(ProcessEvent{
 		Type:      EventTypeProcessEnd,
 		ProcessID: p.id,
-		StateName: p.currentState.Name(),
+		StateName: stateName,
 		Timestamp: time.Now(),
 		Data:      map[string]any{"reason": "cancelled"},
 	})
@@ -416,6 +448,7 @@ func (p *ProcessInstance) OutputSchema() *core.Schema {
 // ============== 内部方法 ==============
 
 // enterState 进入状态
+// 注意：调用方必须已持有 transitionMu，本方法内不再获取 transitionMu
 func (p *ProcessInstance) enterState(ctx context.Context, state *StateImpl) error {
 	// 发布进入事件
 	p.publishEvent(ProcessEvent{
@@ -469,6 +502,7 @@ func (p *ProcessInstance) enterState(ctx context.Context, state *StateImpl) erro
 }
 
 // exitState 离开状态
+// 注意：调用方必须已持有 transitionMu，本方法内不再获取 transitionMu
 func (p *ProcessInstance) exitState(ctx context.Context, state *StateImpl) error {
 	// 发布离开事件
 	p.publishEvent(ProcessEvent{
@@ -496,15 +530,12 @@ func (p *ProcessInstance) exitState(ctx context.Context, state *StateImpl) error
 }
 
 // executeTransition 执行状态转换
+// 注意：调用方（SendEvent/processAutoTransitions）已保证 Guard 通过，本方法不再重复检查
+// 注意：调用方必须已持有 transitionMu，本方法内不再获取 transitionMu
 func (p *ProcessInstance) executeTransition(ctx context.Context, t *Transition, event Event) error {
-	p.mu.Lock()
+	p.mu.RLock()
 	currentState := p.currentState
-	p.mu.Unlock()
-
-	// 检查守卫条件
-	if !t.CanTransit(ctx, p.data) {
-		return ErrGuardFailed
-	}
+	p.mu.RUnlock()
 
 	// 离开当前状态
 	if err := p.exitState(ctx, currentState); err != nil {
@@ -560,6 +591,7 @@ func (p *ProcessInstance) executeTransition(ctx context.Context, t *Transition, 
 }
 
 // processAutoTransitions 处理自动转换
+// 注意：调用方必须已持有 transitionMu，本方法内不再获取 transitionMu
 func (p *ProcessInstance) processAutoTransitions(ctx context.Context) {
 	p.mu.RLock()
 	if p.status.IsTerminal() {
@@ -602,15 +634,16 @@ func (p *ProcessInstance) processAutoTransitions(ctx context.Context) {
 // complete 完成流程
 func (p *ProcessInstance) complete() {
 	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	p.status = StatusCompleted
 	p.endTime = time.Now()
+	stateName := p.currentState.Name()
+	p.mu.Unlock()
 
-	p.publishEventLocked(ProcessEvent{
+	// 先释放 mu 再发布事件，防止 handler 获取读锁时死锁
+	p.publishEvent(ProcessEvent{
 		Type:      EventTypeProcessEnd,
 		ProcessID: p.id,
-		StateName: p.currentState.Name(),
+		StateName: stateName,
 		Timestamp: time.Now(),
 		Data:      map[string]any{"status": "completed"},
 	})
@@ -619,16 +652,17 @@ func (p *ProcessInstance) complete() {
 // setError 设置错误
 func (p *ProcessInstance) setError(err error) {
 	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	p.lastError = err
 	p.status = StatusFailed
 	p.endTime = time.Now()
+	stateName := p.currentState.Name()
+	p.mu.Unlock()
 
-	p.publishEventLocked(ProcessEvent{
+	// 先释放 mu 再发布事件，防止 handler 获取读锁时死锁
+	p.publishEvent(ProcessEvent{
 		Type:      EventTypeError,
 		ProcessID: p.id,
-		StateName: p.currentState.Name(),
+		StateName: stateName,
 		Timestamp: time.Now(),
 		Error:     err,
 	})
@@ -667,6 +701,7 @@ func (p *ProcessInstance) addRecord(record ExecutionRecord) {
 }
 
 // publishEvent 发布事件
+// 重要：调用此方法时不能持有 p.mu，否则 handler 调用 Status()/GetData() 等方法时会死锁
 func (p *ProcessInstance) publishEvent(event ProcessEvent) {
 	p.mu.RLock()
 	handlers := make([]EventHandler, len(p.handlers))
@@ -674,17 +709,16 @@ func (p *ProcessInstance) publishEvent(event ProcessEvent) {
 	p.mu.RUnlock()
 
 	for _, handler := range handlers {
-		handler(event)
-	}
-}
-
-// publishEventLocked 发布事件（已持有锁）
-func (p *ProcessInstance) publishEventLocked(event ProcessEvent) {
-	handlers := make([]EventHandler, len(p.handlers))
-	copy(handlers, p.handlers)
-
-	for _, handler := range handlers {
-		handler(event)
+		// 捕获 handler panic，防止单个 handler 异常中断整个流程执行
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// 事件处理器 panic 不应中断流程执行
+					// TODO: 集成 observe 包后添加日志记录
+				}
+			}()
+			handler(event)
+		}()
 	}
 }
 
