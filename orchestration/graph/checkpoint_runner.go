@@ -87,6 +87,7 @@ func (r *CheckpointRunner[S]) Run(ctx context.Context, threadID string, initialS
 		VisitedNodes:   []string{START},
 		State:          stateBytes,
 		Stats:          &CheckpointStats{StepCount: 0},
+		Metadata:       make(map[string]any),
 	}
 
 	if err := r.saver.SaveEnhanced(ctx, r.currentCheckpoint); err != nil {
@@ -174,6 +175,14 @@ func (r *CheckpointRunner[S]) Fork(ctx context.Context, checkpointID string, bra
 func (r *CheckpointRunner[S]) executeFromCheckpoint(ctx context.Context, state S) (S, error) {
 	startTime := time.Now()
 	stepCount := 0
+
+	// 确保 Stats 和 Metadata 已初始化
+	if r.currentCheckpoint.Stats == nil {
+		r.currentCheckpoint.Stats = &CheckpointStats{}
+	}
+	if r.currentCheckpoint.Metadata == nil {
+		r.currentCheckpoint.Metadata = make(map[string]any)
+	}
 
 	// 获取待执行节点
 	pendingNodes := r.currentCheckpoint.PendingNodes
