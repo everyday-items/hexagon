@@ -1,0 +1,160 @@
+{{- $fullName := include "hexagon.fullname" . -}}
+# ============== 主应用 Deployment ==============
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-app
+  labels:
+    {{- include "hexagon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "hexagon.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        {{- include "hexagon.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: app
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ $fullName }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: hexagon
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          command: ["/app/hexagon", "serve"]
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          env:
+            - name: LOG_LEVEL
+              value: {{ .Values.app.env.LOG_LEVEL | quote }}
+            - name: QDRANT_URL
+              value: {{ include "hexagon.qdrantURL" . | quote }}
+            - name: REDIS_URL
+              value: {{ include "hexagon.redisURL" . | quote }}
+            - name: REDIS_PASSWORD
+              value: {{ include "hexagon.redisPassword" . | quote }}
+            - name: POSTGRES_DSN
+              value: {{ include "hexagon.postgresDSN" . | quote }}
+            {{- if .Values.secrets.openaiApiKey }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-secrets
+                  key: openai-api-key
+            {{- end }}
+            {{- if .Values.secrets.deepseekApiKey }}
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-secrets
+                  key: deepseek-api-key
+            {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: app-data
+              mountPath: /app/data
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources: {{- toYaml .Values.app.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: app-data
+          emptyDir: {}
+---
+{{- if .Values.devui.enabled }}
+# ============== DevUI Deployment ==============
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-devui
+  labels:
+    {{- include "hexagon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: devui
+spec:
+  replicas: {{ .Values.devui.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "hexagon.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: devui
+  template:
+    metadata:
+      labels:
+        {{- include "hexagon.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: devui
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ $fullName }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: devui
+          image: "{{ .Values.devui.image.repository }}:{{ .Values.devui.image.tag }}"
+          imagePullPolicy: {{ .Values.devui.image.pullPolicy }}
+          command: ["/app/hexagon", "devui"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          env:
+            - name: DEVUI_ADDR
+              value: ":8080"
+            - name: HEXAGON_APP_URL
+              value: "http://{{ $fullName }}-app:{{ .Values.app.service.port }}"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          resources: {{- toYaml .Values.devui.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

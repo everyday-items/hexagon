@@ -1,0 +1,65 @@
+🎉 Hexagon 部署成功！
+
+{{- $fullName := include "hexagon.fullname" . }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📡 访问应用:
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+  # 主应用 (端口转发)
+  kubectl port-forward svc/{{ $fullName }}-app {{ .Values.app.service.port }}:{{ .Values.app.service.port }} -n {{ .Release.Namespace }}
+  http://localhost:{{ .Values.app.service.port }}
+
+{{- if .Values.devui.enabled }}
+  # Dev UI (端口转发)
+  kubectl port-forward svc/{{ $fullName }}-devui {{ .Values.devui.service.port }}:{{ .Values.devui.service.port }} -n {{ .Release.Namespace }}
+  http://localhost:{{ .Values.devui.service.port }}
+{{- end }}
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 基础设施:
+{{- if .Values.qdrant.enabled }}
+  Qdrant (内置):   {{ $fullName }}-qdrant:{{ .Values.qdrant.service.httpPort }}
+{{- else }}
+  Qdrant (外部):   {{ .Values.external.qdrant.url }}
+{{- end }}
+{{- if .Values.redis.enabled }}
+  Redis  (内置):   {{ $fullName }}-redis:{{ .Values.redis.service.port }}
+{{- else }}
+  Redis  (外部):   {{ .Values.external.redis.url }}
+{{- end }}
+{{- if .Values.postgres.enabled }}
+  PgSQL  (内置):   {{ $fullName }}-postgres:{{ .Values.postgres.service.port }}
+{{- else }}
+  PgSQL  (外部):   通过 external.postgres.dsn 配置
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 常用命令:
+
+  # 查看 Pod 状态
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+  # 查看应用日志
+  kubectl logs -f deploy/{{ $fullName }}-app -n {{ .Release.Namespace }}
+
+  # 升级部署
+  helm upgrade {{ .Release.Name }} deploy/helm/hexagon -n {{ .Release.Namespace }}
+
+  # 卸载
+  helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+{{- if not .Values.secrets.openaiApiKey }}
+
+⚠️  提示: 未配置 LLM API Key，请通过以下方式设置:
+  helm upgrade {{ .Release.Name }} deploy/helm/hexagon \
+    --set secrets.openaiApiKey=sk-xxx \
+    -n {{ .Release.Namespace }}
+{{- end }}

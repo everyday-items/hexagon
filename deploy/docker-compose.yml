@@ -1,0 +1,223 @@
+# Hexagon Docker Compose 部署方案
+#
+# 自包含 + 可切换架构：
+#   - 默认启动全部服务（应用 + 基础设施），适合快速体验和演示
+#   - 基础设施可通过环境变量切换为外部服务
+#
+# 使用方式:
+#
+#   # 一键启动全部（推荐新用户）
+#   docker compose up -d
+#
+#   # 仅启动应用，基础设施用外部服务
+#   docker compose up -d hexagon-app hexagon-devui
+#
+#   # 仅启动基础设施（本地开发调试）
+#   docker compose up -d qdrant redis postgres
+#
+#   # 查看日志
+#   docker compose logs -f hexagon-app
+#
+#   # 停止并清理
+#   docker compose down
+#   docker compose down -v   # 同时删除数据卷
+#
+# 环境变量:
+#   cp .env.example .env
+
+services:
+  # ============== 应用服务 ==============
+
+  hexagon-app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: app
+    container_name: hexagon-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - REDIS_URL=${REDIS_URL:-redis:6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - POSTGRES_DSN=${POSTGRES_DSN:-postgres://hexagon:hexagon@postgres:5432/hexagon?sslmode=disable}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - hexagon-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  hexagon-devui:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: devui
+    container_name: hexagon-devui
+    restart: unless-stopped
+    ports:
+      - "${DEVUI_PORT:-8080}:8080"
+    environment:
+      - DEVUI_ADDR=:8080
+      - HEXAGON_APP_URL=http://hexagon-app:8000
+    networks:
+      - hexagon-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============== 基础设施（可禁用，使用外部服务替代） ==============
+
+  qdrant:
+    image: qdrant/qdrant:v1.11.0
+    container_name: hexagon-qdrant
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    networks:
+      - hexagon-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis/redis-stack:7.4.0-v0
+    container_name: hexagon-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_INSIGHT_PORT:-8001}:8001"
+    volumes:
+      - redis-data:/data
+    environment:
+      - REDIS_ARGS=--requirepass ${REDIS_PASSWORD:-}
+    networks:
+      - hexagon-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: hexagon-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-hexagon}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-hexagon}
+      - POSTGRES_DB=${POSTGRES_DB:-hexagon}
+    networks:
+      - hexagon-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hexagon}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# ============== 网络 ==============
+
+networks:
+  hexagon-net:
+    driver: bridge
+
+# ============== 数据卷 ==============
+
+volumes:
+  qdrant-data:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local

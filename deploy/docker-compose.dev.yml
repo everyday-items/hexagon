@@ -1,0 +1,105 @@
+# Hexagon 开发模式 Docker Compose
+#
+# 仅启动 hexagon 应用服务，连接 docker-dev-env 提供的外部基础设施。
+# 适用于团队开发者已通过 docker-dev-env 启动了 Redis、PostgreSQL 等中间件的场景。
+#
+# 前置条件:
+#   1. 创建 dev-net 共享网络（docker-dev-env 已提供）:
+#      docker network create dev-net
+#
+#   2. 通过 docker-dev-env 启动所需的基础设施:
+#      cd /path/to/docker-dev-env/redis && docker compose up -d
+#      # 按需启动其他服务...
+#
+#   3. 参考: https://github.com/everyday-items/docker-dev-env
+#
+# 使用方式:
+#
+#   # 启动开发模式
+#   docker compose -f docker-compose.dev.yml up -d
+#
+#   # 查看日志
+#   docker compose -f docker-compose.dev.yml logs -f
+#
+#   # 停止
+#   docker compose -f docker-compose.dev.yml down
+#
+# 环境变量:
+#   cp .env.dev.example .env
+
+services:
+  hexagon-app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: app
+    container_name: hexagon-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - REDIS_URL=${REDIS_URL:-redis:6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis123}
+      - POSTGRES_DSN=${POSTGRES_DSN:-postgres://hexagon:hexagon@postgres:5432/hexagon?sslmode=disable}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+    networks:
+      - dev-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  hexagon-devui:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: devui
+    container_name: hexagon-devui
+    restart: unless-stopped
+    ports:
+      - "${DEVUI_PORT:-8080}:8080"
+    environment:
+      - DEVUI_ADDR=:8080
+      - HEXAGON_APP_URL=http://hexagon-app:8000
+    networks:
+      - dev-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  dev-net:
+    external: true

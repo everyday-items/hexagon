@@ -1,0 +1,18 @@
+apiVersion: v2
+name: hexagon
+description: Hexagon - Go 生态全能型 AI Agent 框架
+type: application
+version: 0.1.0
+appVersion: "0.4.0"
+keywords:
+  - ai
+  - agent
+  - llm
+  - rag
+  - graph
+home: https://github.com/everyday-items/hexagon
+sources:
+  - https://github.com/everyday-items/hexagon
+maintainers:
+  - name: everyday-items
+    url: https://github.com/everyday-items

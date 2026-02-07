@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# 文档和配置
+*.md
+!README.md
+LICENSE
+.claude/
+docs/
+
+# CI/CD
+.github/
+
+# 构建产物
+bin/
+dist/
+vendor/
+
+# 测试和基准
+*_test.go
+bench/
+testing/
+examples/
+
+# 部署配置（避免递归）
+deploy/
+
+# 前端（hexagon-ui 独立构建）
+hexagon-ui/
+node_modules/
+
+# 环境变量和密钥
+.env
+.env.*
+*.pem
+*.key
+
+# macOS
+.DS_Store
+
+# 临时文件
+tmp/
+*.tmp
+*.log
