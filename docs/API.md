@@ -274,6 +274,12 @@ type Document struct {
 | `NewDirectoryLoader(dir string, patterns ...string)` | 目录批量加载器 |
 | `NewURLLoader(url string)` | URL 加载器 |
 | `NewStringLoader(content string)` | 字符串加载器 |
+| `NewCSVLoader(path string)` | CSV 文件加载器 |
+| `NewExcelLoader(path string)` | Excel (.xlsx) 文件加载器 |
+| `NewPPTXLoader(path string)` | PowerPoint (.pptx) 文件加载器 |
+| `NewDOCXLoader(path string)` | Word (.docx) 文件加载器 |
+| `NewPDFLoader(path string)` | PDF 文件加载器 |
+| `NewOCRLoader(path string, opts ...OCROption)` | OCR 图片文字提取加载器 (支持 VisionLLM) |
 
 ### 文档分割器
 
@@ -283,6 +289,9 @@ type Document struct {
 | `NewRecursiveSplitter(chunkSize, overlap int)` | 递归分割器 |
 | `NewMarkdownSplitter()` | Markdown 分割器 |
 | `NewSentenceSplitter()` | 句子分割器 |
+| `NewTokenSplitter(chunkSize int, opts ...TokenOption)` | Token 分割器 (按 Token 计数分割) |
+| `NewCodeSplitter(language string)` | 代码分割器 (按语言语法分割) |
+| `NewSemanticSplitter(embedder Embedder)` | 语义分割器 (按语义相似度分割) |
 
 ### 检索器
 
@@ -292,6 +301,9 @@ type Document struct {
 | `NewKeywordRetriever(docs []Document)` | 关键词检索器 |
 | `NewHybridRetriever(vector, keyword, weight)` | 混合检索器 |
 | `NewMultiRetriever(retrievers ...Retriever)` | 多源检索器 |
+| `NewHyDERetriever(llm, embedder, store, opts ...)` | HyDE 假设文档检索器 (LLM 生成假设文档后检索) |
+| `NewAdaptiveRetriever(retrievers ...Retriever)` | 自适应检索器 (根据查询特征自动选择策略) |
+| `NewParentDocRetriever(store, splitter)` | 父文档检索器 (检索子块后返回完整父文档) |
 
 ### 向量生成器
 
@@ -345,6 +357,18 @@ store, err := hexagon.NewQdrantStoreWithOptions(
     hexagon.QdrantWithCreateCollection(true),
 )
 ```
+
+#### 更多向量存储
+
+| 函数 | 说明 |
+|-----|------|
+| `faiss.New(config)` | FAISS 向量存储 (高性能本地检索) |
+| `pgvector.New(config)` | PgVector 向量存储 (PostgreSQL 扩展) |
+| `redis.New(config)` | Redis 向量存储 (Redis Stack) |
+| `milvus.New(config)` | Milvus 向量存储 |
+| `chroma.New(config)` | Chroma 向量存储 |
+| `pinecone.New(config)` | Pinecone 向量存储 |
+| `weaviate.New(config)` | Weaviate 向量存储 |
 
 ---
 

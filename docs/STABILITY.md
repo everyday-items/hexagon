@@ -89,14 +89,41 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 - `Workflow`, `Step` 类型
 - 持久化接口
 
+**Flow 流程编排** (`github.com/everyday-items/hexagon/orchestration/flow`)
+- `Flow`, `FlowBuilder` 类型
+- `WithTimeout()` 可配置超时
+
 **检查点** (`github.com/everyday-items/hexagon/orchestration/graph`)
 - `CheckpointSaver` 接口
 - Redis 检查点实现
 - 中断和恢复功能
+- 分布式执行、Barrier 同步、节点缓存
 
 **向量存储** (`github.com/everyday-items/hexagon/store/vector`)
 - `VectorStore` 接口
-- Qdrant 实现
+- Qdrant、FAISS、PgVector、Redis、Milvus、Chroma、Pinecone、Weaviate 实现
+
+**高级检索器** (`github.com/everyday-items/hexagon/rag/retriever`)
+- `HyDERetriever` - 假设文档检索
+- `AdaptiveRetriever` - 自适应检索
+- `ParentDocRetriever` - 父文档检索
+
+**高级加载器** (`github.com/everyday-items/hexagon/rag/loader`)
+- `ExcelLoader`, `PPTXLoader`, `CSVLoader` - Office 文件加载
+- `OCRLoader` - VisionLLM OCR 文字提取
+
+**高级分割器** (`github.com/everyday-items/hexagon/rag/splitter`)
+- `TokenSplitter` - Token 计数分割
+- `CodeSplitter` - 代码语法分割
+
+**记忆共享** (`github.com/everyday-items/hexagon/memory`)
+- 多 Agent 记忆自动共享
+
+**Agent 原语** (`github.com/everyday-items/hexagon/agent`)
+- `Parallel`, `Sequential`, `Route` 原语
+
+**MCP 协议** (`github.com/everyday-items/hexagon/mcp`)
+- MCP 协议支持
 
 ### Deprecated (已弃用)
 

@@ -35,7 +35,7 @@ Hexagon 是一个完整的 AI Agent 开发生态：
 
 ### 系统要求
 
-- Go 1.21 或更高版本
+- Go 1.23 或更高版本
 - 网络连接（访问 LLM API）
 
 ### 环境变量
@@ -466,11 +466,37 @@ npm run dev
 
 ---
 
+## 部署
+
+Hexagon 提供三种部署方式：
+
+### Docker 快速启动
+
+```bash
+cd deploy
+cp .env.example .env
+# 编辑 .env，填入 LLM API Key
+make up
+# 主应用: http://localhost:8000  Dev UI: http://localhost:8080
+```
+
+### Kubernetes / Helm
+
+```bash
+cd deploy
+make helm-install
+```
+
+详见 [部署指南](../deploy/README.md)。
+
+---
+
 ## 下一步
 
 - 阅读 [API 参考文档](API.md) 了解完整 API
 - 阅读 [架构设计文档](DESIGN.md) 深入理解框架设计
 - 阅读 [框架对比](comparison.md) 了解与其他框架的差异
+- 阅读 [部署指南](../deploy/README.md) 了解部署配置
 - 查看 [示例代码](../examples/) 获取更多用例
 - 访问 [GitHub](https://github.com/everyday-items/hexagon) 参与贡献
 

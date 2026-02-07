@@ -4,7 +4,7 @@
 
 **Go 生态全能型 AI Agent 框架**
 
-[![Go Reference](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go&logoColor=white)](https://pkg.go.dev/github.com/everyday-items/hexagon)
+[![Go Reference](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go&logoColor=white)](https://pkg.go.dev/github.com/everyday-items/hexagon)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen)](https://github.com/everyday-items/hexagon/actions)
 
@@ -424,11 +424,12 @@ for event := range events {
 
 ```
 hexagon/
-├── agent/              # Agent 核心 (ReAct/Role/Team/Handoff/State)
+├── agent/              # Agent 核心 (ReAct/Role/Team/Handoff/State/Primitives)
 ├── a2a/                # A2A 协议 (Client/Server/Handler/Discovery)
 ├── core/               # 统一接口 (Component[I,O], Stream[T])
 ├── orchestration/      # 编排引擎
-│   ├── graph/          # 图编排 (状态图 + 检查点)
+│   ├── graph/          # 图编排 (状态图/检查点/Barrier/分布式/可视化)
+│   ├── flow/           # Flow 流程编排 (可配置超时)
 │   ├── chain/          # 链式编排
 │   ├── workflow/       # 工作流引擎
 │   └── planner/        # 规划器
@@ -438,22 +439,27 @@ hexagon/
 │   ├── extractor/      # 结构化提取器
 │   └── validator/      # Schema 验证器
 ├── rag/                # RAG 系统
-│   ├── loader/         # 文档加载
-│   ├── splitter/       # 文档分割
-│   ├── retriever/      # 检索器 (Vector/Keyword/Hybrid)
+│   ├── loader/         # 文档加载 (Text/Markdown/CSV/XLSX/PPTX/DOCX/PDF/OCR)
+│   ├── splitter/       # 文档分割 (Character/Recursive/Markdown/Sentence/Token/Code)
+│   ├── retriever/      # 检索器 (Vector/Keyword/Hybrid/HyDE/Adaptive/ParentDoc)
 │   ├── reranker/       # 重排序
 │   └── synthesizer/    # 响应合成
+├── memory/             # 多 Agent 记忆共享
+├── artifact/           # 工件系统
+├── mcp/                # MCP 协议支持
 ├── hooks/              # 钩子系统 (Run/Tool/LLM/Retriever)
-├── observe/            # 可观测性 (Tracer/Metrics/OTel)
-├── security/           # 安全防护 (Guard/RBAC/Cost/Audit)
+├── observe/            # 可观测性 (Tracer/Metrics/OTel/DevUI)
+├── security/           # 安全防护 (Guard/RBAC/Cost/Audit/Filter)
 ├── tool/               # 工具系统 (File/Python/Shell/Sandbox)
-├── store/              # 存储 (Vector/Qdrant/Milvus/Chroma)
+├── store/              # 存储
+│   └── vector/         # 向量存储 (Qdrant/FAISS/PgVector/Redis/Milvus/Chroma/Pinecone/Weaviate)
 ├── plugin/             # 插件系统
 ├── config/             # 配置管理
 ├── evaluate/           # 评估系统
 ├── testing/            # 测试工具 (Mock/Record)
+├── deploy/             # 部署配置 (Docker Compose/Helm Chart/CI)
 ├── examples/           # 示例代码
-└── hexagon.go          # 入口
+└── hexagon.go          # 入口 (v0.3.0-beta)
 ```
 
 ## 📚 文档
@@ -494,6 +500,10 @@ hexagon/
 | [examples/graph](examples/graph) | 图编排示例 |
 | [examples/team](examples/team) | 多 Agent 团队示例 |
 | [examples/handoff](examples/handoff) | Agent 交接示例 |
+| [examples/chatbot](examples/chatbot) | 聊天机器人示例 |
+| [examples/code-review](examples/code-review) | 代码审查示例 |
+| [examples/data-analysis](examples/data-analysis) | 数据分析示例 |
+| [examples/qdrant](examples/qdrant) | Qdrant 向量存储示例 |
 | [examples/devui](examples/devui) | Dev UI 示例 |
 
 ## 🖥️ Dev UI
@@ -528,6 +538,44 @@ npm run dev
 # 访问 http://localhost:5173
 ```
 
+## 🚢 部署
+
+Hexagon 提供三种部署方式，支持本地开发到生产环境的全场景覆盖：
+
+| 方案 | 适用场景 | 命令 |
+|------|---------|------|
+| Docker Compose (完整模式) | 快速体验、演示、单机部署 | `make up` |
+| Docker Compose (开发模式) | 团队开发（复用 docker-dev-env） | `make dev-up` |
+| Helm Chart | K8s 集群、生产环境 | `make helm-install` |
+
+### Docker 快速启动
+
+```bash
+cd deploy
+cp .env.example .env
+# 编辑 .env，填入 LLM API Key
+make up
+
+# 访问
+# 主应用:  http://localhost:8000
+# Dev UI:  http://localhost:8080
+```
+
+### Kubernetes / Helm
+
+```bash
+cd deploy
+make helm-install
+
+# 使用外部基础设施
+helm install hexagon helm/hexagon/ \
+  -n hexagon --create-namespace \
+  --set qdrant.enabled=false \
+  --set external.qdrant.url=http://my-qdrant:6333
+```
+
+详见 [部署指南](deploy/README.md)。
+
 ## 🔨 开发
 
 ```bash
@@ -548,7 +596,7 @@ make fmt     # 格式化
 ```
 MIT License
 
-Copyright (c) 2024 everyday-items
+Copyright (c) 2025 everyday-items
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
