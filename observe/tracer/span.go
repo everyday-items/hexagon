@@ -258,9 +258,30 @@ type SpanData struct {
 }
 
 // Export 导出 Span 数据
+// 注意：内联 Duration/Attributes/Events 的逻辑，避免在持有 RLock 时
+// 再次调用这些方法获取 RLock，因为 Go 的 RWMutex 不可重入，
+// 当有 writer（如 End()）等待时会导致死锁
 func (s *DefaultSpan) Export() SpanData {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
+	// 内联 Duration() 逻辑
+	var dur time.Duration
+	if s.endTime.IsZero() {
+		dur = time.Since(s.startTime)
+	} else {
+		dur = s.endTime.Sub(s.startTime)
+	}
+
+	// 内联 Attributes() 逻辑
+	attrs := make(map[string]any, len(s.attributes))
+	for k, v := range s.attributes {
+		attrs[k] = v
+	}
+
+	// 内联 Events() 逻辑
+	events := make([]SpanEvent, len(s.events))
+	copy(events, s.events)
 
 	return SpanData{
 		SpanID:     s.spanID,
@@ -270,9 +291,9 @@ func (s *DefaultSpan) Export() SpanData {
 		Kind:       s.kindString(),
 		StartTime:  s.startTime,
 		EndTime:    s.endTime,
-		Duration:   s.Duration(),
-		Attributes: s.Attributes(),
-		Events:     s.Events(),
+		Duration:   dur,
+		Attributes: attrs,
+		Events:     events,
 		Status:     s.status,
 		Input:      s.input,
 		Output:     s.output,

@@ -402,6 +402,10 @@ func (e *graphExecutor[S]) getNextNode(currentNode string) (string, error) {
 	if condEdges, ok := e.graph.conditionalEdges[currentNode]; ok && len(condEdges) > 0 {
 		for _, ce := range condEdges {
 			label := ce.router(e.state)
+			if ce.edges == nil {
+				// 动态路由（如 Command 节点）：router 返回值直接作为目标节点名
+				return label, nil
+			}
 			if target, ok := ce.edges[label]; ok {
 				return target, nil
 			}

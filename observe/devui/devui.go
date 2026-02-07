@@ -32,14 +32,15 @@ import (
 //	go ui.Start()
 //	// 访问 http://localhost:8080
 type DevUI struct {
-	server     *http.Server
-	collector  *Collector
-	hookMgr    *hooks.Manager
-	options    *Options
-	graphStore *GraphStore
-	running    bool
-	mu         sync.Mutex
-	startTime  time.Time
+	server        *http.Server
+	collector     *Collector
+	hookMgr       *hooks.Manager
+	options       *Options
+	graphStore    *GraphStore
+	replayManager *ReplayManager
+	running       bool
+	mu            sync.Mutex
+	startTime     time.Time
 }
 
 // Options 配置选项
@@ -170,10 +171,11 @@ func New(opts ...Option) *DevUI {
 	hookMgr.RegisterRetrieverHook(collector)
 
 	return &DevUI{
-		collector:  collector,
-		hookMgr:    hookMgr,
-		options:    options,
-		graphStore: NewGraphStore(),
+		collector:     collector,
+		hookMgr:       hookMgr,
+		options:       options,
+		graphStore:    NewGraphStore(),
+		replayManager: NewReplayManager(100),
 	}
 }
 
@@ -190,6 +192,11 @@ func (d *DevUI) Tracer() tracer.Tracer {
 // Collector 返回事件收集器
 func (d *DevUI) Collector() *Collector {
 	return d.collector
+}
+
+// Replay 返回调试回放管理器
+func (d *DevUI) Replay() *ReplayManager {
+	return d.replayManager
 }
 
 // Start 启动 DevUI 服务器
@@ -299,6 +306,7 @@ func (d *DevUI) setupRoutes() *http.ServeMux {
 
 	handler := newHandler(d)
 	bHandler := newBuilderHandler(d.graphStore, d.collector)
+	rHandler := newReplayHandler(d.replayManager)
 
 	// API 路由
 	prefix := d.options.APIPrefix
@@ -321,6 +329,10 @@ func (d *DevUI) setupRoutes() *http.ServeMux {
 	mux.HandleFunc(prefix+"/builder/graphs", corsMiddleware(bHandler.handleGraphs))
 	mux.HandleFunc(prefix+"/builder/graphs/", corsMiddleware(bHandler.handleGraph))
 	mux.HandleFunc(prefix+"/builder/node-types", corsMiddleware(bHandler.handleNodeTypes))
+
+	// Replay API（调试回放）
+	mux.HandleFunc(prefix+"/replay/sessions", corsMiddleware(rHandler.handleSessions))
+	mux.HandleFunc(prefix+"/replay/sessions/", corsMiddleware(rHandler.handleSession))
 
 	// SSE 事件流
 	if d.options.EnableSSE {
