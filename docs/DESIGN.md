@@ -417,12 +417,12 @@ docs, _ := pipeline.Query(ctx, "query", rag.WithTopK(5))
 
 | 组件类型 | 实现 |
 |---------|------|
-| Loader | TextLoader, MarkdownLoader, DirectoryLoader, URLLoader |
-| Splitter | CharacterSplitter, RecursiveSplitter, MarkdownSplitter, SentenceSplitter |
-| Retriever | VectorRetriever, KeywordRetriever, HybridRetriever, MultiRetriever |
+| Loader | TextLoader, MarkdownLoader, DirectoryLoader, URLLoader, CSVLoader, ExcelLoader, PPTXLoader, DOCXLoader, PDFLoader, OCRLoader |
+| Splitter | CharacterSplitter, RecursiveSplitter, MarkdownSplitter, SentenceSplitter, TokenSplitter, CodeSplitter, SemanticSplitter |
+| Retriever | VectorRetriever, KeywordRetriever, HybridRetriever, MultiRetriever, HyDERetriever, AdaptiveRetriever, ParentDocRetriever |
 | Indexer | VectorIndexer, ConcurrentIndexer, IncrementalIndexer |
 | Embedder | OpenAIEmbedder, CachedEmbedder, MockEmbedder |
-| VectorStore | MemoryStore, QdrantStore, MilvusStore, ChromaStore |
+| VectorStore | MemoryStore, QdrantStore, FAISSStore, PgVectorStore, RedisStore, MilvusStore, ChromaStore, PineconeStore, WeaviateStore |
 
 ---
 
@@ -613,6 +613,7 @@ hexagon/
 ├── agent/                        # Agent 核心
 │   ├── agent.go                  # Agent 接口定义
 │   ├── react.go                  # ReAct Agent 实现
+│   ├── primitives.go             # Agent 原语 (Parallel/Sequential/Route)
 │   ├── role.go                   # 角色系统
 │   ├── team.go                   # 团队协作 (4 种工作模式)
 │   ├── handoff.go                # Agent 交接
@@ -630,20 +631,32 @@ hexagon/
 │   │   ├── edge.go               # 边定义
 │   │   ├── state.go              # 状态管理
 │   │   ├── checkpoint.go         # 检查点保存
-│   │   └── interrupt.go          # 中断恢复
+│   │   ├── interrupt.go          # 中断恢复
+│   │   ├── barrier.go            # 同步屏障
+│   │   ├── cache.go              # 节点缓存
+│   │   ├── command.go            # 命令模式
+│   │   ├── distributed.go        # 分布式执行
+│   │   ├── functional.go         # 函数式 API
+│   │   ├── stream_mode.go        # 流模式
+│   │   └── visualize.go          # 图可视化
+│   ├── flow/                     # Flow 流程编排 (可配置超时)
 │   ├── chain/                    # 链式编排
 │   ├── workflow/                 # 工作流引擎
 │   └── planner/                  # 规划器
 │
 ├── rag/                          # RAG 系统
 │   ├── rag.go                    # RAG 核心接口
-│   ├── loader/                   # 文档加载器
-│   ├── splitter/                 # 文档分割器
+│   ├── loader/                   # 文档加载器 (Text/MD/CSV/XLSX/PPTX/DOCX/PDF/OCR)
+│   ├── splitter/                 # 文档分割器 (Character/Recursive/MD/Sentence/Token/Code)
 │   ├── embedder/                 # 向量生成器
 │   ├── indexer/                  # 索引器
-│   ├── retriever/                # 检索器 (Vector/Keyword/Hybrid)
+│   ├── retriever/                # 检索器 (Vector/Keyword/Hybrid/HyDE/Adaptive/ParentDoc)
 │   ├── reranker/                 # 重排序器
 │   └── synthesizer/              # 响应合成器 (Refine/Compact/Tree)
+│
+├── memory/                       # 多 Agent 记忆共享
+├── artifact/                     # 工件系统
+├── mcp/                          # MCP 协议支持
 │
 ├── hooks/                        # 钩子系统
 │
@@ -651,6 +664,7 @@ hexagon/
 │   ├── tracer/                   # 追踪
 │   ├── metrics/                  # 指标
 │   ├── logger/                   # 日志
+│   ├── devui/                    # Dev UI 后端
 │   ├── otel/                     # OpenTelemetry 集成
 │   └── prometheus/               # Prometheus 集成
 │
@@ -668,7 +682,15 @@ hexagon/
 │   └── sandbox/                  # 沙箱执行
 │
 ├── store/                        # 存储
-│   └── vector/                   # 向量存储 (Memory/Qdrant/Milvus/Chroma)
+│   └── vector/                   # 向量存储
+│       ├── qdrant/               # Qdrant
+│       ├── faiss/                # FAISS
+│       ├── pgvector/             # PgVector
+│       ├── redis/                # Redis
+│       ├── milvus/               # Milvus
+│       ├── chroma/               # Chroma
+│       ├── pinecone/             # Pinecone
+│       └── weaviate/             # Weaviate
 │
 ├── plugin/                       # 插件系统
 ├── config/                       # 配置管理
@@ -681,6 +703,7 @@ hexagon/
 │
 ├── bench/                        # 基准测试
 ├── examples/                     # 示例代码
+├── deploy/                       # 部署配置 (Docker Compose/Helm/CI)
 ├── docs/                         # 公开文档
 ├── internal/                     # 内部实现
 │

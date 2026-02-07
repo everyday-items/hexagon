@@ -47,22 +47,30 @@ Hexagon 是一个完整的 AI Agent 开发生态：
    - 中断和恢复
    - 检查点机制
 
+### 部署运维
+
+5. [**部署指南**](../../deploy/README.md)
+   - Docker Compose 完整模式（一键启动）
+   - Docker Compose 开发模式（连接 docker-dev-env）
+   - Kubernetes / Helm Chart
+   - 基础设施切换（内置/外部）
+
 ### 运维指南
 
-5. [**可观测性集成指南**](./observability.md)
+6. [**可观测性集成指南**](./observability.md)
    - 分布式追踪 (OpenTelemetry)
    - 指标监控 (Prometheus)
    - 日志记录
    - Dev UI 使用
 
-6. [**安全防护配置指南**](./security.md)
+7. [**安全防护配置指南**](./security.md)
    - 输入验证和 Prompt 注入检测
    - PII 检测和脱敏
    - RBAC 访问控制
    - 成本控制
    - 审计日志
 
-7. [**性能优化指南**](./performance-optimization.md)
+8. [**性能优化指南**](./performance-optimization.md)
    - Agent 优化
    - RAG 优化
    - 多 Agent 优化
@@ -78,6 +86,7 @@ Hexagon 是一个完整的 AI Agent 开发生态：
 - **多个 Agent 协作完成任务** → [多 Agent 协作指南](./multi-agent.md#team-协作)
 - **实现复杂的工作流** → [图编排最佳实践](./graph-orchestration.md)
 - **监控 Agent 性能** → [可观测性集成指南](./observability.md)
+- **部署到 Docker/K8s** → [部署指南](../../deploy/README.md)
 - **保护系统安全** → [安全防护配置指南](./security.md)
 - **提升系统性能** → [性能优化指南](./performance-optimization.md)
 
