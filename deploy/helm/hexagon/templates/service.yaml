@@ -1,0 +1,103 @@
+{{- $fullName := include "hexagon.fullname" . -}}
+# ============== 主应用 Service ==============
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-app
+  labels:
+    {{- include "hexagon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  type: {{ .Values.app.service.type }}
+  ports:
+    - port: {{ .Values.app.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "hexagon.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+---
+{{- if .Values.devui.enabled }}
+# ============== DevUI Service ==============
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-devui
+  labels:
+    {{- include "hexagon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: devui
+spec:
+  type: {{ .Values.devui.service.type }}
+  ports:
+    - port: {{ .Values.devui.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "hexagon.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: devui
+{{- end }}
+---
+{{- if .Values.qdrant.enabled }}
+# ============== Qdrant Service ==============
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-qdrant
+  labels:
+    {{- include "hexagon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant
+spec:
+  type: {{ .Values.qdrant.service.type }}
+  ports:
+    - port: {{ .Values.qdrant.service.httpPort }}
+      targetPort: 6333
+      name: http
+    - port: {{ .Values.qdrant.service.grpcPort }}
+      targetPort: 6334
+      name: grpc
+  selector:
+    {{- include "hexagon.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant
+{{- end }}
+---
+{{- if .Values.redis.enabled }}
+# ============== Redis Service ==============
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-redis
+  labels:
+    {{- include "hexagon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: {{ .Values.redis.service.type }}
+  ports:
+    - port: {{ .Values.redis.service.port }}
+      targetPort: 6379
+      name: redis
+  selector:
+    {{- include "hexagon.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+{{- end }}
+---
+{{- if .Values.postgres.enabled }}
+# ============== PostgreSQL Service ==============
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-postgres
+  labels:
+    {{- include "hexagon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  type: {{ .Values.postgres.service.type }}
+  ports:
+    - port: {{ .Values.postgres.service.port }}
+      targetPort: 5432
+      name: postgres
+  selector:
+    {{- include "hexagon.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+{{- end }}

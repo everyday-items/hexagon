@@ -1,0 +1,11 @@
+# Helm 打包忽略文件
+.DS_Store
+.git/
+.gitignore
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.tmp
+*.log

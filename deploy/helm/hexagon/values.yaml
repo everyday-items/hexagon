@@ -1,0 +1,162 @@
+# Hexagon Helm Chart 默认配置
+#
+# 自包含 + 可切换：
+#   - 内置组件 enabled=true 时，由本 Chart 部署对应 StatefulSet
+#   - 内置组件 enabled=false 时，通过 external.* 指定外部服务地址
+#
+# 参考: https://github.com/everyday-items/docker-dev-env
+
+# ============== 主应用 ==============
+app:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/everyday-items/hexagon
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  env:
+    LOG_LEVEL: info
+
+# ============== DevUI ==============
+devui:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/everyday-items/hexagon
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ============== LLM API Keys ==============
+# 建议通过 --set 或 external Secret 传入，不要写在 values 文件中
+secrets:
+  openaiApiKey: ""
+  deepseekApiKey: ""
+
+# ============== Qdrant 向量数据库 ==============
+qdrant:
+  # 设为 false 则使用 external.qdrant 指定的外部服务
+  enabled: true
+  image:
+    repository: qdrant/qdrant
+    tag: v1.11.0
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    httpPort: 6333
+    grpcPort: 6334
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+# ============== Redis Stack ==============
+redis:
+  # 设为 false 则使用 external.redis 指定的外部服务
+  enabled: true
+  image:
+    repository: redis/redis-stack
+    tag: 7.4.0-v0
+  service:
+    type: ClusterIP
+    port: 6379
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+  password: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# ============== PostgreSQL + pgvector ==============
+postgres:
+  # 设为 false 则使用 external.postgres 指定的外部服务
+  enabled: true
+  image:
+    repository: pgvector/pgvector
+    tag: pg16
+  service:
+    type: ClusterIP
+    port: 5432
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  auth:
+    username: hexagon
+    password: hexagon
+    database: hexagon
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+# ============== 外部服务地址 ==============
+# 当对应内置组件 enabled=false 时生效
+external:
+  qdrant:
+    url: "http://qdrant:6333"
+  redis:
+    url: "redis:6379"
+    password: ""
+  postgres:
+    dsn: "postgres://hexagon:hexagon@postgres:5432/hexagon?sslmode=disable"
+
+# ============== Ingress ==============
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  #  nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  #  cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: hexagon.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: app
+        - path: /devui
+          pathType: Prefix
+          service: devui
+  tls: []
+  #  - secretName: hexagon-tls
+  #    hosts:
+  #      - hexagon.local
+
+# ============== 通用配置 ==============
+nameOverride: ""
+fullnameOverride: ""
+imagePullSecrets: []
