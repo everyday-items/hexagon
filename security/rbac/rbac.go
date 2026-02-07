@@ -76,9 +76,13 @@ func (r *RBAC) SetStore(store RBACStore) {
 }
 
 // initDefaultRoles 初始化默认角色
+// 此方法在 NewRBAC 构造期间调用，此时 store 尚未设置，
+// 使用 context.Background() 作为初始化上下文。
 func (r *RBAC) initDefaultRoles() {
+	ctx := context.Background()
+
 	// 超级管理员
-	r.AddRole(&Role{
+	r.AddRole(ctx, &Role{
 		Name:        "admin",
 		DisplayName: "Administrator",
 		Description: "Full system access",
@@ -88,7 +92,7 @@ func (r *RBAC) initDefaultRoles() {
 	})
 
 	// 普通用户
-	r.AddRole(&Role{
+	r.AddRole(ctx, &Role{
 		Name:        "user",
 		DisplayName: "User",
 		Description: "Standard user access",
@@ -102,7 +106,7 @@ func (r *RBAC) initDefaultRoles() {
 	})
 
 	// 访客
-	r.AddRole(&Role{
+	r.AddRole(ctx, &Role{
 		Name:        "guest",
 		DisplayName: "Guest",
 		Description: "Read-only access",
@@ -113,7 +117,7 @@ func (r *RBAC) initDefaultRoles() {
 	})
 
 	// Agent 角色
-	r.AddRole(&Role{
+	r.AddRole(ctx, &Role{
 		Name:        "agent",
 		DisplayName: "AI Agent",
 		Description: "Agent execution permissions",
@@ -170,7 +174,8 @@ type Permission struct {
 
 // AddRole 添加角色
 // 先在内存中更新，然后释放锁后再持久化到 store，避免持锁调用外部函数导致死锁。
-func (r *RBAC) AddRole(role *Role) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) AddRole(ctx context.Context, role *Role) error {
 	r.mu.Lock()
 
 	if _, exists := r.roles[role.Name]; exists {
@@ -187,7 +192,7 @@ func (r *RBAC) AddRole(role *Role) error {
 
 	// 在锁外调用 store，避免持锁期间阻塞在外部 I/O 上
 	if r.store != nil {
-		if err := r.store.SaveRole(context.Background(), role); err != nil {
+		if err := r.store.SaveRole(ctx, role); err != nil {
 			// store 持久化失败，回滚内存状态
 			r.mu.Lock()
 			delete(r.roles, role.Name)
@@ -201,7 +206,8 @@ func (r *RBAC) AddRole(role *Role) error {
 
 // UpdateRole 更新角色
 // 先在内存中更新，然后释放锁后再持久化到 store，避免持锁调用外部函数导致死锁。
-func (r *RBAC) UpdateRole(role *Role) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) UpdateRole(ctx context.Context, role *Role) error {
 	r.mu.Lock()
 
 	oldRole, exists := r.roles[role.Name]
@@ -216,7 +222,7 @@ func (r *RBAC) UpdateRole(role *Role) error {
 
 	// 在锁外调用 store
 	if r.store != nil {
-		if err := r.store.SaveRole(context.Background(), role); err != nil {
+		if err := r.store.SaveRole(ctx, role); err != nil {
 			// store 持久化失败，回滚内存状态
 			r.mu.Lock()
 			r.roles[role.Name] = oldRole
@@ -230,7 +236,8 @@ func (r *RBAC) UpdateRole(role *Role) error {
 
 // DeleteRole 删除角色
 // 先在内存中删除，然后释放锁后再持久化到 store，避免持锁调用外部函数导致死锁。
-func (r *RBAC) DeleteRole(name string) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) DeleteRole(ctx context.Context, name string) error {
 	r.mu.Lock()
 
 	oldRole, exists := r.roles[name]
@@ -246,7 +253,7 @@ func (r *RBAC) DeleteRole(name string) error {
 
 	// 在锁外调用 store
 	if r.store != nil {
-		if err := r.store.DeleteRole(context.Background(), name); err != nil {
+		if err := r.store.DeleteRole(ctx, name); err != nil {
 			// store 持久化失败，回滚内存状态
 			r.mu.Lock()
 			r.roles[name] = oldRole
@@ -348,7 +355,8 @@ type User struct {
 }
 
 // AddUser 添加用户
-func (r *RBAC) AddUser(user *User) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) AddUser(ctx context.Context, user *User) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -365,14 +373,15 @@ func (r *RBAC) AddUser(user *User) error {
 	r.users[user.ID] = user
 
 	if r.store != nil {
-		return r.store.SaveUser(context.Background(), user)
+		return r.store.SaveUser(ctx, user)
 	}
 
 	return nil
 }
 
 // UpdateUser 更新用户
-func (r *RBAC) UpdateUser(user *User) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) UpdateUser(ctx context.Context, user *User) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -383,14 +392,15 @@ func (r *RBAC) UpdateUser(user *User) error {
 	r.users[user.ID] = user
 
 	if r.store != nil {
-		return r.store.SaveUser(context.Background(), user)
+		return r.store.SaveUser(ctx, user)
 	}
 
 	return nil
 }
 
 // DeleteUser 删除用户
-func (r *RBAC) DeleteUser(id string) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) DeleteUser(ctx context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -401,7 +411,7 @@ func (r *RBAC) DeleteUser(id string) error {
 	delete(r.users, id)
 
 	if r.store != nil {
-		return r.store.DeleteUser(context.Background(), id)
+		return r.store.DeleteUser(ctx, id)
 	}
 
 	return nil
@@ -416,7 +426,8 @@ func (r *RBAC) GetUser(id string) (*User, bool) {
 }
 
 // AssignRole 分配角色给用户
-func (r *RBAC) AssignRole(userID, roleName string) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) AssignRole(ctx context.Context, userID, roleName string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -437,14 +448,15 @@ func (r *RBAC) AssignRole(userID, roleName string) error {
 	user.Roles = append(user.Roles, roleName)
 
 	if r.store != nil {
-		return r.store.SaveUser(context.Background(), user)
+		return r.store.SaveUser(ctx, user)
 	}
 
 	return nil
 }
 
 // RevokeRole 撤销用户角色
-func (r *RBAC) RevokeRole(userID, roleName string) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) RevokeRole(ctx context.Context, userID, roleName string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -462,7 +474,7 @@ func (r *RBAC) RevokeRole(userID, roleName string) error {
 	user.Roles = newRoles
 
 	if r.store != nil {
-		return r.store.SaveUser(context.Background(), user)
+		return r.store.SaveUser(ctx, user)
 	}
 
 	return nil
@@ -705,7 +717,8 @@ const (
 )
 
 // AddPolicy 添加策略
-func (r *RBAC) AddPolicy(policy *Policy) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) AddPolicy(ctx context.Context, policy *Policy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -718,14 +731,15 @@ func (r *RBAC) AddPolicy(policy *Policy) error {
 	r.policies[policy.ID] = policy
 
 	if r.store != nil {
-		return r.store.SavePolicy(context.Background(), policy)
+		return r.store.SavePolicy(ctx, policy)
 	}
 
 	return nil
 }
 
 // UpdatePolicy 更新策略
-func (r *RBAC) UpdatePolicy(policy *Policy) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) UpdatePolicy(ctx context.Context, policy *Policy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -736,14 +750,15 @@ func (r *RBAC) UpdatePolicy(policy *Policy) error {
 	r.policies[policy.ID] = policy
 
 	if r.store != nil {
-		return r.store.SavePolicy(context.Background(), policy)
+		return r.store.SavePolicy(ctx, policy)
 	}
 
 	return nil
 }
 
 // DeletePolicy 删除策略
-func (r *RBAC) DeletePolicy(id string) error {
+// ctx 用于控制 store 持久化操作的超时和取消。
+func (r *RBAC) DeletePolicy(ctx context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -754,7 +769,7 @@ func (r *RBAC) DeletePolicy(id string) error {
 	delete(r.policies, id)
 
 	if r.store != nil {
-		return r.store.DeletePolicy(context.Background(), id)
+		return r.store.DeletePolicy(ctx, id)
 	}
 
 	return nil

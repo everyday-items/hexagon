@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/everyday-items/hexagon/stream"
+	"github.com/everyday-items/toolkit/util/retry"
 )
 
 // ============== 切面时机 ==============
@@ -669,21 +670,24 @@ func NewRetryAdvisor(maxRetries int, backoff time.Duration) Advisor {
 }
 
 func (a *retryAdvisorImpl) AdviseCall(ctx context.Context, req *CallRequest, next CallHandler) (*CallResponse, error) {
-	var lastErr error
-	for attempt := 0; attempt <= a.maxRetries; attempt++ {
-		if attempt > 0 {
+	var resp *CallResponse
+	err := retry.DoWithContext(ctx, func() error {
+		var callErr error
+		resp, callErr = next(ctx, req)
+		return callErr
+	},
+		retry.Attempts(a.maxRetries+1),
+		retry.Delay(a.backoff),
+		retry.DelayType(retry.LinearBackoff),
+		retry.OnRetry(func(n int, err error) {
 			req.IsRetry = true
-			req.RetryCount = attempt
-			time.Sleep(a.backoff * time.Duration(attempt))
-		}
-
-		resp, err := next(ctx, req)
-		if err == nil {
-			return resp, nil
-		}
-		lastErr = err
+			req.RetryCount = n
+		}),
+	)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+	return resp, nil
 }
 
 // Retry 创建重试切面

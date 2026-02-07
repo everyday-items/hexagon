@@ -10,6 +10,7 @@ import (
 	"github.com/everyday-items/hexagon/agent"
 	"github.com/everyday-items/hexagon/process"
 	"github.com/everyday-items/toolkit/util/idgen"
+	"github.com/everyday-items/toolkit/util/retry"
 )
 
 // AgentStep Agent 步骤
@@ -110,7 +111,7 @@ func (s *AgentStep) Execute(ctx context.Context, data *process.ProcessData) (*pr
 	// 构建输入
 	input := s.inputBuilder(data)
 
-	// 执行 Agent（带重试）
+	// 执行 Agent（使用 toolkit/util/retry 实现重试）
 	var output agent.Output
 	var err error
 	retries := s.retries
@@ -118,17 +119,15 @@ func (s *AgentStep) Execute(ctx context.Context, data *process.ProcessData) (*pr
 		retries = 1
 	}
 
-	for attempt := 0; attempt < retries; attempt++ {
-		output, err = s.agent.Invoke(ctx, input)
-		if err == nil {
-			break
-		}
-
-		// 最后一次尝试不等待
-		if attempt < retries-1 {
-			time.Sleep(time.Second * time.Duration(attempt+1))
-		}
-	}
+	err = retry.DoWithContext(ctx, func() error {
+		var invokeErr error
+		output, invokeErr = s.agent.Invoke(ctx, input)
+		return invokeErr
+	},
+		retry.Attempts(retries),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.LinearBackoff),
+	)
 
 	duration := time.Since(start)
 

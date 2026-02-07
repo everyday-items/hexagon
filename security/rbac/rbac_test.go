@@ -47,7 +47,8 @@ func TestRBACAddRole(t *testing.T) {
 		},
 	}
 
-	err := rbac.AddRole(role)
+	ctx := context.Background()
+	err := rbac.AddRole(ctx, role)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,7 +70,8 @@ func TestRBACAddRoleDuplicate(t *testing.T) {
 		Name: "admin", // Already exists
 	}
 
-	err := rbac.AddRole(role)
+	ctx := context.Background()
+	err := rbac.AddRole(ctx, role)
 	if err == nil {
 		t.Error("expected error for duplicate role")
 	}
@@ -81,7 +83,8 @@ func TestRBACUpdateRole(t *testing.T) {
 	role, _ := rbac.GetRole("user")
 	role.Description = "Updated description"
 
-	err := rbac.UpdateRole(role)
+	ctx := context.Background()
+	err := rbac.UpdateRole(ctx, role)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -96,9 +99,10 @@ func TestRBACDeleteRole(t *testing.T) {
 	rbac := NewRBAC()
 
 	// Add a custom role first
-	rbac.AddRole(&Role{Name: "temp"})
+	ctx := context.Background()
+	rbac.AddRole(ctx, &Role{Name: "temp"})
 
-	err := rbac.DeleteRole("temp")
+	err := rbac.DeleteRole(ctx, "temp")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -117,7 +121,8 @@ func TestRBACAddUser(t *testing.T) {
 		Roles: []string{"user"},
 	}
 
-	err := rbac.AddUser(user)
+	ctx := context.Background()
+	err := rbac.AddUser(ctx, user)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -134,8 +139,9 @@ func TestRBACAddUser(t *testing.T) {
 func TestRBACGetUser(t *testing.T) {
 	rbac := NewRBAC()
 
+	ctx := context.Background()
 	user := &User{ID: "user-123", Name: "Test"}
-	rbac.AddUser(user)
+	rbac.AddUser(ctx, user)
 
 	retrieved, ok := rbac.GetUser("user-123")
 	if !ok {
@@ -150,10 +156,11 @@ func TestRBACGetUser(t *testing.T) {
 func TestRBACDeleteUser(t *testing.T) {
 	rbac := NewRBAC()
 
+	ctx := context.Background()
 	user := &User{ID: "user-456", Name: "Delete Me"}
-	rbac.AddUser(user)
+	rbac.AddUser(ctx, user)
 
-	err := rbac.DeleteUser("user-456")
+	err := rbac.DeleteUser(ctx, "user-456")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -167,10 +174,11 @@ func TestRBACDeleteUser(t *testing.T) {
 func TestRBACAssignRole(t *testing.T) {
 	rbac := NewRBAC()
 
+	ctx := context.Background()
 	user := &User{ID: "user-789", Name: "Test", Roles: []string{}}
-	rbac.AddUser(user)
+	rbac.AddUser(ctx, user)
 
-	err := rbac.AssignRole("user-789", "user")
+	err := rbac.AssignRole(ctx, "user-789", "user")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -184,10 +192,11 @@ func TestRBACAssignRole(t *testing.T) {
 func TestRBACRevokeRole(t *testing.T) {
 	rbac := NewRBAC()
 
+	ctx := context.Background()
 	user := &User{ID: "user-abc", Name: "Test", Roles: []string{"user", "guest"}}
-	rbac.AddUser(user)
+	rbac.AddUser(ctx, user)
 
-	err := rbac.RevokeRole("user-abc", "guest")
+	err := rbac.RevokeRole(ctx, "user-abc", "guest")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -203,8 +212,9 @@ func TestRBACRevokeRole(t *testing.T) {
 func TestRBACAuthorize(t *testing.T) {
 	rbac := NewRBAC()
 
+	ctx := context.Background()
 	user := &User{ID: "test-user", Name: "Test", Roles: []string{"user"}}
-	rbac.AddUser(user)
+	rbac.AddUser(ctx, user)
 
 	// Test allowed action
 	result := rbac.Authorize(AccessRequest{
@@ -232,8 +242,9 @@ func TestRBACAuthorize(t *testing.T) {
 func TestRBACAuthorizeAdmin(t *testing.T) {
 	rbac := NewRBAC()
 
+	ctx := context.Background()
 	user := &User{ID: "admin-user", Name: "Admin", Roles: []string{"admin"}}
-	rbac.AddUser(user)
+	rbac.AddUser(ctx, user)
 
 	// Admin should have access to everything
 	result := rbac.Authorize(AccessRequest{
@@ -250,12 +261,13 @@ func TestRBACAuthorizeAdmin(t *testing.T) {
 func TestRBACAuthorizeDisabledUser(t *testing.T) {
 	rbac := NewRBAC()
 
+	ctx := context.Background()
 	user := &User{ID: "disabled-user", Name: "Disabled", Roles: []string{"admin"}}
-	rbac.AddUser(user)
+	rbac.AddUser(ctx, user)
 
 	// Disable user
 	user.Enabled = false
-	rbac.UpdateUser(user)
+	rbac.UpdateUser(ctx, user)
 
 	result := rbac.Authorize(AccessRequest{
 		Subject:  "disabled-user",
@@ -309,7 +321,8 @@ func TestRBACPolicy(t *testing.T) {
 		Description: "Test policy",
 	}
 
-	err := rbac.AddPolicy(policy)
+	ctx := context.Background()
+	err := rbac.AddPolicy(ctx, policy)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -331,10 +344,11 @@ func TestRBACPolicy(t *testing.T) {
 func TestRBACDeletePolicy(t *testing.T) {
 	rbac := NewRBAC()
 
+	ctx := context.Background()
 	policy := &Policy{ID: "policy-123", Name: "test"}
-	rbac.AddPolicy(policy)
+	rbac.AddPolicy(ctx, policy)
 
-	err := rbac.DeletePolicy("policy-123")
+	err := rbac.DeletePolicy(ctx, "policy-123")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

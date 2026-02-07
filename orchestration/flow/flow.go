@@ -182,7 +182,12 @@ func (f *Flow[S]) Run(ctx context.Context, state S) (S, error) {
 
 	// 执行步骤的辅助函数
 	executeStep := func(step *Step[S]) {
-		result, err := step.Handler(ctx, currentState)
+		// 在锁内拷贝当前状态，避免并发读写竞态
+		mu.Lock()
+		localState := currentState
+		mu.Unlock()
+
+		result, err := step.Handler(ctx, localState)
 
 		mu.Lock()
 		if err != nil {

@@ -19,6 +19,7 @@
 package cache
 
 import (
+	"container/list"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -174,11 +175,13 @@ func DefaultCacheConfig() *CacheConfig {
 // ============== 内存缓存 ==============
 
 // MemoryCache 内存缓存实现
+// 使用 container/list 双向链表实现 O(1) 的 LRU 操作
 type MemoryCache struct {
-	config *CacheConfig
-	data   map[string]*CacheEntry
-	order  []string // LRU 顺序
-	mu     sync.RWMutex
+	config  *CacheConfig
+	data    map[string]*CacheEntry
+	list    *list.List                 // LRU 双向链表，Front 为最近使用，Back 为最久未使用
+	listMap map[string]*list.Element   // key -> 链表节点的映射，用于 O(1) 查找
+	mu      sync.RWMutex
 
 	// 统计
 	hits      int64
@@ -192,43 +195,43 @@ func NewMemoryCache(config *CacheConfig) *MemoryCache {
 		config = DefaultCacheConfig()
 	}
 	return &MemoryCache{
-		config: config,
-		data:   make(map[string]*CacheEntry),
-		order:  make([]string, 0),
+		config:  config,
+		data:    make(map[string]*CacheEntry),
+		list:    list.New(),
+		listMap: make(map[string]*list.Element),
 	}
 }
 
 // Get 获取缓存
+// 全程使用写锁，避免 TOCTOU 竞态：在同一临界区内完成查找、过期检查、统计更新和 LRU 调整
 func (c *MemoryCache) Get(ctx context.Context, key string) (*CacheEntry, error) {
 	if !c.config.Enabled {
 		return nil, ErrCacheDisabled
 	}
 
-	c.mu.RLock()
-	entry, exists := c.data[key]
-	c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
+	entry, exists := c.data[key]
 	if !exists {
-		c.mu.Lock()
 		c.misses++
-		c.mu.Unlock()
 		return nil, ErrCacheMiss
 	}
 
+	// 在同一临界区内检查过期，避免释放锁后 entry 被其他 goroutine 修改
 	if entry.IsExpired() {
-		c.Delete(ctx, key)
-		c.mu.Lock()
+		// 直接在锁内删除，不调用 Delete 方法（Delete 会重复加锁导致死锁）
+		c.bytesUsed -= int64(len(entry.Response))
+		delete(c.data, key)
+		c.removeFromOrder(key)
 		c.misses++
-		c.mu.Unlock()
 		return nil, ErrCacheExpired
 	}
 
 	// 更新命中统计和 LRU
-	c.mu.Lock()
 	c.hits++
 	entry.HitCount++
 	c.moveToFront(key)
-	c.mu.Unlock()
 
 	return entry, nil
 }
@@ -268,7 +271,8 @@ func (c *MemoryCache) Set(ctx context.Context, key string, entry *CacheEntry) er
 
 	// 更新 LRU
 	if !exists {
-		c.order = append(c.order, key)
+		elem := c.list.PushFront(key)
+		c.listMap[key] = elem
 	} else {
 		c.moveToFront(key)
 	}
@@ -295,7 +299,8 @@ func (c *MemoryCache) Clear(ctx context.Context) error {
 	defer c.mu.Unlock()
 
 	c.data = make(map[string]*CacheEntry)
-	c.order = make([]string, 0)
+	c.list.Init()
+	c.listMap = make(map[string]*list.Element)
 	c.bytesUsed = 0
 	return nil
 }
@@ -332,36 +337,37 @@ func (c *MemoryCache) Close() error {
 	return c.Clear(context.Background())
 }
 
-// moveToFront 移动到最前面（LRU）
+// moveToFront 移动到链表最前面（标记为最近使用）— O(1)
 func (c *MemoryCache) moveToFront(key string) {
-	c.removeFromOrder(key)
-	c.order = append([]string{key}, c.order...)
+	if elem, ok := c.listMap[key]; ok {
+		c.list.MoveToFront(elem)
+	}
 }
 
-// removeFromOrder 从顺序列表中移除
+// removeFromOrder 从 LRU 链表中移除 — O(1)
 func (c *MemoryCache) removeFromOrder(key string) {
-	for i, k := range c.order {
-		if k == key {
-			c.order = append(c.order[:i], c.order[i+1:]...)
-			break
-		}
+	if elem, ok := c.listMap[key]; ok {
+		c.list.Remove(elem)
+		delete(c.listMap, key)
 	}
 }
 
 // evict 驱逐到指定大小
 func (c *MemoryCache) evict(needed int64) {
-	for c.bytesUsed+needed > c.config.MaxSize && len(c.order) > 0 {
+	for c.bytesUsed+needed > c.config.MaxSize && c.list.Len() > 0 {
 		c.evictOne()
 	}
 }
 
-// evictOne 驱逐一个（LRU）
+// evictOne 驱逐最久未使用的一个条目（链表尾部）— O(1)
 func (c *MemoryCache) evictOne() {
-	if len(c.order) == 0 {
+	back := c.list.Back()
+	if back == nil {
 		return
 	}
-	key := c.order[len(c.order)-1]
-	c.order = c.order[:len(c.order)-1]
+	key := back.Value.(string)
+	c.list.Remove(back)
+	delete(c.listMap, key)
 	if entry, exists := c.data[key]; exists {
 		c.bytesUsed -= int64(len(entry.Response))
 		delete(c.data, key)

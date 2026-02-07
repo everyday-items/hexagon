@@ -596,7 +596,7 @@ make fmt     # 格式化
 ```
 MIT License
 
-Copyright (c) 2025 everyday-items
+Copyright (c) 2026 everyday-items
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

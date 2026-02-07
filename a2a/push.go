@@ -10,6 +10,9 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/everyday-items/toolkit/util/rate"
+	"github.com/everyday-items/toolkit/util/retry"
 )
 
 // ============== Push 通知 ==============
@@ -70,8 +73,8 @@ type PushManager struct {
 	// retryConfig 重试配置
 	retryConfig RetryConfig
 
-	// rateLimiter 速率限制器
-	rateLimiter *RateLimiter
+	// rateLimiter 速率限制器（使用 toolkit 令牌桶实现）
+	rateLimiter *rate.TokenBucket
 
 	mu sync.RWMutex
 }
@@ -108,7 +111,7 @@ func NewPushManager(service PushService, opts ...PushManagerOption) *PushManager
 		service:     service,
 		configs:     make(map[string]*PushNotificationConfig),
 		retryConfig: DefaultRetryConfig,
-		rateLimiter: NewRateLimiter(100, time.Second), // 默认 100 qps
+		rateLimiter: rate.NewTokenBucket(100, 100), // 默认 100 qps
 	}
 
 	for _, opt := range opts {
@@ -126,9 +129,13 @@ func WithRetryConfig(config RetryConfig) PushManagerOption {
 }
 
 // WithRateLimit 设置速率限制
+// limit: 窗口内允许的最大请求数
+// window: 时间窗口
 func WithRateLimit(limit int, window time.Duration) PushManagerOption {
 	return func(m *PushManager) {
-		m.rateLimiter = NewRateLimiter(limit, window)
+		// 计算每秒令牌生成速率
+		ratePerSec := float64(limit) / window.Seconds()
+		m.rateLimiter = rate.NewTokenBucket(limit, ratePerSec)
 	}
 }
 
@@ -186,34 +193,17 @@ func (m *PushManager) PushArtifact(ctx context.Context, taskID string, artifact 
 }
 
 // pushWithRetry 带重试的推送
+// 使用 toolkit/util/retry 实现指数退避重试
 func (m *PushManager) pushWithRetry(ctx context.Context, config *PushNotificationConfig, notification *PushNotification) error {
-	var lastErr error
-	delay := m.retryConfig.InitialDelay
-
-	for attempt := 0; attempt <= m.retryConfig.MaxRetries; attempt++ {
-		if attempt > 0 {
-			// 等待重试
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(delay):
-			}
-
-			// 指数退避
-			delay = time.Duration(float64(delay) * m.retryConfig.Multiplier)
-			delay = min(delay, m.retryConfig.MaxDelay)
-		}
-
-		// 发送推送
-		err := m.service.Push(ctx, config, notificationToTask(notification))
-		if err == nil {
-			return nil
-		}
-
-		lastErr = err
-	}
-
-	return fmt.Errorf("push failed after %d retries: %w", m.retryConfig.MaxRetries+1, lastErr)
+	return retry.DoWithContext(ctx, func() error {
+		return m.service.Push(ctx, config, notificationToTask(notification))
+	},
+		retry.Attempts(m.retryConfig.MaxRetries+1),
+		retry.Delay(m.retryConfig.InitialDelay),
+		retry.MaxDelay(m.retryConfig.MaxDelay),
+		retry.Multiplier(m.retryConfig.Multiplier),
+		retry.DelayType(retry.ExponentialBackoff),
+	)
 }
 
 // notificationToTask 将通知转换为任务（用于推送服务）
@@ -226,58 +216,6 @@ func notificationToTask(n *PushNotification) *Task {
 		ID:     n.TaskID,
 		Status: *n.Status,
 	}
-}
-
-// ============== RateLimiter ==============
-
-// RateLimiter 简单的令牌桶速率限制器
-type RateLimiter struct {
-	tokens    int
-	maxTokens int
-	window    time.Duration
-	lastFill  time.Time
-	mu        sync.Mutex
-}
-
-// NewRateLimiter 创建速率限制器
-func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
-	return &RateLimiter{
-		tokens:    limit,
-		maxTokens: limit,
-		window:    window,
-		lastFill:  time.Now(),
-	}
-}
-
-// Allow 检查是否允许请求
-func (r *RateLimiter) Allow() bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	now := time.Now()
-	elapsed := now.Sub(r.lastFill)
-
-	// 填充令牌
-	if elapsed >= r.window {
-		r.tokens = r.maxTokens
-		r.lastFill = now
-	} else {
-		// 按比例填充
-		fill := int(float64(r.maxTokens) * float64(elapsed) / float64(r.window))
-		r.tokens += fill
-		if r.tokens > r.maxTokens {
-			r.tokens = r.maxTokens
-		}
-		r.lastFill = now
-	}
-
-	// 消耗令牌
-	if r.tokens > 0 {
-		r.tokens--
-		return true
-	}
-
-	return false
 }
 
 // ============== WebhookPushService ==============
