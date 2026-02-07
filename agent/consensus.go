@@ -626,7 +626,17 @@ func (p *ConsensusProtocol) calculateBorda(result *ConsensusResult) {
 	if winner != "" {
 		result.Reached = true
 		result.Decision = winner
-		result.Confidence = float64(maxScore) / float64(len(result.Votes)*len(result.Votes[0].Ranking))
+		// 计算置信度时防御空 Ranking 导致除零
+		rankLen := 0
+		for _, v := range result.Votes {
+			if len(v.Ranking) > 0 {
+				rankLen = len(v.Ranking)
+				break
+			}
+		}
+		if rankLen > 0 && len(result.Votes) > 0 {
+			result.Confidence = float64(maxScore) / float64(len(result.Votes)*rankLen)
+		}
 		result.Reason = fmt.Sprintf("'%s' won with Borda score %d", winner, maxScore)
 	} else {
 		result.Reached = false

@@ -13,6 +13,7 @@ import (
 
 	"github.com/everyday-items/hexagon/process"
 	"github.com/everyday-items/toolkit/util/idgen"
+	"github.com/everyday-items/toolkit/util/retry"
 )
 
 // BaseStep 基础步骤实现
@@ -537,51 +538,51 @@ func NewRetryStep(name string, step process.Step, maxRetries int, opts ...RetryS
 }
 
 // Execute 执行步骤
+// 使用 toolkit/util/retry 实现重试逻辑
 func (s *RetryStep) Execute(ctx context.Context, data *process.ProcessData) (*process.StepResult, error) {
 	start := time.Now()
-	delay := s.retryDelay
 
-	var lastResult *process.StepResult
-	var lastErr error
+	var result *process.StepResult
+	var attempts int
 
-	for attempt := 0; attempt <= s.maxRetries; attempt++ {
-		// 检查上下文
-		select {
-		case <-ctx.Done():
-			return &process.StepResult{
-				StepID:   s.id,
-				StepName: s.name,
-				Success:  false,
-				Error:    ctx.Err(),
-				Duration: time.Since(start),
-				Metadata: map[string]any{"attempts": attempt},
-			}, ctx.Err()
-		default:
+	err := retry.DoWithContext(ctx, func() error {
+		attempts++
+		var execErr error
+		result, execErr = s.step.Execute(ctx, data)
+		return execErr
+	},
+		retry.Attempts(s.maxRetries+1),
+		retry.Delay(s.retryDelay),
+		retry.Multiplier(s.backoff),
+		retry.DelayType(retry.ExponentialBackoff),
+		retry.RetryIf(s.shouldRetry),
+	)
+
+	if err == nil {
+		// 成功
+		if result != nil {
+			result.Metadata = map[string]any{"attempts": attempts}
 		}
+		return result, nil
+	}
 
-		// 执行步骤
-		result, err := s.step.Execute(ctx, data)
-		lastResult = result
-		lastErr = err
-
-		// 成功则返回
-		if err == nil {
-			result.Metadata = map[string]any{"attempts": attempt + 1}
-			return result, nil
-		}
-
-		// 检查是否应该重试
-		if attempt < s.maxRetries && s.shouldRetry(err) {
-			time.Sleep(delay)
-			delay = time.Duration(float64(delay) * s.backoff)
-		}
+	// 如果是上下文取消，构建适当的返回结果
+	if ctx.Err() != nil {
+		return &process.StepResult{
+			StepID:   s.id,
+			StepName: s.name,
+			Success:  false,
+			Error:    ctx.Err(),
+			Duration: time.Since(start),
+			Metadata: map[string]any{"attempts": attempts},
+		}, ctx.Err()
 	}
 
 	// 所有重试都失败
-	if lastResult != nil {
-		lastResult.Metadata = map[string]any{"attempts": s.maxRetries + 1}
+	if result != nil {
+		result.Metadata = map[string]any{"attempts": attempts}
 	}
-	return lastResult, lastErr
+	return result, err
 }
 
 // ============== TimeoutStep ==============

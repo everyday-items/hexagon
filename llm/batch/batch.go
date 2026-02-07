@@ -20,9 +20,13 @@ package batch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/everyday-items/toolkit/util/rate"
+	"github.com/everyday-items/toolkit/util/retry"
 )
 
 // ============== 错误定义 ==============
@@ -179,8 +183,8 @@ type Batcher struct {
 	// 统计
 	stats *Stats
 
-	// 速率限制
-	limiter *rateLimiter
+	// 速率限制（使用 toolkit 令牌桶实现）
+	limiter *rate.TokenBucket
 }
 
 // pendingRequest 待处理请求
@@ -214,7 +218,7 @@ func NewBatcher(provider Provider, config ...*Config) *Batcher {
 		batchChan: make(chan []*pendingRequest, cfg.MaxConcurrent),
 		stopChan:  make(chan struct{}),
 		stats:     &Stats{},
-		limiter:   newRateLimiter(cfg.RateLimit),
+		limiter:   rate.NewTokenBucket(cfg.RateLimit, float64(cfg.RateLimit)),
 	}
 }
 
@@ -387,8 +391,8 @@ func (b *Batcher) processRequest(pending *pendingRequest) {
 	atomic.AddInt64(&b.stats.TotalRequests, 1)
 	startTime := time.Now()
 
-	// 速率限制
-	b.limiter.wait()
+	// 速率限制（使用 toolkit 令牌桶，在锁外等待避免持锁 sleep）
+	b.limiter.Wait()
 
 	// 创建带超时的 context
 	ctx, cancel := context.WithTimeout(context.Background(), b.config.Timeout)
@@ -397,21 +401,22 @@ func (b *Batcher) processRequest(pending *pendingRequest) {
 	var resp *Response
 	var err error
 
-	// 重试逻辑
-	for attempt := 0; attempt <= b.config.MaxRetries; attempt++ {
-		resp, err = b.provider.Complete(ctx, pending.request)
+	// 使用 toolkit/util/retry 实现重试逻辑
+	err = retry.DoWithContext(ctx, func() error {
+		var callErr error
+		resp, callErr = b.provider.Complete(ctx, pending.request)
+		return callErr
+	},
+		retry.Attempts(b.config.MaxRetries+1),
+		retry.Delay(b.config.RetryDelay),
+		retry.DelayType(retry.LinearBackoff),
+		retry.RetryIf(func(err error) bool { return isRetryableError(err) }),
+	)
+	// 如果 retry.Do 返回了 ErrMaxAttemptsReached 包装的错误，提取原始错误
+	if err != nil && resp == nil {
+		err = errors.Unwrap(err)
 		if err == nil {
-			break
-		}
-
-		// 检查是否应该重试
-		if !isRetryableError(err) {
-			break
-		}
-
-		// 等待重试
-		if attempt < b.config.MaxRetries {
-			time.Sleep(b.config.RetryDelay * time.Duration(attempt+1))
+			err = ErrBatchFailed
 		}
 	}
 
@@ -463,53 +468,13 @@ func (b *Batcher) GetStats() Stats {
 	}
 }
 
-// ============== 速率限制器 ==============
-
-type rateLimiter struct {
-	rate     int
-	tokens   int
-	lastTime time.Time
-	mu       sync.Mutex
-}
-
-func newRateLimiter(rate int) *rateLimiter {
-	return &rateLimiter{
-		rate:     rate,
-		tokens:   rate,
-		lastTime: time.Now(),
-	}
-}
-
-func (l *rateLimiter) wait() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	// 补充令牌
-	now := time.Now()
-	elapsed := now.Sub(l.lastTime)
-	l.tokens += int(elapsed.Seconds() * float64(l.rate))
-	if l.tokens > l.rate {
-		l.tokens = l.rate
-	}
-	l.lastTime = now
-
-	// 等待令牌
-	if l.tokens <= 0 {
-		waitTime := time.Second / time.Duration(l.rate)
-		time.Sleep(waitTime)
-		l.tokens = 1
-	}
-
-	l.tokens--
-}
-
 // ============== 辅助函数 ==============
 
 var batchCounter int64
 
 func generateBatchID() string {
 	id := atomic.AddInt64(&batchCounter, 1)
-	return string(rune(id))
+	return fmt.Sprintf("batch-%d", id)
 }
 
 func isRetryableError(err error) bool {

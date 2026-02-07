@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -898,16 +899,16 @@ func (r *MessageRouter) Broadcast(ctx context.Context, msg *NetworkMessage) erro
 	}
 	r.network.mu.RUnlock()
 
-	var lastErr error
+	var errs []error
 	for _, node := range nodes {
 		msgCopy := *msg
 		msgCopy.To = node.Agent.ID()
 		if err := r.deliver(ctx, &msgCopy); err != nil {
-			lastErr = err
+			errs = append(errs, fmt.Errorf("deliver to %s: %w", node.Agent.ID(), err))
 		}
 	}
 
-	return lastErr
+	return errors.Join(errs...)
 }
 
 // BroadcastToNeighbors 广播给邻居

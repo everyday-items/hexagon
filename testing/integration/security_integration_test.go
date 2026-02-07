@@ -36,12 +36,13 @@ func TestRBACCompleteWorkflow(t *testing.T) {
 		},
 	}
 
-	err := r.AddRole(developerRole)
+	ctx := context.Background()
+	err := r.AddRole(ctx, developerRole)
 	if err != nil {
 		t.Fatalf("failed to add developer role: %v", err)
 	}
 
-	err = r.AddRole(reviewerRole)
+	err = r.AddRole(ctx, reviewerRole)
 	if err != nil {
 		t.Fatalf("failed to add reviewer role: %v", err)
 	}
@@ -65,9 +66,9 @@ func TestRBACCompleteWorkflow(t *testing.T) {
 		Roles: []string{"developer", "reviewer"},
 	}
 
-	r.AddUser(alice)
-	r.AddUser(bob)
-	r.AddUser(charlie)
+	r.AddUser(ctx, alice)
+	r.AddUser(ctx, bob)
+	r.AddUser(ctx, charlie)
 
 	// Step 3: Test authorization
 
@@ -131,7 +132,8 @@ func TestRBACPolicyEnforcement(t *testing.T) {
 		Name:  "Test",
 		Roles: []string{"guest"},
 	}
-	r.AddUser(user)
+	ctx := context.Background()
+	r.AddUser(ctx, user)
 
 	// Guest normally can only read agents
 	result := r.Authorize(rbac.AccessRequest{
@@ -151,7 +153,7 @@ func TestRBACPolicyEnforcement(t *testing.T) {
 		Resources: []string{"sensitive"},
 		Actions:   []string{"read"},
 	}
-	r.AddPolicy(policy)
+	r.AddPolicy(ctx, policy)
 
 	// Now the user should have access
 	result = r.Authorize(rbac.AccessRequest{
@@ -176,7 +178,8 @@ func TestRBACRoleHierarchy(t *testing.T) {
 		Name:  "Admin",
 		Roles: []string{"admin"},
 	}
-	r.AddUser(admin)
+	ctx := context.Background()
+	r.AddUser(ctx, admin)
 
 	// Admin should have user permissions (agent:run)
 	result := r.Authorize(rbac.AccessRequest{
@@ -313,7 +316,7 @@ func TestRBACContextIntegration(t *testing.T) {
 		Name:  "Context User",
 		Roles: []string{"user"},
 	}
-	r.AddUser(user)
+	r.AddUser(context.Background(), user)
 
 	// Add user to context
 	ctx := context.Background()
