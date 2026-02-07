@@ -126,11 +126,9 @@ func topologicalSort[S State](nodes map[string]*Node[S], deps map[string][]strin
 	for name := range nodes {
 		inDegree[name] = 0
 	}
-	for _, dependencies := range deps {
-		for _, dep := range dependencies {
-			if _, exists := nodes[dep]; exists {
-				inDegree[dep]++
-			}
+	for successor, dependencies := range deps {
+		if _, exists := nodes[successor]; exists {
+			inDegree[successor] += len(dependencies)
 		}
 	}
 
