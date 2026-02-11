@@ -66,6 +66,11 @@ type InterruptError struct {
 	NodeID    string
 	Payload   any
 	Timestamp time.Time
+
+	// Signal 关联的中断信号（新系统）
+	// 当通过新的 InterruptSignalFunc/StatefulInterrupt/CompositeInterrupt 触发中断时，
+	// 此字段会被填充，用于桥接新旧两套中断系统
+	Signal *InterruptSignal
 }
 
 func (e *InterruptError) Error() string {

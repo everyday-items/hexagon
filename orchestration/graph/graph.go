@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/everyday-items/hexagon/interrupt"
 )
 
 // Graph 图定义
@@ -364,8 +366,8 @@ func (e *graphExecutor[S]) run(ctx context.Context) (S, error) {
 		}
 
 		// 检查中断
-		for _, interrupt := range e.config.interrupt {
-			if currentNode == interrupt {
+		for _, interruptNode := range e.config.interrupt {
+			if currentNode == interruptNode {
 				return e.state, fmt.Errorf("interrupted at node: %s", currentNode)
 			}
 		}
@@ -376,9 +378,16 @@ func (e *graphExecutor[S]) run(ctx context.Context) (S, error) {
 			return e.state, fmt.Errorf("node %s not found", currentNode)
 		}
 
+		// 注入层级地址段
+		nodeCtx := interrupt.AppendAddressSegment(ctx, interrupt.SegmentNode, currentNode, "")
+
 		// 执行节点
-		newState, err := node.Handler(ctx, e.state)
+		newState, err := node.Handler(nodeCtx, e.state)
 		if err != nil {
+			// 捕获 InterruptSignal，透传给调用方
+			if signal, ok := interrupt.IsInterruptSignal(err); ok {
+				return e.state, signal
+			}
 			return e.state, fmt.Errorf("node %s failed: %w", currentNode, err)
 		}
 		e.state = newState
