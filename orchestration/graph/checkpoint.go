@@ -37,6 +37,14 @@ type Checkpoint struct {
 	// Metadata 元数据
 	Metadata map[string]any `json:"metadata,omitempty"`
 
+	// InterruptAddrs 中断点地址映射（中断 ID -> 序列化的地址）
+	// 用于持久化 InterruptSignal 树中各中断点的层级地址
+	InterruptAddrs map[string]json.RawMessage `json:"interrupt_addrs,omitempty"`
+
+	// InterruptStates 中断点状态映射（中断 ID -> 序列化的组件状态）
+	// 用于持久化 StatefulInterrupt 保存的组件内部状态
+	InterruptStates map[string]json.RawMessage `json:"interrupt_states,omitempty"`
+
 	// CreatedAt 创建时间
 	CreatedAt time.Time `json:"created_at"`
 
