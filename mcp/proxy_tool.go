@@ -176,6 +176,8 @@ func WrapMCPTools(client *TransportClient, mcpTools []Tool) []tool.Tool {
 
 // ConnectMCPServer 连接 MCP 服务器并返回工具列表
 //
+// Deprecated: 请使用 ConnectMCPServerV2，基于官方 Go SDK 实现。
+//
 // 这是最常用的便捷函数，一行代码即可获取远程 MCP 工具
 //
 // 示例：
@@ -211,6 +213,8 @@ func ConnectMCPServer(ctx context.Context, endpoint string) ([]tool.Tool, error)
 }
 
 // ConnectMCPServerWithToolSet 连接 MCP 服务器并返回工具集合
+//
+// Deprecated: 请使用 ConnectMCPServerV2，基于官方 Go SDK 实现。
 //
 // 与 ConnectMCPServer 类似，但返回 MCPToolSet 以便管理生命周期
 //

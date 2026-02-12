@@ -269,6 +269,8 @@ func (t *StdioTransport) readStderr() {
 
 // ConnectStdioServer 连接本地 MCP 进程并返回工具列表
 //
+// Deprecated: 请使用 ConnectStdioServerV2，基于官方 Go SDK 实现。
+//
 // 这是连接本地 MCP 服务的便捷函数。
 // 返回的 cleanup 函数用于关闭进程和释放资源。
 //
@@ -321,6 +323,8 @@ func ConnectStdioServer(ctx context.Context, command string, args ...string) ([]
 }
 
 // ConnectStdioServerWithToolSet 连接本地 MCP 进程并返回工具集合
+//
+// Deprecated: 请使用 ConnectStdioServerV2，基于官方 Go SDK 实现。
 //
 // 与 ConnectStdioServer 类似，但返回 MCPToolSet 以便管理生命周期
 //
