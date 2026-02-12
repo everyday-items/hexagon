@@ -48,6 +48,8 @@ import (
 	"github.com/everyday-items/hexagon/security/cost"
 	"github.com/everyday-items/hexagon/security/guard"
 	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/everyday-items/hexagon/mcp"
+	memstore "github.com/everyday-items/hexagon/memory/store"
 	"github.com/everyday-items/hexagon/store/vector/qdrant"
 )
 
@@ -631,6 +633,102 @@ var (
 	//	    CreateCollection: true,
 	//	})
 	NewQdrantStore = qdrant.New
+)
+
+// ============== MCP V2（基于官方 SDK） ==============
+
+// ConnectMCPServer 使用官方 SDK 连接 MCP Server 并获取工具列表
+//
+// 返回的 []tool.Tool 可直接用于 Hexagon Agent。
+// 调用方需要在使用完毕后调用 closer.Close() 释放连接。
+//
+// 示例：
+//
+//	tools, closer, err := hexagon.ConnectMCPServer(ctx, transport)
+//	defer closer.Close()
+//	agent := hexagon.QuickStart(hexagon.WithTools(tools...))
+var ConnectMCPServer = mcp.ConnectMCPServerV2
+
+// ConnectMCPStdio 通过 Stdio 连接 MCP Server
+//
+// 启动子进程并通过 stdin/stdout 通信。
+//
+// 示例：
+//
+//	tools, cleanup, err := hexagon.ConnectMCPStdio(ctx, "npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp")
+//	defer cleanup()
+var ConnectMCPStdio = mcp.ConnectStdioServerV2
+
+// ConnectMCPSSE 通过 SSE 连接 MCP Server
+//
+// 示例：
+//
+//	tools, closer, err := hexagon.ConnectMCPSSE(ctx, "http://localhost:8080/sse")
+//	defer closer.Close()
+var ConnectMCPSSE = mcp.ConnectSSEServerV2
+
+// NewMCPServer 创建基于官方 SDK 的 MCP 服务器
+//
+// 将 Hexagon/ai-core 工具暴露为标准 MCP 服务。
+//
+// 示例：
+//
+//	server := hexagon.NewMCPServer("my-tools", "1.0.0")
+//	server.RegisterTool(myCalculator)
+//	server.ServeStdio(ctx)
+var NewMCPServer = mcp.NewMCPServerV2
+
+// MCP 相关类型
+type (
+	// MCPServerV2 是基于官方 SDK 的 MCP 服务器
+	MCPServerV2 = mcp.ServerV2
+)
+
+// ============== 跨会话持久记忆 ==============
+
+// NewInMemoryStore 创建内存记忆存储
+//
+// 纯内存实现，适合开发和测试。支持命名空间隔离、TTL、关键词搜索。
+//
+// 示例：
+//
+//	store := hexagon.NewInMemoryStore()
+//	store.Put(ctx, []string{"users", "u1"}, "prefs", map[string]any{"theme": "dark"})
+var NewInMemoryStore = memstore.NewInMemoryStore
+
+// NewFileStore 创建文件持久化记忆存储
+//
+// 基于文件系统的持久化存储，支持原子写入和 TTL 过期。
+//
+// 示例：
+//
+//	store, err := hexagon.NewFileStore("/data/memory")
+var NewFileStore = memstore.NewFileStore
+
+// NewRedisStore 创建 Redis 持久化记忆存储
+//
+// 基于 Redis 的高性能持久化存储，支持命名空间隔离和 Pipeline 操作。
+var NewRedisStore = memstore.NewRedisStore
+
+// NewPersistentMemory 创建持久记忆适配器
+//
+// 将 MemoryStore 适配为 ai-core memory.Memory 接口，
+// 使现有 Agent 无缝使用持久化存储。
+//
+// 示例：
+//
+//	store := hexagon.NewInMemoryStore()
+//	mem := hexagon.NewPersistentMemory(store, []string{"users", "u123"})
+//	agent := hexagon.QuickStart(hexagon.WithMemory(mem))
+var NewPersistentMemory = memstore.NewPersistentMemory
+
+// 记忆存储相关类型
+type (
+	// MemoryStore 是跨会话持久记忆存储接口
+	MemoryStore = memstore.MemoryStore
+
+	// MemoryItem 是记忆存储条目
+	MemoryItem = memstore.Item
 )
 
 // QdrantConfig 是 Qdrant 配置

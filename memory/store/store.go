@@ -28,6 +28,7 @@
 package store
 
 import (
+	"context"
 	"strings"
 	"time"
 )
@@ -245,10 +246,5 @@ func applyListOptions(opts []ListOption) *listOptions {
 	return o
 }
 
-// Context 是 context.Context 的别名，避免导入 context 包
-type Context = interface {
-	Deadline() (deadline time.Time, ok bool)
-	Done() <-chan struct{}
-	Err() error
-	Value(key any) any
-}
+// Context 是 context.Context 的别名
+type Context = context.Context
