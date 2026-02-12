@@ -78,8 +78,8 @@ type CheckpointSaver interface {
 
 // MemoryCheckpointSaver 内存检查点保存器
 type MemoryCheckpointSaver struct {
-	checkpoints map[string]*Checkpoint  // id -> checkpoint
-	threads     map[string][]string     // threadID -> []checkpointID
+	checkpoints map[string]*Checkpoint // id -> checkpoint
+	threads     map[string][]string    // threadID -> []checkpointID
 	mu          sync.RWMutex
 }
 
@@ -93,25 +93,55 @@ func NewMemoryCheckpointSaver() *MemoryCheckpointSaver {
 
 // Save 保存检查点
 func (s *MemoryCheckpointSaver) Save(ctx context.Context, checkpoint *Checkpoint) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if checkpoint == nil {
+		return fmt.Errorf("checkpoint is nil")
+	}
+	if checkpoint.ThreadID == "" {
+		return fmt.Errorf("checkpoint thread_id is required")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if checkpoint.ID == "" {
 		checkpoint.ID = generateCheckpointID()
 	}
+	if existing, ok := s.checkpoints[checkpoint.ID]; ok && checkpoint.CreatedAt.IsZero() {
+		checkpoint.CreatedAt = existing.CreatedAt
+	}
 	checkpoint.UpdatedAt = time.Now()
 	if checkpoint.CreatedAt.IsZero() {
 		checkpoint.CreatedAt = checkpoint.UpdatedAt
 	}
 
-	s.checkpoints[checkpoint.ID] = checkpoint
-	s.threads[checkpoint.ThreadID] = append(s.threads[checkpoint.ThreadID], checkpoint.ID)
+	// 保存副本，避免外部修改引用导致检查点污染
+	s.checkpoints[checkpoint.ID] = cloneCheckpoint(checkpoint)
+
+	// 同一个检查点 ID 只记录一次线程索引，避免重复列表项
+	ids := s.threads[checkpoint.ThreadID]
+	exists := false
+	for _, id := range ids {
+		if id == checkpoint.ID {
+			exists = true
+			break
+		}
+	}
+	if !exists {
+		s.threads[checkpoint.ThreadID] = append(ids, checkpoint.ID)
+	}
 
 	return nil
 }
 
 // Load 加载最新的检查点
 func (s *MemoryCheckpointSaver) Load(ctx context.Context, threadID string) (*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -127,11 +157,15 @@ func (s *MemoryCheckpointSaver) Load(ctx context.Context, threadID string) (*Che
 		return nil, fmt.Errorf("checkpoint %s not found", latestID)
 	}
 
-	return cp, nil
+	return cloneCheckpoint(cp), nil
 }
 
 // LoadByID 根据 ID 加载检查点
 func (s *MemoryCheckpointSaver) LoadByID(ctx context.Context, id string) (*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -140,11 +174,15 @@ func (s *MemoryCheckpointSaver) LoadByID(ctx context.Context, id string) (*Check
 		return nil, fmt.Errorf("checkpoint %s not found", id)
 	}
 
-	return cp, nil
+	return cloneCheckpoint(cp), nil
 }
 
 // List 列出线程的所有检查点
 func (s *MemoryCheckpointSaver) List(ctx context.Context, threadID string) ([]*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -156,7 +194,7 @@ func (s *MemoryCheckpointSaver) List(ctx context.Context, threadID string) ([]*C
 	result := make([]*Checkpoint, 0, len(ids))
 	for _, id := range ids {
 		if cp, ok := s.checkpoints[id]; ok {
-			result = append(result, cp)
+			result = append(result, cloneCheckpoint(cp))
 		}
 	}
 
@@ -165,6 +203,10 @@ func (s *MemoryCheckpointSaver) List(ctx context.Context, threadID string) ([]*C
 
 // Delete 删除检查点
 func (s *MemoryCheckpointSaver) Delete(ctx context.Context, id string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -191,6 +233,10 @@ func (s *MemoryCheckpointSaver) Delete(ctx context.Context, id string) error {
 
 // DeleteThread 删除线程的所有检查点
 func (s *MemoryCheckpointSaver) DeleteThread(ctx context.Context, threadID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -205,6 +251,51 @@ func (s *MemoryCheckpointSaver) DeleteThread(ctx context.Context, threadID strin
 	delete(s.threads, threadID)
 
 	return nil
+}
+
+func cloneCheckpoint(cp *Checkpoint) *Checkpoint {
+	if cp == nil {
+		return nil
+	}
+
+	cloned := &Checkpoint{
+		ID:              cp.ID,
+		ThreadID:        cp.ThreadID,
+		GraphName:       cp.GraphName,
+		CurrentNode:     cp.CurrentNode,
+		State:           append(json.RawMessage(nil), cp.State...),
+		PendingNodes:    append([]string(nil), cp.PendingNodes...),
+		CompletedNodes:  append([]string(nil), cp.CompletedNodes...),
+		Metadata:        cloneMapAny(cp.Metadata),
+		InterruptAddrs:  cloneMapRawMessage(cp.InterruptAddrs),
+		InterruptStates: cloneMapRawMessage(cp.InterruptStates),
+		CreatedAt:       cp.CreatedAt,
+		UpdatedAt:       cp.UpdatedAt,
+		ParentID:        cp.ParentID,
+	}
+	return cloned
+}
+
+func cloneMapRawMessage(src map[string]json.RawMessage) map[string]json.RawMessage {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make(map[string]json.RawMessage, len(src))
+	for k, v := range src {
+		dst[k] = append(json.RawMessage(nil), v...)
+	}
+	return dst
+}
+
+func cloneMapAny(src map[string]any) map[string]any {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make(map[string]any, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
 }
 
 // ThreadConfig 线程配置

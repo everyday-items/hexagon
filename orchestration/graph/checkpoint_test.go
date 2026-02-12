@@ -349,6 +349,96 @@ func TestMemoryCheckpointSaver_DeleteThread_NotFound(t *testing.T) {
 	}
 }
 
+// TestMemoryCheckpointSaver_SaveStoresCopy 测试保存时会复制检查点，避免外部修改污染已保存数据
+func TestMemoryCheckpointSaver_SaveStoresCopy(t *testing.T) {
+	saver := NewMemoryCheckpointSaver()
+	ctx := context.Background()
+
+	cp := newTestCheckpoint("thread-copy", "test-graph", "node_a")
+	if err := saver.Save(ctx, cp); err != nil {
+		t.Fatalf("保存检查点失败: %v", err)
+	}
+
+	// 修改原始对象
+	cp.CurrentNode = "node_mutated"
+	cp.PendingNodes[0] = "node_mutated"
+	cp.Metadata["step"] = 999
+
+	loaded, err := saver.Load(ctx, "thread-copy")
+	if err != nil {
+		t.Fatalf("加载检查点失败: %v", err)
+	}
+
+	if loaded.CurrentNode != "node_a" {
+		t.Errorf("CurrentNode 不应受外部修改影响: got %s", loaded.CurrentNode)
+	}
+	if len(loaded.PendingNodes) == 0 || loaded.PendingNodes[0] != "node_b" {
+		t.Errorf("PendingNodes 不应受外部修改影响: got %v", loaded.PendingNodes)
+	}
+	if loaded.Metadata["step"] != 1 {
+		t.Errorf("Metadata 不应受外部修改影响: got %v", loaded.Metadata["step"])
+	}
+}
+
+// TestMemoryCheckpointSaver_LoadReturnsCopy 测试加载返回副本，避免调用方修改内部存储
+func TestMemoryCheckpointSaver_LoadReturnsCopy(t *testing.T) {
+	saver := NewMemoryCheckpointSaver()
+	ctx := context.Background()
+
+	cp := newTestCheckpoint("thread-load-copy", "test-graph", "node_a")
+	if err := saver.Save(ctx, cp); err != nil {
+		t.Fatalf("保存检查点失败: %v", err)
+	}
+
+	loaded1, err := saver.Load(ctx, "thread-load-copy")
+	if err != nil {
+		t.Fatalf("首次加载检查点失败: %v", err)
+	}
+
+	// 修改首次加载结果
+	loaded1.CurrentNode = "node_changed"
+	loaded1.Metadata["step"] = 100
+
+	loaded2, err := saver.Load(ctx, "thread-load-copy")
+	if err != nil {
+		t.Fatalf("二次加载检查点失败: %v", err)
+	}
+
+	if loaded2.CurrentNode != "node_a" {
+		t.Errorf("内部存储不应被调用方修改: got %s", loaded2.CurrentNode)
+	}
+	if loaded2.Metadata["step"] != 1 {
+		t.Errorf("内部 Metadata 不应被调用方修改: got %v", loaded2.Metadata["step"])
+	}
+}
+
+// TestMemoryCheckpointSaver_SaveSameIDNoDuplicate 测试同一 ID 重复保存不会导致线程索引重复
+func TestMemoryCheckpointSaver_SaveSameIDNoDuplicate(t *testing.T) {
+	saver := NewMemoryCheckpointSaver()
+	ctx := context.Background()
+
+	cp := newTestCheckpointWithID("fixed-id", "thread-fixed", "test-graph")
+	if err := saver.Save(ctx, cp); err != nil {
+		t.Fatalf("首次保存失败: %v", err)
+	}
+
+	cp.CurrentNode = "node_updated"
+	if err := saver.Save(ctx, cp); err != nil {
+		t.Fatalf("二次保存失败: %v", err)
+	}
+
+	list, err := saver.List(ctx, "thread-fixed")
+	if err != nil {
+		t.Fatalf("列出检查点失败: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("同一 ID 不应重复入索引: got %d", len(list))
+	}
+	if list[0].CurrentNode != "node_updated" {
+		t.Errorf("应保留最新数据: got %s", list[0].CurrentNode)
+	}
+}
+
 // TestMemoryCheckpointSaver_AutoGenerateID 测试 ID 自动生成
 func TestMemoryCheckpointSaver_AutoGenerateID(t *testing.T) {
 	saver := NewMemoryCheckpointSaver()
@@ -929,6 +1019,75 @@ func TestFileCheckpointSaver_ConcurrentAccess(t *testing.T) {
 	}
 
 	wg2.Wait()
+}
+
+// TestFileCheckpointSaver_SaveSameIDNoDuplicate 测试同 ID 重复保存不会重复写入线程索引，且会保留原 CreatedAt
+func TestFileCheckpointSaver_SaveSameIDNoDuplicate(t *testing.T) {
+	baseDir := t.TempDir()
+	saver, err := NewFileCheckpointSaver(baseDir)
+	if err != nil {
+		t.Fatalf("创建文件检查点保存器失败: %v", err)
+	}
+	ctx := context.Background()
+
+	cp1 := newTestCheckpoint("thread-file-dup", "dup-graph", "node_a")
+	if err := saver.Save(ctx, cp1); err != nil {
+		t.Fatalf("首次保存检查点失败: %v", err)
+	}
+	createdAt := cp1.CreatedAt
+
+	cp2 := newTestCheckpoint("thread-file-dup", "dup-graph", "node_b")
+	cp2.ID = cp1.ID
+	cp2.CreatedAt = time.Time{} // 验证会沿用已存在的 CreatedAt
+	if err := saver.Save(ctx, cp2); err != nil {
+		t.Fatalf("同 ID 再次保存检查点失败: %v", err)
+	}
+
+	list, err := saver.List(ctx, "thread-file-dup")
+	if err != nil {
+		t.Fatalf("列出检查点失败: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("同 ID 重复保存不应产生重复索引, 实际 %d", len(list))
+	}
+
+	loaded, err := saver.LoadByID(ctx, cp1.ID)
+	if err != nil {
+		t.Fatalf("按 ID 加载检查点失败: %v", err)
+	}
+	if loaded.CurrentNode != "node_b" {
+		t.Errorf("检查点内容未更新: 期望 node_b, 实际 %s", loaded.CurrentNode)
+	}
+	if !loaded.CreatedAt.Equal(createdAt) {
+		t.Errorf("CreatedAt 未沿用旧值: 期望 %v, 实际 %v", createdAt, loaded.CreatedAt)
+	}
+}
+
+// TestFileCheckpointSaver_SaveValidation 测试文件保存器参数校验行为
+func TestFileCheckpointSaver_SaveValidation(t *testing.T) {
+	baseDir := t.TempDir()
+	saver, err := NewFileCheckpointSaver(baseDir)
+	if err != nil {
+		t.Fatalf("创建文件检查点保存器失败: %v", err)
+	}
+	ctx := context.Background()
+
+	if err := saver.Save(ctx, nil); err == nil {
+		t.Fatal("保存 nil 检查点应返回错误")
+	}
+
+	cp := newTestCheckpoint("", "graph", "node_a")
+	if err := saver.Save(ctx, cp); err == nil {
+		t.Fatal("保存缺少 thread_id 的检查点应返回错误")
+	}
+
+	if _, err := saver.LoadByID(ctx, ""); err == nil {
+		t.Fatal("LoadByID 空 ID 应返回错误")
+	}
+
+	if err := saver.Delete(ctx, ""); err == nil {
+		t.Fatal("Delete 空 ID 应返回错误")
+	}
 }
 
 // ============== CheckpointSaver 接口统一测试 ==============

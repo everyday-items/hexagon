@@ -177,7 +177,8 @@ func WithMemory(m memory.Memory) QuickStartOption {
 //   - 使用 WithProvider() 选项
 //   - 调用 SetDefaultProvider()
 //
-// 如果没有配置 Provider，将会 panic。
+// 如果没有配置 Provider，QuickStart 不会 panic，
+// 但后续执行时会返回未配置 Provider 的错误。
 //
 // 示例：
 //
@@ -196,14 +197,11 @@ func QuickStart(opts ...QuickStartOption) *agent.ReActAgent {
 		opt(cfg)
 	}
 
-	// 检查 provider 是否配置
-	if cfg.provider == nil {
-		panic(ErrNoProvider)
-	}
-
 	agentOpts := []agent.Option{
-		agent.WithLLM(cfg.provider),
 		agent.WithMemory(cfg.memory),
+	}
+	if cfg.provider != nil {
+		agentOpts = append(agentOpts, agent.WithLLM(cfg.provider))
 	}
 
 	if len(cfg.tools) > 0 {
@@ -226,6 +224,9 @@ func QuickStart(opts ...QuickStartOption) *agent.ReActAgent {
 //	fmt.Println(response)
 func Chat(ctx context.Context, query string, opts ...QuickStartOption) (string, error) {
 	a := QuickStart(opts...)
+	if a.LLM() == nil {
+		return "", ErrNoProvider
+	}
 	output, err := a.Run(ctx, Input{Query: query})
 	if err != nil {
 		return "", err
@@ -249,6 +250,9 @@ func ChatWithTools(ctx context.Context, query string, tools ...tool.Tool) (strin
 //	output, err := hexagon.Run(ctx, hexagon.Input{Query: "Hello"})
 func Run(ctx context.Context, input Input, opts ...QuickStartOption) (Output, error) {
 	a := QuickStart(opts...)
+	if a.LLM() == nil {
+		return Output{}, ErrNoProvider
+	}
 	return a.Run(ctx, input)
 }
 
@@ -352,11 +356,11 @@ const (
 
 // 团队选项
 var (
-	WithAgents           = agent.WithAgents
-	WithMode             = agent.WithMode
-	WithManager          = agent.WithManager
-	WithMaxRounds        = agent.WithMaxRounds
-	WithTeamDescription  = agent.WithTeamDescription
+	WithAgents          = agent.WithAgents
+	WithMode            = agent.WithMode
+	WithManager         = agent.WithManager
+	WithMaxRounds       = agent.WithMaxRounds
+	WithTeamDescription = agent.WithTeamDescription
 )
 
 // ============== 可观测性 ==============
@@ -513,12 +517,12 @@ var NewRAGEngine = rag.NewEngine
 
 // RAG 引擎选项
 var (
-	WithRAGStore     = rag.WithStore
-	WithRAGEmbedder  = rag.WithEngineEmbedder
-	WithRAGLoader    = rag.WithLoader
-	WithRAGSplitter  = rag.WithEngineSplitter
-	WithRAGTopK      = rag.WithEngineTopK
-	WithRAGMinScore  = rag.WithEngineMinScore
+	WithRAGStore    = rag.WithStore
+	WithRAGEmbedder = rag.WithEngineEmbedder
+	WithRAGLoader   = rag.WithLoader
+	WithRAGSplitter = rag.WithEngineSplitter
+	WithRAGTopK     = rag.WithEngineTopK
+	WithRAGMinScore = rag.WithEngineMinScore
 )
 
 // RAG 检索选项
