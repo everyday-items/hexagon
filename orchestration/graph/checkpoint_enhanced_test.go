@@ -864,3 +864,151 @@ func TestMemoryEnhancedCheckpointSaver_CleanupNothingToClean(t *testing.T) {
 		t.Errorf("无需清理时应返回 0, 实际 %d", cleaned)
 	}
 }
+
+func TestMemoryEnhancedCheckpointSaver_SaveStoresCopy(t *testing.T) {
+	saver := NewMemoryEnhancedCheckpointSaver()
+	ctx := context.Background()
+
+	cp := newTestEnhancedCheckpoint("thread-copy", "graph-copy", "node_a", CheckpointStatusRunning)
+	cp.State = json.RawMessage(`{"counter":1}`)
+	cp.Stats = &CheckpointStats{
+		StepCount:     1,
+		TotalDuration: time.Second,
+		NodeDurations: map[string]time.Duration{
+			"node_a": time.Second,
+		},
+	}
+
+	if err := saver.SaveEnhanced(ctx, cp); err != nil {
+		t.Fatalf("保存检查点失败: %v", err)
+	}
+
+	id := cp.ID
+	cp.CurrentNode = "tampered"
+	cp.PendingNodes[0] = "tampered_pending"
+	cp.Metadata["step"] = 999
+	cp.Stats.StepCount = 999
+	cp.Stats.NodeDurations["node_a"] = 5 * time.Second
+	cp.State[11] = '9'
+
+	loaded, err := saver.LoadEnhancedByID(ctx, id)
+	if err != nil {
+		t.Fatalf("加载检查点失败: %v", err)
+	}
+
+	if loaded.CurrentNode != "node_a" {
+		t.Errorf("CurrentNode 被外部修改污染: %s", loaded.CurrentNode)
+	}
+	if len(loaded.PendingNodes) == 0 || loaded.PendingNodes[0] != "node_b" {
+		t.Errorf("PendingNodes 被外部修改污染: %v", loaded.PendingNodes)
+	}
+	if step, ok := loaded.Metadata["step"].(int); !ok || step != 1 {
+		t.Errorf("Metadata 被外部修改污染: %v", loaded.Metadata["step"])
+	}
+	if loaded.Stats == nil || loaded.Stats.StepCount != 1 {
+		t.Fatalf("Stats 被外部修改污染: %+v", loaded.Stats)
+	}
+	if got := loaded.Stats.NodeDurations["node_a"]; got != time.Second {
+		t.Errorf("Stats.NodeDurations 被外部修改污染: %v", got)
+	}
+
+	var state map[string]any
+	if err := json.Unmarshal(loaded.State, &state); err != nil {
+		t.Fatalf("解析状态失败: %v", err)
+	}
+	if state["counter"] != float64(1) {
+		t.Errorf("State 被外部修改污染: %v", state["counter"])
+	}
+}
+
+func TestMemoryEnhancedCheckpointSaver_LoadEnhancedReturnsCopy(t *testing.T) {
+	saver := NewMemoryEnhancedCheckpointSaver()
+	ctx := context.Background()
+
+	cp := newTestEnhancedCheckpoint("thread-load-copy", "graph", "node_a", CheckpointStatusRunning)
+	if err := saver.SaveEnhanced(ctx, cp); err != nil {
+		t.Fatalf("保存检查点失败: %v", err)
+	}
+
+	loaded1, err := saver.LoadEnhanced(ctx, "thread-load-copy")
+	if err != nil {
+		t.Fatalf("首次加载失败: %v", err)
+	}
+	loaded1.CurrentNode = "tampered"
+	loaded1.PendingNodes[0] = "tampered_pending"
+	loaded1.Metadata["step"] = 999
+
+	loaded2, err := saver.LoadEnhanced(ctx, "thread-load-copy")
+	if err != nil {
+		t.Fatalf("二次加载失败: %v", err)
+	}
+	if loaded2.CurrentNode != "node_a" {
+		t.Errorf("LoadEnhanced 未返回副本, CurrentNode=%s", loaded2.CurrentNode)
+	}
+	if len(loaded2.PendingNodes) == 0 || loaded2.PendingNodes[0] != "node_b" {
+		t.Errorf("LoadEnhanced 未返回副本, PendingNodes=%v", loaded2.PendingNodes)
+	}
+	if step, ok := loaded2.Metadata["step"].(int); !ok || step != 1 {
+		t.Errorf("LoadEnhanced 未返回副本, Metadata.step=%v", loaded2.Metadata["step"])
+	}
+}
+
+func TestMemoryEnhancedCheckpointSaver_SaveSameIDNoDuplicate(t *testing.T) {
+	saver := NewMemoryEnhancedCheckpointSaver()
+	ctx := context.Background()
+
+	cp := newTestEnhancedCheckpoint("thread-dup", "graph", "node_a", CheckpointStatusRunning)
+	if err := saver.SaveEnhanced(ctx, cp); err != nil {
+		t.Fatalf("首次保存失败: %v", err)
+	}
+	createdAt := cp.CreatedAt
+
+	updated := newTestEnhancedCheckpoint("thread-dup", "graph", "node_b", CheckpointStatusCompleted)
+	updated.ID = cp.ID
+	updated.CreatedAt = time.Time{} // 验证会沿用已存在的 CreatedAt
+	if err := saver.SaveEnhanced(ctx, updated); err != nil {
+		t.Fatalf("更新保存失败: %v", err)
+	}
+
+	list, err := saver.ListEnhanced(ctx, "thread-dup", nil)
+	if err != nil {
+		t.Fatalf("列出检查点失败: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("同 ID 重复保存不应产生重复索引, 实际 %d", len(list))
+	}
+
+	loaded, err := saver.LoadEnhancedByID(ctx, cp.ID)
+	if err != nil {
+		t.Fatalf("按 ID 加载失败: %v", err)
+	}
+	if loaded.CurrentNode != "node_b" {
+		t.Errorf("检查点内容未更新: %s", loaded.CurrentNode)
+	}
+	if !loaded.CreatedAt.Equal(createdAt) {
+		t.Errorf("CreatedAt 未沿用旧值: 期望 %v, 实际 %v", createdAt, loaded.CreatedAt)
+	}
+}
+
+func TestMemoryEnhancedCheckpointSaver_CleanupNilPolicy(t *testing.T) {
+	saver := NewMemoryEnhancedCheckpointSaver()
+	ctx := context.Background()
+
+	cp := newTestEnhancedCheckpoint("thread-cleanup-nil", "graph", "node_a", CheckpointStatusRunning)
+	if err := saver.SaveEnhanced(ctx, cp); err != nil {
+		t.Fatalf("保存检查点失败: %v", err)
+	}
+
+	cleaned, err := saver.Cleanup(ctx, nil)
+	if err != nil {
+		t.Fatalf("nil policy 不应报错: %v", err)
+	}
+	if cleaned != 0 {
+		t.Fatalf("nil policy 不应清理任何检查点: %d", cleaned)
+	}
+
+	loaded, err := saver.LoadEnhancedByID(ctx, cp.ID)
+	if err != nil || loaded == nil {
+		t.Fatalf("nil policy 后检查点应保留: %v", err)
+	}
+}

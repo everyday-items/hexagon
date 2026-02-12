@@ -218,12 +218,28 @@ func NewMemoryEnhancedCheckpointSaver() *MemoryEnhancedCheckpointSaver {
 
 // SaveEnhanced 保存增强检查点
 func (s *MemoryEnhancedCheckpointSaver) SaveEnhanced(ctx context.Context, checkpoint *EnhancedCheckpoint) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if checkpoint == nil {
+		return fmt.Errorf("checkpoint is nil")
+	}
+	if checkpoint.ThreadID == "" {
+		return fmt.Errorf("checkpoint thread_id is required")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if checkpoint.ID == "" {
 		checkpoint.ID = util.GenerateID("ckpt")
 	}
+
+	// 更新已存在检查点时，如果未显式设置 CreatedAt，沿用原值
+	if existing, ok := s.enhanced[checkpoint.ID]; ok && checkpoint.CreatedAt.IsZero() {
+		checkpoint.CreatedAt = existing.CreatedAt
+	}
+
 	checkpoint.UpdatedAt = time.Now()
 	if checkpoint.CreatedAt.IsZero() {
 		checkpoint.CreatedAt = checkpoint.UpdatedAt
@@ -237,18 +253,21 @@ func (s *MemoryEnhancedCheckpointSaver) SaveEnhanced(ctx context.Context, checkp
 	// 更新父检查点的子列表
 	if checkpoint.ParentID != "" {
 		if parent, ok := s.enhanced[checkpoint.ParentID]; ok {
-			parent.ChildIDs = append(parent.ChildIDs, checkpoint.ID)
+			parent.ChildIDs = appendUniqueID(parent.ChildIDs, checkpoint.ID)
 		}
 	}
 
-	s.enhanced[checkpoint.ID] = checkpoint
-	s.threads[checkpoint.ThreadID] = append(s.threads[checkpoint.ThreadID], checkpoint.ID)
+	// 保存副本，避免外部修改引用导致检查点污染
+	s.enhanced[checkpoint.ID] = cloneEnhancedCheckpoint(checkpoint)
+
+	// 同一个检查点 ID 只记录一次线程索引，避免重复列表项
+	s.threads[checkpoint.ThreadID] = appendUniqueID(s.threads[checkpoint.ThreadID], checkpoint.ID)
 
 	// 更新分支信息
 	if checkpoint.BranchID != "" {
 		if branch, ok := s.branches[checkpoint.BranchID]; ok {
 			branch.LatestCheckpointID = checkpoint.ID
-			branch.CheckpointCount++
+			branch.CheckpointCount = countBranchCheckpoints(s.enhanced, checkpoint.BranchID)
 			branch.UpdatedAt = time.Now()
 		}
 	}
@@ -258,6 +277,10 @@ func (s *MemoryEnhancedCheckpointSaver) SaveEnhanced(ctx context.Context, checkp
 
 // LoadEnhanced 加载最新的增强检查点
 func (s *MemoryEnhancedCheckpointSaver) LoadEnhanced(ctx context.Context, threadID string) (*EnhancedCheckpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -272,11 +295,18 @@ func (s *MemoryEnhancedCheckpointSaver) LoadEnhanced(ctx context.Context, thread
 		return nil, fmt.Errorf("checkpoint %s not found", latestID)
 	}
 
-	return cp, nil
+	return cloneEnhancedCheckpoint(cp), nil
 }
 
 // LoadEnhancedByID 根据 ID 加载增强检查点
 func (s *MemoryEnhancedCheckpointSaver) LoadEnhancedByID(ctx context.Context, id string) (*EnhancedCheckpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if id == "" {
+		return nil, fmt.Errorf("checkpoint id is required")
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -285,11 +315,15 @@ func (s *MemoryEnhancedCheckpointSaver) LoadEnhancedByID(ctx context.Context, id
 		return nil, fmt.Errorf("checkpoint %s not found", id)
 	}
 
-	return cp, nil
+	return cloneEnhancedCheckpoint(cp), nil
 }
 
 // ListEnhanced 列出线程的所有增强检查点
 func (s *MemoryEnhancedCheckpointSaver) ListEnhanced(ctx context.Context, threadID string, opts *ListOptions) ([]*EnhancedCheckpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -300,29 +334,35 @@ func (s *MemoryEnhancedCheckpointSaver) ListEnhanced(ctx context.Context, thread
 
 	result := make([]*EnhancedCheckpoint, 0, len(ids))
 	for _, id := range ids {
-		if cp, ok := s.enhanced[id]; ok {
-			// 应用过滤
-			if opts != nil {
-				if opts.Status != "" && cp.Status != opts.Status {
-					continue
-				}
-				if opts.BranchID != "" && cp.BranchID != opts.BranchID {
-					continue
-				}
-				if opts.StartTime != nil && cp.CreatedAt.Before(*opts.StartTime) {
-					continue
-				}
-				if opts.EndTime != nil && cp.CreatedAt.After(*opts.EndTime) {
-					continue
-				}
-			}
-			result = append(result, cp)
+		cp, ok := s.enhanced[id]
+		if !ok {
+			continue
 		}
+
+		// 应用过滤
+		if opts != nil {
+			if opts.Status != "" && cp.Status != opts.Status {
+				continue
+			}
+			if opts.BranchID != "" && cp.BranchID != opts.BranchID {
+				continue
+			}
+			if opts.StartTime != nil && cp.CreatedAt.Before(*opts.StartTime) {
+				continue
+			}
+			if opts.EndTime != nil && cp.CreatedAt.After(*opts.EndTime) {
+				continue
+			}
+		}
+		result = append(result, cloneEnhancedCheckpoint(cp))
 	}
 
 	// 应用分页
 	if opts != nil && opts.Limit > 0 {
 		start := opts.Offset
+		if start < 0 {
+			start = 0
+		}
 		if start >= len(result) {
 			return nil, nil
 		}
@@ -338,6 +378,13 @@ func (s *MemoryEnhancedCheckpointSaver) ListEnhanced(ctx context.Context, thread
 
 // GetHistory 获取检查点历史链
 func (s *MemoryEnhancedCheckpointSaver) GetHistory(ctx context.Context, checkpointID string, limit int) ([]*EnhancedCheckpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if checkpointID == "" {
+		return nil, fmt.Errorf("checkpoint id is required")
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -349,7 +396,7 @@ func (s *MemoryEnhancedCheckpointSaver) GetHistory(ctx context.Context, checkpoi
 		if !ok {
 			break
 		}
-		history = append(history, cp)
+		history = append(history, cloneEnhancedCheckpoint(cp))
 		currentID = cp.ParentID
 	}
 
@@ -358,13 +405,17 @@ func (s *MemoryEnhancedCheckpointSaver) GetHistory(ctx context.Context, checkpoi
 
 // GetBranches 获取分支列表
 func (s *MemoryEnhancedCheckpointSaver) GetBranches(ctx context.Context, threadID string) ([]*BranchInfo, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	var result []*BranchInfo
 	for _, branch := range s.branches {
 		if branch.ThreadID == threadID {
-			result = append(result, branch)
+			result = append(result, cloneBranchInfo(branch))
 		}
 	}
 
@@ -373,6 +424,16 @@ func (s *MemoryEnhancedCheckpointSaver) GetBranches(ctx context.Context, threadI
 
 // CreateBranch 从检查点创建分支
 func (s *MemoryEnhancedCheckpointSaver) CreateBranch(ctx context.Context, checkpointID string, branchName string) (*EnhancedCheckpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if checkpointID == "" {
+		return nil, fmt.Errorf("checkpoint id is required")
+	}
+	if branchName == "" {
+		return nil, fmt.Errorf("branch name is required")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -383,6 +444,7 @@ func (s *MemoryEnhancedCheckpointSaver) CreateBranch(ctx context.Context, checkp
 	}
 
 	// 创建分支
+	now := time.Now()
 	branchID := util.GenerateID("branch")
 	branch := &BranchInfo{
 		ID:               branchID,
@@ -390,8 +452,8 @@ func (s *MemoryEnhancedCheckpointSaver) CreateBranch(ctx context.Context, checkp
 		ThreadID:         source.ThreadID,
 		BaseCheckpointID: checkpointID,
 		CheckpointCount:  0,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 	s.branches[branchID] = branch
 
@@ -403,31 +465,50 @@ func (s *MemoryEnhancedCheckpointSaver) CreateBranch(ctx context.Context, checkp
 		Version:        source.Version,
 		Status:         CheckpointStatusPending,
 		CurrentNode:    source.CurrentNode,
-		PendingNodes:   append([]string{}, source.PendingNodes...),
-		CompletedNodes: append([]string{}, source.CompletedNodes...),
-		State:          append(json.RawMessage{}, source.State...),
+		PendingNodes:   append([]string(nil), source.PendingNodes...),
+		CompletedNodes: append([]string(nil), source.CompletedNodes...),
+		VisitedNodes:   append([]string(nil), source.VisitedNodes...),
+		State:          append(json.RawMessage(nil), source.State...),
+		StateDiff:      append(json.RawMessage(nil), source.StateDiff...),
 		ParentID:       checkpointID,
 		BranchID:       branchID,
 		BranchName:     branchName,
 		Metadata:       copyMetadata(source.Metadata),
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		Tags:           append([]string(nil), source.Tags...),
+		Description:    source.Description,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		Stats:          cloneCheckpointStats(source.Stats),
 	}
 
-	s.enhanced[newCheckpoint.ID] = newCheckpoint
-	s.threads[newCheckpoint.ThreadID] = append(s.threads[newCheckpoint.ThreadID], newCheckpoint.ID)
+	if len(newCheckpoint.State) > 0 {
+		newCheckpoint.StateHash = hashState(newCheckpoint.State)
+	}
+
+	s.enhanced[newCheckpoint.ID] = cloneEnhancedCheckpoint(newCheckpoint)
+	s.threads[newCheckpoint.ThreadID] = appendUniqueID(s.threads[newCheckpoint.ThreadID], newCheckpoint.ID)
 
 	branch.LatestCheckpointID = newCheckpoint.ID
 	branch.CheckpointCount = 1
 
 	// 更新源检查点的子列表
-	source.ChildIDs = append(source.ChildIDs, newCheckpoint.ID)
+	source.ChildIDs = appendUniqueID(source.ChildIDs, newCheckpoint.ID)
 
-	return newCheckpoint, nil
+	return cloneEnhancedCheckpoint(newCheckpoint), nil
 }
 
 // MergeBranch 合并分支
 func (s *MemoryEnhancedCheckpointSaver) MergeBranch(ctx context.Context, sourceBranchID, targetBranchID string, strategy MergeStrategy) (*EnhancedCheckpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if sourceBranchID == "" {
+		return nil, fmt.Errorf("source branch id is required")
+	}
+	if targetBranchID == "" {
+		return nil, fmt.Errorf("target branch id is required")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -439,6 +520,12 @@ func (s *MemoryEnhancedCheckpointSaver) MergeBranch(ctx context.Context, sourceB
 	targetBranch, ok := s.branches[targetBranchID]
 	if !ok {
 		return nil, fmt.Errorf("target branch %s not found", targetBranchID)
+	}
+	if sourceBranch.LatestCheckpointID == "" {
+		return nil, fmt.Errorf("source branch %s has no latest checkpoint", sourceBranchID)
+	}
+	if targetBranch.LatestCheckpointID == "" {
+		return nil, fmt.Errorf("target branch %s has no latest checkpoint", targetBranchID)
 	}
 
 	sourceCP, ok := s.enhanced[sourceBranch.LatestCheckpointID]
@@ -455,13 +542,19 @@ func (s *MemoryEnhancedCheckpointSaver) MergeBranch(ctx context.Context, sourceB
 	var mergedState json.RawMessage
 	switch strategy {
 	case MergeStrategyOverwrite:
-		mergedState = append(json.RawMessage{}, sourceCP.State...)
+		mergedState = append(json.RawMessage(nil), sourceCP.State...)
 	case MergeStrategyKeepBoth:
-		mergedState = append(json.RawMessage{}, targetCP.State...)
+		mergedState = append(json.RawMessage(nil), targetCP.State...)
 	default:
 		// 默认合并策略 - 简单使用源状态
-		mergedState = append(json.RawMessage{}, sourceCP.State...)
+		mergedState = append(json.RawMessage(nil), sourceCP.State...)
 	}
+
+	metadata := copyMetadata(targetCP.Metadata)
+	metadata["merged_from"] = sourceBranchID
+	metadata["merge_strategy"] = string(strategy)
+
+	now := time.Now()
 
 	// 创建合并检查点
 	merged := &EnhancedCheckpoint{
@@ -471,44 +564,59 @@ func (s *MemoryEnhancedCheckpointSaver) MergeBranch(ctx context.Context, sourceB
 		Version:        targetCP.Version,
 		Status:         CheckpointStatusPending,
 		CurrentNode:    sourceCP.CurrentNode,
-		PendingNodes:   append([]string{}, sourceCP.PendingNodes...),
+		PendingNodes:   append([]string(nil), sourceCP.PendingNodes...),
 		CompletedNodes: mergeSlices(sourceCP.CompletedNodes, targetCP.CompletedNodes),
+		VisitedNodes:   mergeSlices(sourceCP.VisitedNodes, targetCP.VisitedNodes),
 		State:          mergedState,
 		ParentID:       targetCP.ID,
 		BranchID:       targetBranchID,
-		Metadata: map[string]any{
-			"merged_from":    sourceBranchID,
-			"merge_strategy": string(strategy),
-		},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		BranchName:     targetBranch.Name,
+		Metadata:       metadata,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		Stats:          cloneCheckpointStats(targetCP.Stats),
 	}
 
-	s.enhanced[merged.ID] = merged
-	s.threads[merged.ThreadID] = append(s.threads[merged.ThreadID], merged.ID)
+	if len(merged.State) > 0 {
+		merged.StateHash = hashState(merged.State)
+	}
+
+	s.enhanced[merged.ID] = cloneEnhancedCheckpoint(merged)
+	s.threads[merged.ThreadID] = appendUniqueID(s.threads[merged.ThreadID], merged.ID)
+	targetCP.ChildIDs = appendUniqueID(targetCP.ChildIDs, merged.ID)
 
 	targetBranch.LatestCheckpointID = merged.ID
-	targetBranch.CheckpointCount++
-	targetBranch.UpdatedAt = time.Now()
+	targetBranch.CheckpointCount = countBranchCheckpoints(s.enhanced, targetBranchID)
+	targetBranch.UpdatedAt = now
 
-	return merged, nil
+	return cloneEnhancedCheckpoint(merged), nil
 }
 
 // Search 搜索检查点
 func (s *MemoryEnhancedCheckpointSaver) Search(ctx context.Context, query *CheckpointQuery) ([]*EnhancedCheckpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if query == nil {
+		query = &CheckpointQuery{}
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	var result []*EnhancedCheckpoint
 	for _, cp := range s.enhanced {
 		if matchesQuery(cp, query) {
-			result = append(result, cp)
+			result = append(result, cloneEnhancedCheckpoint(cp))
 		}
 	}
 
 	// 应用分页
 	if query.Limit > 0 {
 		start := query.Offset
+		if start < 0 {
+			start = 0
+		}
 		if start >= len(result) {
 			return nil, nil
 		}
@@ -524,57 +632,140 @@ func (s *MemoryEnhancedCheckpointSaver) Search(ctx context.Context, query *Check
 
 // Cleanup 清理旧检查点
 func (s *MemoryEnhancedCheckpointSaver) Cleanup(ctx context.Context, policy *CleanupPolicy) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	if policy == nil {
+		return 0, nil
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var toDelete []string
 	now := time.Now()
 
-	for id, cp := range s.enhanced {
-		// 检查是否保护
+	branchHeads := make(map[string]struct{})
+	if policy.KeepBranchHeads {
+		for _, branch := range s.branches {
+			if branch.LatestCheckpointID != "" {
+				branchHeads[branch.LatestCheckpointID] = struct{}{}
+			}
+		}
+	}
+
+	shouldKeep := func(id string, cp *EnhancedCheckpoint) bool {
 		if policy.KeepCompleted && cp.Status == CheckpointStatusCompleted {
-			continue
+			return true
 		}
 		if policy.KeepTagged && len(cp.Tags) > 0 {
-			continue
+			return true
 		}
 		if policy.KeepBranchHeads {
-			isBranchHead := false
-			for _, branch := range s.branches {
-				if branch.LatestCheckpointID == id {
-					isBranchHead = true
-					break
-				}
-			}
-			if isBranchHead {
+			_, ok := branchHeads[id]
+			return ok
+		}
+		return false
+	}
+
+	toDelete := make(map[string]struct{})
+
+	// 按年龄清理
+	if policy.MaxAge > 0 {
+		for id, cp := range s.enhanced {
+			if shouldKeep(id, cp) {
 				continue
 			}
-		}
-
-		// 检查年龄
-		if policy.MaxAge > 0 && now.Sub(cp.CreatedAt) > policy.MaxAge {
-			toDelete = append(toDelete, id)
-		}
-	}
-
-	// 删除
-	for _, id := range toDelete {
-		if cp, ok := s.enhanced[id]; ok {
-			delete(s.enhanced, id)
-			// 从线程列表移除
-			if ids, ok := s.threads[cp.ThreadID]; ok {
-				newIDs := make([]string, 0, len(ids)-1)
-				for _, existingID := range ids {
-					if existingID != id {
-						newIDs = append(newIDs, existingID)
-					}
-				}
-				s.threads[cp.ThreadID] = newIDs
+			if now.Sub(cp.CreatedAt) > policy.MaxAge {
+				toDelete[id] = struct{}{}
 			}
 		}
 	}
 
-	return len(toDelete), nil
+	// 每线程最大数量清理（优先删除最旧且未受保护的检查点）
+	if policy.MaxCount > 0 {
+		for _, ids := range s.threads {
+			liveIDs := make([]string, 0, len(ids))
+			seen := make(map[string]struct{}, len(ids))
+			for _, id := range ids {
+				if _, dup := seen[id]; dup {
+					continue
+				}
+				if _, ok := s.enhanced[id]; !ok {
+					continue
+				}
+				seen[id] = struct{}{}
+				liveIDs = append(liveIDs, id)
+			}
+
+			if len(liveIDs) <= policy.MaxCount {
+				continue
+			}
+
+			alreadyMarked := 0
+			for _, id := range liveIDs {
+				if _, marked := toDelete[id]; marked {
+					alreadyMarked++
+				}
+			}
+
+			needDelete := len(liveIDs) - alreadyMarked - policy.MaxCount
+			if needDelete <= 0 {
+				continue
+			}
+
+			for _, id := range liveIDs {
+				if needDelete == 0 {
+					break
+				}
+				if _, marked := toDelete[id]; marked {
+					continue
+				}
+				cp, ok := s.enhanced[id]
+				if !ok || shouldKeep(id, cp) {
+					continue
+				}
+				toDelete[id] = struct{}{}
+				needDelete--
+			}
+		}
+	}
+
+	if len(toDelete) == 0 {
+		return 0, nil
+	}
+
+	deleted := 0
+	for id := range toDelete {
+		cp, ok := s.enhanced[id]
+		if !ok {
+			continue
+		}
+
+		delete(s.enhanced, id)
+		s.threads[cp.ThreadID] = removeIDValue(s.threads[cp.ThreadID], id)
+		if len(s.threads[cp.ThreadID]) == 0 {
+			delete(s.threads, cp.ThreadID)
+		}
+
+		if cp.ParentID != "" {
+			if parent, ok := s.enhanced[cp.ParentID]; ok {
+				parent.ChildIDs = removeIDValue(parent.ChildIDs, id)
+			}
+		}
+
+		deleted++
+	}
+
+	// 清理后重建分支统计与头指针
+	for _, branch := range s.branches {
+		branch.CheckpointCount = countBranchCheckpoints(s.enhanced, branch.ID)
+		if _, ok := s.enhanced[branch.LatestCheckpointID]; !ok {
+			branch.LatestCheckpointID = findLatestBranchCheckpointID(s.threads[branch.ThreadID], s.enhanced, branch.ID)
+		}
+		branch.UpdatedAt = now
+	}
+
+	return deleted, nil
 }
 
 // ============== 辅助函数 ==============
@@ -598,6 +789,128 @@ func copyMetadata(m map[string]any) map[string]any {
 		result[k] = v
 	}
 	return result
+}
+
+func cloneEnhancedCheckpoint(cp *EnhancedCheckpoint) *EnhancedCheckpoint {
+	if cp == nil {
+		return nil
+	}
+
+	return &EnhancedCheckpoint{
+		ID:             cp.ID,
+		ThreadID:       cp.ThreadID,
+		GraphName:      cp.GraphName,
+		Version:        cp.Version,
+		Status:         cp.Status,
+		CurrentNode:    cp.CurrentNode,
+		PendingNodes:   append([]string(nil), cp.PendingNodes...),
+		CompletedNodes: append([]string(nil), cp.CompletedNodes...),
+		VisitedNodes:   append([]string(nil), cp.VisitedNodes...),
+		State:          append(json.RawMessage(nil), cp.State...),
+		StateDiff:      append(json.RawMessage(nil), cp.StateDiff...),
+		StateHash:      cp.StateHash,
+		ParentID:       cp.ParentID,
+		BranchID:       cp.BranchID,
+		BranchName:     cp.BranchName,
+		ChildIDs:       append([]string(nil), cp.ChildIDs...),
+		Metadata:       copyMetadata(cp.Metadata),
+		Tags:           append([]string(nil), cp.Tags...),
+		Description:    cp.Description,
+		CreatedAt:      cp.CreatedAt,
+		UpdatedAt:      cp.UpdatedAt,
+		Stats:          cloneCheckpointStats(cp.Stats),
+	}
+}
+
+func cloneCheckpointStats(stats *CheckpointStats) *CheckpointStats {
+	if stats == nil {
+		return nil
+	}
+
+	return &CheckpointStats{
+		StepCount:     stats.StepCount,
+		TotalDuration: stats.TotalDuration,
+		NodeDurations: cloneDurationMap(stats.NodeDurations),
+		LLMTokens:     stats.LLMTokens,
+		ToolCalls:     stats.ToolCalls,
+	}
+}
+
+func cloneDurationMap(src map[string]time.Duration) map[string]time.Duration {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make(map[string]time.Duration, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+func cloneBranchInfo(branch *BranchInfo) *BranchInfo {
+	if branch == nil {
+		return nil
+	}
+
+	return &BranchInfo{
+		ID:                 branch.ID,
+		Name:               branch.Name,
+		ThreadID:           branch.ThreadID,
+		BaseCheckpointID:   branch.BaseCheckpointID,
+		LatestCheckpointID: branch.LatestCheckpointID,
+		CheckpointCount:    branch.CheckpointCount,
+		CreatedAt:          branch.CreatedAt,
+		UpdatedAt:          branch.UpdatedAt,
+	}
+}
+
+func appendUniqueID(ids []string, id string) []string {
+	for _, existingID := range ids {
+		if existingID == id {
+			return ids
+		}
+	}
+	return append(ids, id)
+}
+
+func removeIDValue(ids []string, id string) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	result := ids[:0]
+	for _, existingID := range ids {
+		if existingID != id {
+			result = append(result, existingID)
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func countBranchCheckpoints(checkpoints map[string]*EnhancedCheckpoint, branchID string) int {
+	count := 0
+	for _, cp := range checkpoints {
+		if cp.BranchID == branchID {
+			count++
+		}
+	}
+	return count
+}
+
+func findLatestBranchCheckpointID(threadIDs []string, checkpoints map[string]*EnhancedCheckpoint, branchID string) string {
+	for i := len(threadIDs) - 1; i >= 0; i-- {
+		id := threadIDs[i]
+		cp, ok := checkpoints[id]
+		if !ok {
+			continue
+		}
+		if cp.BranchID == branchID {
+			return id
+		}
+	}
+	return ""
 }
 
 // mergeSlices 合并切片（去重）

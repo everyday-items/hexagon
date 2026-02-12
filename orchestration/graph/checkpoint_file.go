@@ -70,12 +70,36 @@ func NewFileCheckpointSaver(baseDir string) (*FileCheckpointSaver, error) {
 // 返回：
 //   - error: 保存失败时返回错误
 func (s *FileCheckpointSaver) Save(ctx context.Context, checkpoint *Checkpoint) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if checkpoint == nil {
+		return fmt.Errorf("checkpoint is nil")
+	}
+	if checkpoint.ThreadID == "" {
+		return fmt.Errorf("thread_id is required")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// 自动生成 ID
 	if checkpoint.ID == "" {
 		checkpoint.ID = generateCheckpointID()
+	}
+
+	// 更新已存在检查点时，如果未显式设置 CreatedAt，沿用原值
+	cpPath := s.checkpointPath(checkpoint.ThreadID, checkpoint.ID)
+	if checkpoint.CreatedAt.IsZero() {
+		if _, err := os.Stat(cpPath); err == nil {
+			existing, err := s.readCheckpoint(checkpoint.ThreadID, checkpoint.ID)
+			if err != nil {
+				return fmt.Errorf("读取已有检查点失败: %w", err)
+			}
+			checkpoint.CreatedAt = existing.CreatedAt
+		} else if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("检查检查点文件失败: %w", err)
+		}
 	}
 
 	// 设置时间戳
@@ -97,9 +121,8 @@ func (s *FileCheckpointSaver) Save(ctx context.Context, checkpoint *Checkpoint) 
 		return fmt.Errorf("序列化检查点失败: %w", err)
 	}
 
-	// 写入检查点文件
-	cpPath := s.checkpointPath(checkpoint.ThreadID, checkpoint.ID)
-	if err := os.WriteFile(cpPath, data, 0644); err != nil {
+	// 原子写入检查点文件，避免写入中断导致文件损坏
+	if err := writeFileAtomic(cpPath, data, 0644); err != nil {
 		return fmt.Errorf("写入检查点文件失败: %w", err)
 	}
 
@@ -108,7 +131,19 @@ func (s *FileCheckpointSaver) Save(ctx context.Context, checkpoint *Checkpoint) 
 	if err != nil {
 		return fmt.Errorf("加载索引文件失败: %w", err)
 	}
-	idx.CheckpointIDs = append(idx.CheckpointIDs, checkpoint.ID)
+
+	// 同一个检查点 ID 只记录一次，避免重复索引
+	exists := false
+	for _, id := range idx.CheckpointIDs {
+		if id == checkpoint.ID {
+			exists = true
+			break
+		}
+	}
+	if !exists {
+		idx.CheckpointIDs = append(idx.CheckpointIDs, checkpoint.ID)
+	}
+
 	if err := s.saveIndex(checkpoint.ThreadID, idx); err != nil {
 		return fmt.Errorf("保存索引文件失败: %w", err)
 	}
@@ -128,6 +163,10 @@ func (s *FileCheckpointSaver) Save(ctx context.Context, checkpoint *Checkpoint) 
 //   - *Checkpoint: 最新的检查点
 //   - error: 线程不存在或没有检查点时返回错误
 func (s *FileCheckpointSaver) Load(ctx context.Context, threadID string) (*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -157,6 +196,13 @@ func (s *FileCheckpointSaver) Load(ctx context.Context, threadID string) (*Check
 //   - *Checkpoint: 找到的检查点
 //   - error: 检查点不存在时返回错误
 func (s *FileCheckpointSaver) LoadByID(ctx context.Context, id string) (*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if id == "" {
+		return nil, fmt.Errorf("checkpoint id is required")
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -193,6 +239,10 @@ func (s *FileCheckpointSaver) LoadByID(ctx context.Context, id string) (*Checkpo
 //   - []*Checkpoint: 检查点列表，如果线程不存在则返回 nil
 //   - error: 读取错误时返回错误
 func (s *FileCheckpointSaver) List(ctx context.Context, threadID string) ([]*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -226,6 +276,13 @@ func (s *FileCheckpointSaver) List(ctx context.Context, threadID string) ([]*Che
 // 返回：
 //   - error: 删除失败时返回错误
 func (s *FileCheckpointSaver) Delete(ctx context.Context, id string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if id == "" {
+		return fmt.Errorf("checkpoint id is required")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -257,7 +314,7 @@ func (s *FileCheckpointSaver) Delete(ctx context.Context, id string) error {
 		// 从索引中移除
 		idx, err := s.loadIndex(threadID)
 		if err != nil {
-			return nil
+			return fmt.Errorf("加载索引文件失败: %w", err)
 		}
 		newIDs := make([]string, 0, len(idx.CheckpointIDs))
 		for _, existingID := range idx.CheckpointIDs {
@@ -287,6 +344,10 @@ func (s *FileCheckpointSaver) Delete(ctx context.Context, id string) error {
 // 返回：
 //   - error: 删除失败时返回错误
 func (s *FileCheckpointSaver) DeleteThread(ctx context.Context, threadID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -360,7 +421,7 @@ func (s *FileCheckpointSaver) saveIndex(threadID string, idx *threadIndex) error
 	}
 
 	indexPath := filepath.Join(s.threadDir(threadID), "index.json")
-	if err := os.WriteFile(indexPath, data, 0644); err != nil {
+	if err := writeFileAtomic(indexPath, data, 0644); err != nil {
 		return fmt.Errorf("写入索引文件失败: %w", err)
 	}
 
@@ -389,4 +450,17 @@ func (s *FileCheckpointSaver) readCheckpoint(threadID, checkpointID string) (*Ch
 	}
 
 	return &cp, nil
+}
+
+// writeFileAtomic 原子写入文件：先写临时文件，再 rename 覆盖目标文件
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, perm); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return nil
 }

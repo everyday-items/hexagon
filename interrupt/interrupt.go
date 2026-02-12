@@ -37,6 +37,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -506,20 +508,59 @@ func NewJSONCheckpointer(dir string) *JSONCheckpointer {
 }
 
 func (j *JSONCheckpointer) filename(threadID string) string {
-	return j.dir + "/" + threadID + ".json"
+	return filepath.Join(j.dir, threadID+".json")
 }
 
 func (j *JSONCheckpointer) Save(ctx context.Context, checkpoint *Checkpoint) error {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-
-	data, err := json.MarshalIndent(checkpoint, "", "  ")
-	if err != nil {
+	if checkpoint == nil {
+		return errors.New("checkpoint is nil")
+	}
+	if checkpoint.ThreadID == "" {
+		return errors.New("checkpoint thread_id is required")
+	}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 
-	// 简化实现：这里应该写入文件
-	_ = data
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	// 自动创建目录
+	if err := os.MkdirAll(j.dir, 0o755); err != nil {
+		return fmt.Errorf("create checkpoint dir: %w", err)
+	}
+
+	// 自动维护版本号
+	existing, err := j.loadUnlocked(ctx, checkpoint.ThreadID)
+	if err != nil {
+		return err
+	}
+	if existing != nil && checkpoint.Version <= existing.Version {
+		checkpoint.Version = existing.Version + 1
+	}
+	if checkpoint.Version == 0 {
+		checkpoint.Version = 1
+	}
+	if checkpoint.Timestamp.IsZero() {
+		checkpoint.Timestamp = time.Now()
+	}
+
+	data, err := json.MarshalIndent(checkpoint, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal checkpoint: %w", err)
+	}
+
+	// 先写临时文件，再原子替换，避免写入中断导致文件损坏
+	filename := j.filename(checkpoint.ThreadID)
+	tmp := filename + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return fmt.Errorf("write checkpoint tmp file: %w", err)
+	}
+	if err := os.Rename(tmp, filename); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("rename checkpoint file: %w", err)
+	}
+
 	return nil
 }
 
@@ -527,8 +568,7 @@ func (j *JSONCheckpointer) Load(ctx context.Context, threadID string) (*Checkpoi
 	j.mu.RLock()
 	defer j.mu.RUnlock()
 
-	// 简化实现：这里应该读取文件
-	return nil, nil
+	return j.loadUnlocked(ctx, threadID)
 }
 
 func (j *JSONCheckpointer) List(ctx context.Context, threadID string, limit int) ([]*Checkpoint, error) {
@@ -543,10 +583,42 @@ func (j *JSONCheckpointer) List(ctx context.Context, threadID string, limit int)
 }
 
 func (j *JSONCheckpointer) Delete(ctx context.Context, threadID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	// 简化实现：这里应该删除文件
+
+	filename := j.filename(threadID)
+	if err := os.Remove(filename); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("delete checkpoint file: %w", err)
+	}
+
 	return nil
+}
+
+func (j *JSONCheckpointer) loadUnlocked(ctx context.Context, threadID string) (*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if threadID == "" {
+		return nil, nil
+	}
+
+	data, err := os.ReadFile(j.filename(threadID))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read checkpoint file: %w", err)
+	}
+
+	var checkpoint Checkpoint
+	if err := json.Unmarshal(data, &checkpoint); err != nil {
+		return nil, fmt.Errorf("unmarshal checkpoint: %w", err)
+	}
+	return &checkpoint, nil
 }
 
 // ============== 便捷函数 ==============

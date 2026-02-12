@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -68,9 +69,31 @@ func threadKey(threadID string) string {
 
 // Save 保存检查点
 func (s *RedisCheckpointSaver) Save(ctx context.Context, checkpoint *Checkpoint) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.client == nil {
+		return errors.New("redis client is nil")
+	}
+	if checkpoint == nil {
+		return errors.New("checkpoint is nil")
+	}
+	if checkpoint.ThreadID == "" {
+		return errors.New("checkpoint thread_id is required")
+	}
+
 	if checkpoint.ID == "" {
 		checkpoint.ID = generateCheckpointID()
 	}
+
+	// 更新已有检查点时，如果未显式设置 CreatedAt，沿用原值
+	if checkpoint.CreatedAt.IsZero() {
+		existing, err := s.LoadByID(ctx, checkpoint.ID)
+		if err == nil && existing != nil && !existing.CreatedAt.IsZero() {
+			checkpoint.CreatedAt = existing.CreatedAt
+		}
+	}
+
 	checkpoint.UpdatedAt = time.Now()
 	if checkpoint.CreatedAt.IsZero() {
 		checkpoint.CreatedAt = checkpoint.UpdatedAt
@@ -107,6 +130,13 @@ func (s *RedisCheckpointSaver) Save(ctx context.Context, checkpoint *Checkpoint)
 
 // Load 加载最新的检查点
 func (s *RedisCheckpointSaver) Load(ctx context.Context, threadID string) (*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if s.client == nil {
+		return nil, errors.New("redis client is nil")
+	}
+
 	// 从有序集合中获取最新的检查点 ID
 	ids, err := s.client.ZRevRange(ctx, threadKey(threadID), 0, 0).Result()
 	if err != nil {
@@ -121,6 +151,16 @@ func (s *RedisCheckpointSaver) Load(ctx context.Context, threadID string) (*Chec
 
 // LoadByID 根据 ID 加载检查点
 func (s *RedisCheckpointSaver) LoadByID(ctx context.Context, id string) (*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if s.client == nil {
+		return nil, errors.New("redis client is nil")
+	}
+	if id == "" {
+		return nil, fmt.Errorf("checkpoint id is required")
+	}
+
 	data, err := s.client.Get(ctx, checkpointKey(id)).Bytes()
 	if err != nil {
 		if err == redis.Nil {
@@ -139,6 +179,13 @@ func (s *RedisCheckpointSaver) LoadByID(ctx context.Context, id string) (*Checkp
 
 // List 列出线程的所有检查点
 func (s *RedisCheckpointSaver) List(ctx context.Context, threadID string) ([]*Checkpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if s.client == nil {
+		return nil, errors.New("redis client is nil")
+	}
+
 	// 获取所有检查点 ID（按时间戳升序）
 	ids, err := s.client.ZRange(ctx, threadKey(threadID), 0, -1).Result()
 	if err != nil {
@@ -161,26 +208,21 @@ func (s *RedisCheckpointSaver) List(ctx context.Context, threadID string) ([]*Ch
 	}
 
 	result := make([]*Checkpoint, 0, len(values))
-	var unmarshalErrors []error
 	for i, v := range values {
 		if v == nil {
 			continue
 		}
+		raw, err := mgetValueToBytes(v)
+		if err != nil {
+			// 跳过不可解析值，保持向后兼容
+			_ = i
+			continue
+		}
 		var checkpoint Checkpoint
-		if err := json.Unmarshal([]byte(v.(string)), &checkpoint); err != nil {
-			// 记录解析错误，但继续处理其他检查点
-			unmarshalErrors = append(unmarshalErrors, fmt.Errorf("checkpoint %d: %w", i, err))
+		if err := json.Unmarshal(raw, &checkpoint); err != nil {
 			continue
 		}
 		result = append(result, &checkpoint)
-	}
-
-	// 如果有解析错误，返回部分结果和合并的错误信息
-	// 但不影响已成功解析的检查点
-	if len(unmarshalErrors) > 0 {
-		// 返回结果，但同时记录警告（不返回错误，以保持向后兼容）
-		// 调用方可以通过 LoadByThreadIDWithWarnings 获取详细错误
-		return result, nil
 	}
 
 	return result, nil
@@ -188,6 +230,13 @@ func (s *RedisCheckpointSaver) List(ctx context.Context, threadID string) ([]*Ch
 
 // LoadByThreadIDWithWarnings 加载线程的所有检查点，同时返回解析警告
 func (s *RedisCheckpointSaver) LoadByThreadIDWithWarnings(ctx context.Context, threadID string) ([]*Checkpoint, []error, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+	if s.client == nil {
+		return nil, nil, errors.New("redis client is nil")
+	}
+
 	// 获取线程的所有检查点 ID
 	ids, err := s.client.ZRange(ctx, threadKey(threadID), 0, -1).Result()
 	if err != nil {
@@ -215,8 +264,13 @@ func (s *RedisCheckpointSaver) LoadByThreadIDWithWarnings(ctx context.Context, t
 		if v == nil {
 			continue
 		}
+		raw, err := mgetValueToBytes(v)
+		if err != nil {
+			warnings = append(warnings, fmt.Errorf("unexpected checkpoint value type for %s: %w", ids[i], err))
+			continue
+		}
 		var checkpoint Checkpoint
-		if err := json.Unmarshal([]byte(v.(string)), &checkpoint); err != nil {
+		if err := json.Unmarshal(raw, &checkpoint); err != nil {
 			warnings = append(warnings, fmt.Errorf("failed to unmarshal checkpoint %s: %w", ids[i], err))
 			continue
 		}
@@ -228,6 +282,16 @@ func (s *RedisCheckpointSaver) LoadByThreadIDWithWarnings(ctx context.Context, t
 
 // Delete 删除检查点
 func (s *RedisCheckpointSaver) Delete(ctx context.Context, id string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.client == nil {
+		return errors.New("redis client is nil")
+	}
+	if id == "" {
+		return fmt.Errorf("checkpoint id is required")
+	}
+
 	// 先获取检查点以获取 threadID
 	checkpoint, err := s.LoadByID(ctx, id)
 	if err != nil {
@@ -253,14 +317,17 @@ func (s *RedisCheckpointSaver) Delete(ctx context.Context, id string) error {
 
 // DeleteThread 删除线程的所有检查点
 func (s *RedisCheckpointSaver) DeleteThread(ctx context.Context, threadID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.client == nil {
+		return errors.New("redis client is nil")
+	}
+
 	// 获取所有检查点 ID
 	ids, err := s.client.ZRange(ctx, threadKey(threadID), 0, -1).Result()
 	if err != nil {
 		return fmt.Errorf("get checkpoint ids: %w", err)
-	}
-
-	if len(ids) == 0 {
-		return nil
 	}
 
 	// 构建要删除的 keys
@@ -280,6 +347,13 @@ func (s *RedisCheckpointSaver) DeleteThread(ctx context.Context, threadID string
 
 // ListThreads 列出所有线程 ID
 func (s *RedisCheckpointSaver) ListThreads(ctx context.Context, pattern string, limit int64) ([]string, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if s.client == nil {
+		return nil, errors.New("redis client is nil")
+	}
+
 	if pattern == "" {
 		pattern = "*"
 	}
@@ -313,11 +387,25 @@ func (s *RedisCheckpointSaver) ListThreads(ctx context.Context, pattern string, 
 
 // GetCheckpointCount 获取线程的检查点数量
 func (s *RedisCheckpointSaver) GetCheckpointCount(ctx context.Context, threadID string) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	if s.client == nil {
+		return 0, errors.New("redis client is nil")
+	}
+
 	return s.client.ZCard(ctx, threadKey(threadID)).Result()
 }
 
 // Prune 清理旧的检查点，保留最新的 n 个
 func (s *RedisCheckpointSaver) Prune(ctx context.Context, threadID string, keepCount int64) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.client == nil {
+		return errors.New("redis client is nil")
+	}
+
 	// 获取要删除的检查点 ID（保留最新的 keepCount 个）
 	// ZRemRangeByRank 删除排名从 0 到 -(keepCount+1) 的元素
 	removeCount := -keepCount - 1
@@ -354,8 +442,22 @@ func (s *RedisCheckpointSaver) Prune(ctx context.Context, threadID string, keepC
 
 // Close 关闭 Redis 连接
 func (s *RedisCheckpointSaver) Close() error {
+	if s.client == nil {
+		return nil
+	}
 	return s.client.Close()
 }
 
 // 确保实现了接口
 var _ CheckpointSaver = (*RedisCheckpointSaver)(nil)
+
+func mgetValueToBytes(v any) ([]byte, error) {
+	switch val := v.(type) {
+	case string:
+		return []byte(val), nil
+	case []byte:
+		return val, nil
+	default:
+		return nil, fmt.Errorf("unsupported mget value type %T", v)
+	}
+}
