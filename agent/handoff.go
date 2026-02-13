@@ -382,3 +382,83 @@ func SafeVariablesFromContext(ctx context.Context) *SafeContextVariables {
 	}
 	return nil
 }
+
+// ============== AgentAsTool 适配器 ==============
+
+// AgentAsTool 将 Agent 包装为 Tool
+//
+// 使 Agent 可以被其他 Agent 作为工具调用。与 TransferTo 不同，
+// AgentAsTool 直接执行目标 Agent 并返回结果，而不是创建交接。
+//
+// 使用场景：
+//   - SupervisorAgent 将 worker Agent 注册为工具
+//   - 让一个 Agent 调用另一个 Agent 的能力
+//
+// 工具名称：agent_<name>
+// 输入参数：message (必填) + context (可选)
+func AgentAsTool(ag Agent) tool.Tool {
+	return &agentTool{agent: ag}
+}
+
+// agentTool 将 Agent 包装为 tool.Tool 的内部实现
+type agentTool struct {
+	agent Agent
+}
+
+func (t *agentTool) Name() string {
+	return fmt.Sprintf("agent_%s", t.agent.Name())
+}
+
+func (t *agentTool) Description() string {
+	desc := t.agent.Description()
+	if desc == "" {
+		return fmt.Sprintf("Execute agent %q and return its response", t.agent.Name())
+	}
+	return fmt.Sprintf("Agent %s: %s", t.agent.Name(), desc)
+}
+
+func (t *agentTool) Schema() *schema.Schema {
+	return schema.Of[AgentToolInput]()
+}
+
+func (t *agentTool) Validate(args map[string]any) error {
+	if _, ok := args["message"]; !ok {
+		return fmt.Errorf("message is required")
+	}
+	return nil
+}
+
+func (t *agentTool) Execute(ctx context.Context, args map[string]any) (tool.Result, error) {
+	message, _ := args["message"].(string)
+	agentCtx, _ := args["context"].(map[string]any)
+
+	input := Input{
+		Query:   message,
+		Context: agentCtx,
+	}
+
+	output, err := t.agent.Run(ctx, input)
+	if err != nil {
+		return tool.Result{
+			Success: false,
+			Output:  fmt.Sprintf("agent %q execution failed: %v", t.agent.Name(), err),
+		}, nil
+	}
+
+	return tool.Result{
+		Success: true,
+		Output:  output.Content,
+	}, nil
+}
+
+// AgentToolInput AgentAsTool 的输入参数
+type AgentToolInput struct {
+	// Message 传递给 Agent 的消息
+	Message string `json:"message" desc:"Message to send to the agent" required:"true"`
+
+	// Context 额外上下文
+	Context map[string]any `json:"context,omitempty" desc:"Additional context to pass to the agent"`
+}
+
+// 确保实现了 Tool 接口
+var _ tool.Tool = (*agentTool)(nil)

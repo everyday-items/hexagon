@@ -61,12 +61,17 @@ const (
 	TimingRetrieverStart // 检索开始
 	TimingRetrieverEnd   // 检索完成
 
+	// Run 流式相关时机
+	TimingRunStreamStart // 流式执行开始
+	TimingRunStreamEnd   // 流式执行结束
+
 	// 便捷组合
-	TimingRunAll       = TimingRunStart | TimingRunEnd | TimingRunError
-	TimingToolAll      = TimingToolStart | TimingToolEnd
-	TimingLLMAll       = TimingLLMStart | TimingLLMEnd | TimingLLMStream
-	TimingRetrieverAll = TimingRetrieverStart | TimingRetrieverEnd
-	TimingAll          = TimingRunAll | TimingToolAll | TimingLLMAll | TimingRetrieverAll
+	TimingRunAll          = TimingRunStart | TimingRunEnd | TimingRunError
+	TimingRunStreamAll    = TimingRunStreamStart | TimingRunStreamEnd
+	TimingToolAll         = TimingToolStart | TimingToolEnd
+	TimingLLMAll          = TimingLLMStart | TimingLLMEnd | TimingLLMStream
+	TimingRetrieverAll    = TimingRetrieverStart | TimingRetrieverEnd
+	TimingAll             = TimingRunAll | TimingRunStreamAll | TimingToolAll | TimingLLMAll | TimingRetrieverAll
 )
 
 // Has 检查是否包含指定时机
@@ -94,6 +99,8 @@ func (t Timing) String() string {
 		{TimingLLMStream, "llm_stream"},
 		{TimingRetrieverStart, "retriever_start"},
 		{TimingRetrieverEnd, "retriever_end"},
+		{TimingRunStreamStart, "run_stream_start"},
+		{TimingRunStreamEnd, "run_stream_end"},
 	}
 	for _, tt := range timings {
 		if t.Has(tt.t) {
@@ -265,6 +272,72 @@ type RetrieverEndEvent struct {
 	Duration  int64          `json:"duration_ms"`
 	Error     error          `json:"error,omitempty"`
 	Metadata  map[string]any `json:"metadata,omitempty"`
+}
+
+// ============== 流式事件 ==============
+
+// RunStreamStartEvent 流式执行开始事件
+type RunStreamStartEvent struct {
+	// RunID 运行 ID
+	RunID string `json:"run_id"`
+
+	// AgentID Agent ID
+	AgentID string `json:"agent_id"`
+
+	// Input 输入数据
+	Input any `json:"input"`
+
+	// IsStream 标记是否为流式模式
+	IsStream bool `json:"is_stream"`
+
+	// Metadata 元数据
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// RunStreamEndEvent 流式执行结束事件
+type RunStreamEndEvent struct {
+	// RunID 运行 ID
+	RunID string `json:"run_id"`
+
+	// AgentID Agent ID
+	AgentID string `json:"agent_id"`
+
+	// ChunkCount 流式输出的 chunk 数量
+	ChunkCount int `json:"chunk_count"`
+
+	// Duration 执行耗时（毫秒）
+	Duration int64 `json:"duration_ms"`
+
+	// Error 错误（如果有）
+	Error error `json:"error,omitempty"`
+
+	// Metadata 元数据
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// StreamHook 流感知钩子（可选接口）
+//
+// RunHook 可以额外实现此接口来接收流式执行事件。
+// Manager 在触发流事件时会检查已注册的 RunHook 是否实现了 StreamHook，
+// 如果实现则调用相应方法。不需要单独注册，复用 runHooks 列表。
+//
+// 使用示例：
+//
+//	type myHook struct { ... }
+//	func (h *myHook) Name() string    { return "my-hook" }
+//	func (h *myHook) Enabled() bool   { return true }
+//	func (h *myHook) OnStart(...)     { ... }
+//	func (h *myHook) OnEnd(...)       { ... }
+//	func (h *myHook) OnError(...)     { ... }
+//	// 额外实现 StreamHook
+//	func (h *myHook) OnStreamStart(ctx context.Context, event *RunStreamStartEvent) error { ... }
+//	func (h *myHook) OnStreamEnd(ctx context.Context, event *RunStreamEndEvent) error     { ... }
+type StreamHook interface {
+	// OnStreamStart 流式执行开始
+	OnStreamStart(ctx context.Context, event *RunStreamStartEvent) error
+
+	// OnStreamEnd 流式执行结束
+	OnStreamEnd(ctx context.Context, event *RunStreamEndEvent) error
 }
 
 // ============== HookManager ==============
@@ -559,6 +632,66 @@ func (m *Manager) TriggerRetrieverEnd(ctx context.Context, event *RetrieverEndEv
 	for _, hook := range hooks {
 		if hook.Enabled() && checkTiming(hook, TimingRetrieverEnd) {
 			if err := hook.OnRetrieverEnd(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerStreamStart 触发流式执行开始事件
+//
+// 遍历已注册的 runHooks，检查是否实现了 StreamHook 接口。
+// 如果实现则调用 OnStreamStart 方法。不需要单独注册流钩子。
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingRunStreamStart 时机的 Hook。
+func (m *Manager) TriggerStreamStart(ctx context.Context, event *RunStreamStartEvent) error {
+	m.mu.RLock()
+	if len(m.runHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
+	hooks := make([]RunHook, len(m.runHooks))
+	copy(hooks, m.runHooks)
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if !hook.Enabled() || !checkTiming(hook, TimingRunStreamStart) {
+			continue
+		}
+		if sh, ok := hook.(StreamHook); ok {
+			if err := sh.OnStreamStart(ctx, event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// TriggerStreamEnd 触发流式执行结束事件
+//
+// 遍历已注册的 runHooks，检查是否实现了 StreamHook 接口。
+// 如果实现则调用 OnStreamEnd 方法。不需要单独注册流钩子。
+//
+// 线程安全：在迭代前创建钩子列表的副本，避免并发修改问题。
+// TimingChecker：只调用关心 TimingRunStreamEnd 时机的 Hook。
+func (m *Manager) TriggerStreamEnd(ctx context.Context, event *RunStreamEndEvent) error {
+	m.mu.RLock()
+	if len(m.runHooks) == 0 {
+		m.mu.RUnlock()
+		return nil
+	}
+	hooks := make([]RunHook, len(m.runHooks))
+	copy(hooks, m.runHooks)
+	m.mu.RUnlock()
+
+	for _, hook := range hooks {
+		if !hook.Enabled() || !checkTiming(hook, TimingRunStreamEnd) {
+			continue
+		}
+		if sh, ok := hook.(StreamHook); ok {
+			if err := sh.OnStreamEnd(ctx, event); err != nil {
 				return err
 			}
 		}
