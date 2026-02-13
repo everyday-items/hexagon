@@ -137,6 +137,10 @@ func WithPDFParser(parser PDFParser) PDFOption {
 }
 
 // NewPDFLoader 创建 PDF 加载器
+//
+// 默认使用 EnhancedPDFParser 进行解析，支持压缩流、xref 表、
+// hex 字符串等现代 PDF 特性。如需降级到简单解析器，可使用
+// WithPDFParser(&SimplePDFParser{}) 选项。
 func NewPDFLoader(path string, opts ...PDFOption) *PDFLoader {
 	l := &PDFLoader{
 		path:            path,
@@ -144,7 +148,7 @@ func NewPDFLoader(path string, opts ...PDFOption) *PDFLoader {
 		startPage:       1,
 		endPage:         0,
 		extractMetadata: true,
-		pdfParser:       &SimplePDFParser{},
+		pdfParser:       &EnhancedPDFParser{},
 	}
 	for _, opt := range opts {
 		opt(l)
@@ -153,6 +157,8 @@ func NewPDFLoader(path string, opts ...PDFOption) *PDFLoader {
 }
 
 // NewPDFLoaderFromReader 从 Reader 创建 PDF 加载器
+//
+// 默认使用 EnhancedPDFParser 进行解析。
 func NewPDFLoaderFromReader(r io.Reader, opts ...PDFOption) *PDFLoader {
 	l := &PDFLoader{
 		reader:          r,
@@ -160,7 +166,7 @@ func NewPDFLoaderFromReader(r io.Reader, opts ...PDFOption) *PDFLoader {
 		startPage:       1,
 		endPage:         0,
 		extractMetadata: true,
-		pdfParser:       &SimplePDFParser{},
+		pdfParser:       &EnhancedPDFParser{},
 	}
 	for _, opt := range opts {
 		opt(l)
