@@ -289,6 +289,18 @@ var NewBufferMemory = memory.NewBuffer
 // NewOpenAI 创建 OpenAI Provider
 var NewOpenAI = openai.New
 
+// OpenAI Provider 配置选项
+var (
+	// OpenAIWithBaseURL 设置自定义 API 端点（支持中转/私有部署）
+	OpenAIWithBaseURL = openai.WithBaseURL
+
+	// OpenAIWithModel 设置默认模型
+	OpenAIWithModel = openai.WithModel
+
+	// OpenAIWithHTTPClient 设置自定义 HTTP 客户端
+	OpenAIWithHTTPClient = openai.WithHTTPClient
+)
+
 // ============== 编排引擎 ==============
 
 // NewGraph 创建图编排构建器
@@ -451,12 +463,90 @@ var NewStateManager = agent.NewStateManager
 // NewGlobalState 创建全局状态
 var NewGlobalState = agent.NewGlobalState
 
+// Agent Option 便捷导出
+var (
+	// AgentWithLLM 设置 Agent 的 LLM Provider
+	AgentWithLLM = agent.WithLLM
+
+	// AgentWithTools 设置 Agent 的工具列表
+	AgentWithTools = agent.WithTools
+
+	// AgentWithSystemPrompt 设置 Agent 的系统提示词
+	AgentWithSystemPrompt = agent.WithSystemPrompt
+
+	// AgentWithMaxIterations 设置 Agent 的最大迭代次数
+	AgentWithMaxIterations = agent.WithMaxIterations
+
+	// AgentWithMemory 设置 Agent 的记忆系统
+	AgentWithMemory = agent.WithMemory
+
+	// AgentWithName 设置 Agent 名称
+	AgentWithName = agent.WithName
+
+	// AgentWithVerbose 设置 Agent 详细输出模式
+	AgentWithVerbose = agent.WithVerbose
+
+	// AgentWithRole 设置 Agent 角色
+	AgentWithRole = agent.WithRole
+
+	// AgentWithID 设置 Agent ID
+	AgentWithID = agent.WithID
+
+	// AgentWithDescription 设置 Agent 描述
+	AgentWithDescription = agent.WithDescription
+)
+
+// NewRole 创建角色构建器
+//
+// 示例：
+//
+//	role := hexagon.NewRole("researcher").
+//	    Title("高级研究员").
+//	    Goal("深入研究和分析问题").
+//	    Build()
+var NewRole = agent.NewRole
+
+// RoleBuilder 是角色构建器类型
+type RoleBuilder = agent.RoleBuilder
+
 // ============== 类型重新导出 ==============
+
+// LLM 相关类型
+type (
+	// Provider 是 LLM 提供者接口
+	Provider = llm.Provider
+
+	// CompletionRequest 是 LLM 补全请求
+	CompletionRequest = llm.CompletionRequest
+
+	// CompletionResponse 是 LLM 补全响应
+	CompletionResponse = llm.CompletionResponse
+
+	// Usage 是 Token 使用统计
+	Usage = llm.Usage
+
+	// LLMRole 是消息角色类型
+	LLMRole = llm.Role
+
+	// OpenAIOption 是 OpenAI Provider 的配置选项
+	OpenAIOption = openai.Option
+)
+
+// LLM 角色常量
+const (
+	RoleSystem    = llm.RoleSystem
+	RoleUser      = llm.RoleUser
+	RoleAssistant = llm.RoleAssistant
+	RoleTool      = llm.RoleTool
+)
 
 // Agent 相关类型
 type (
 	// Agent 是 Agent 接口
 	Agent = agent.Agent
+
+	// AgentOption 是 Agent 配置选项
+	AgentOption = agent.Option
 
 	// Role 是角色定义
 	Role = agent.Role
