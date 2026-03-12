@@ -11,10 +11,16 @@ import (
 	"github.com/everyday-items/ai-core/tool"
 )
 
+const (
+	// DefaultMaxRows 默认最大返回行数，防止 OOM
+	DefaultMaxRows = 1000
+)
+
 // DatabaseTool 数据库工具
 type DatabaseTool struct {
 	db       *sql.DB
 	readOnly bool
+	maxRows  int // 最大返回行数，默认 1000
 }
 
 // Option 数据库工具选项
@@ -27,11 +33,21 @@ func WithReadOnly(readOnly bool) Option {
 	}
 }
 
+// WithMaxRows 设置查询最大返回行数（默认 1000，防止 OOM）
+func WithMaxRows(maxRows int) Option {
+	return func(t *DatabaseTool) {
+		if maxRows > 0 {
+			t.maxRows = maxRows
+		}
+	}
+}
+
 // NewDatabaseTool 创建数据库工具
 func NewDatabaseTool(db *sql.DB, opts ...Option) *DatabaseTool {
 	t := &DatabaseTool{
 		db:       db,
 		readOnly: true, // 默认只读模式，安全第一
+		maxRows:  DefaultMaxRows,
 	}
 
 	for _, opt := range opts {
@@ -107,9 +123,18 @@ func (t *DatabaseTool) query(ctx context.Context, query string, args ...any) (Qu
 		return QueryOutput{}, fmt.Errorf("获取列名失败: %w", err)
 	}
 
-	// 读取数据
+	// 读取数据，限制最大行数防止 OOM
+	maxRows := t.maxRows
+	if maxRows <= 0 {
+		maxRows = DefaultMaxRows
+	}
+
 	var result [][]any
 	for rows.Next() {
+		if len(result) >= maxRows {
+			break
+		}
+
 		// 创建接收器
 		values := make([]any, len(columns))
 		valuePtrs := make([]any, len(columns))

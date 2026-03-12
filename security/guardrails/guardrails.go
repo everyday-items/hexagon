@@ -489,16 +489,56 @@ AI 回复: %s
 
 // ============== 辅助函数 ==============
 
-// parseScore 从 LLM 回复中解析分数 (1-10 → 0-1)
+// parseScore 从 LLM 回复中解析分数 (1-10 → 0.0-1.0)
+// 支持整数（"8"→0.8）和小数（"0.8"→0.8, "7.5"→0.75）格式
 func parseScore(content string) float64 {
 	content = strings.TrimSpace(content)
+
+	// 尝试匹配数字（整数或小数）
+	var numStr string
 	for _, ch := range content {
-		if ch >= '0' && ch <= '9' {
-			score := float64(ch-'0') / 10.0
-			return score
+		if (ch >= '0' && ch <= '9') || ch == '.' {
+			numStr += string(ch)
+		} else if len(numStr) > 0 {
+			break // 遇到非数字字符，停止（取第一个连续数字串）
 		}
 	}
-	return 0.5 // 无法解析时返回中等分数
+
+	if numStr == "" {
+		return 0.5 // 无法解析时返回中等分数
+	}
+
+	// 解析数字
+	var score float64
+	if strings.Contains(numStr, ".") {
+		// 小数格式（如 "0.8" 或 "7.5"）
+		_, err := fmt.Sscanf(numStr, "%f", &score)
+		if err != nil {
+			return 0.5
+		}
+		// 如果值 > 1，假设是 1-10 范围
+		if score > 1.0 {
+			score = score / 10.0
+		}
+	} else {
+		// 整数格式（如 "8"），视为 1-10 范围
+		_, err := fmt.Sscanf(numStr, "%f", &score)
+		if err != nil {
+			return 0.5
+		}
+		if score >= 1 && score <= 10 {
+			score = score / 10.0
+		}
+	}
+
+	// 确保在 [0, 1] 范围内
+	if score < 0 {
+		score = 0
+	}
+	if score > 1 {
+		score = 1
+	}
+	return score
 }
 
 func floatPtr(f float64) *float64 {

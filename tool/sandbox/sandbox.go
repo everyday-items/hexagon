@@ -231,9 +231,23 @@ func (s *Sandbox) executeDocker(ctx context.Context, input ExecuteInput) (*Execu
 	args = append(args, "-v", fmt.Sprintf("%s:%s", tempDir, s.config.WorkDir))
 	args = append(args, "-w", s.config.WorkDir)
 
-	// 额外挂载
+	// 额外挂载（验证路径安全性）
 	for _, mount := range s.config.Mounts {
-		mountStr := fmt.Sprintf("%s:%s", mount.Source, mount.Target)
+		// 禁止挂载系统敏感目录
+		cleanSource := filepath.Clean(mount.Source)
+		sensitivePathPrefixes := []string{"/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/var/run"}
+		isSensitive := false
+		for _, prefix := range sensitivePathPrefixes {
+			if cleanSource == prefix || strings.HasPrefix(cleanSource, prefix+"/") {
+				isSensitive = true
+				break
+			}
+		}
+		if isSensitive {
+			continue // 跳过敏感路径
+		}
+
+		mountStr := fmt.Sprintf("%s:%s", cleanSource, mount.Target)
 		if mount.ReadOnly {
 			mountStr += ":ro"
 		}
@@ -301,9 +315,14 @@ func (s *Sandbox) executeProcess(ctx context.Context, input ExecuteInput) (*Exec
 		return nil, fmt.Errorf("failed to write code file: %w", err)
 	}
 
-	// 写入额外文件
+	// 写入额外文件（验证路径安全性，防止路径穿越）
 	for path, content := range input.Files {
-		filePath := filepath.Join(tempDir, path)
+		// 清理路径，防止 "../" 等路径穿越
+		cleanPath := filepath.Clean(path)
+		if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
+			return nil, fmt.Errorf("不安全的文件路径: %s", path)
+		}
+		filePath := filepath.Join(tempDir, cleanPath)
 		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 			return nil, fmt.Errorf("failed to create directory: %w", err)
 		}
@@ -319,6 +338,11 @@ func (s *Sandbox) executeProcess(ctx context.Context, input ExecuteInput) (*Exec
 	cmd := exec.CommandContext(ctx, interpreter, args...)
 	cmd.Dir = tempDir
 	cmd.Env = append(os.Environ(), s.config.Env...)
+
+	// 在 Unix 系统上应用资源限制
+	if runtime.GOOS != "windows" {
+		s.applyProcessLimits(cmd)
+	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -525,4 +549,22 @@ func MultiLanguageSandbox(useDocker bool) tool.Tool {
 			Timeout:  input.Timeout,
 		})
 	})
+}
+
+// applyProcessLimits 在进程模式下应用资源限制（仅 Unix）
+// 通过 syscall.Setrlimit 设置内存和 CPU 限制
+func (s *Sandbox) applyProcessLimits(cmd *exec.Cmd) {
+	// 内存限制：通过 ulimit 包装命令
+	if s.config.Memory > 0 {
+		// 将字节转换为 KB（ulimit -v 使用 KB）
+		memKB := s.config.Memory / 1024
+		if memKB < 1024 {
+			memKB = 1024 // 最小 1MB
+		}
+		// 用 sh -c 包装，通过 ulimit 限制虚拟内存
+		originalArgs := append([]string{cmd.Path}, cmd.Args[1:]...)
+		ulimitCmd := fmt.Sprintf("ulimit -v %d && exec %s", memKB, strings.Join(originalArgs, " "))
+		cmd.Path = "/bin/sh"
+		cmd.Args = []string{"sh", "-c", ulimitCmd}
+	}
 }

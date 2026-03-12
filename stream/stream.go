@@ -1341,28 +1341,30 @@ func (fm *flatMapReader[T]) recv() (T, error) {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
-	// 如果缓冲区有数据，先返回缓冲区的
-	if fm.idx < len(fm.buffer) {
-		item := fm.buffer[fm.idx]
-		fm.idx++
-		return item, nil
-	}
+	for {
+		// 如果缓冲区有数据，先返回缓冲区的
+		if fm.idx < len(fm.buffer) {
+			item := fm.buffer[fm.idx]
+			fm.idx++
+			return item, nil
+		}
 
-	// 获取下一批数据
-	items, err := fm.fn()
-	if err != nil {
-		var zero T
-		return zero, err
-	}
+		// 获取下一批数据
+		items, err := fm.fn()
+		if err != nil {
+			var zero T
+			return zero, err
+		}
 
-	if len(items) == 0 {
-		// 递归获取下一批
-		return fm.recv()
-	}
+		if len(items) == 0 {
+			// 使用循环代替递归，避免无限流返回空数组时栈溢出
+			continue
+		}
 
-	fm.buffer = items
-	fm.idx = 1
-	return items[0], nil
+		fm.buffer = items
+		fm.idx = 1
+		return items[0], nil
+	}
 }
 
 func (fm *flatMapReader[T]) close() error {
@@ -1397,6 +1399,11 @@ func (dr *distinctReader[T]) recv() (T, error) {
 	dr.mu.Lock()
 	defer dr.mu.Unlock()
 
+	maxSeen := dr.maxSeen
+	if maxSeen <= 0 {
+		maxSeen = 10000
+	}
+
 	for {
 		item, err := dr.source.Recv()
 		if err != nil {
@@ -1413,15 +1420,10 @@ func (dr *distinctReader[T]) recv() (T, error) {
 		}
 
 		if !found {
-			dr.seen = append(dr.seen, item)
 			// 防止无限流场景下 seen 列表无限增长导致 OOM
-			maxSeen := dr.maxSeen
-			if maxSeen <= 0 {
-				maxSeen = 10000
-			}
-			if len(dr.seen) > maxSeen {
-				// 保留后半部分（较新的元素）
-				dr.seen = dr.seen[len(dr.seen)/2:]
+			// 达到上限后停止去重，直接通过元素（保守策略，优于静默丢弃旧记录导致重复）
+			if len(dr.seen) < maxSeen {
+				dr.seen = append(dr.seen, item)
 			}
 			return item, nil
 		}
@@ -1658,7 +1660,9 @@ func (dr *debounceReader[T]) start() {
 		var latest T
 		var hasValue bool
 		timer := time.NewTimer(dr.duration)
-		timer.Stop()
+		if !timer.Stop() {
+			<-timer.C
+		}
 
 		for {
 			select {
@@ -1667,26 +1671,49 @@ func (dr *debounceReader[T]) start() {
 				close(dr.output)
 				return
 			default:
-				item, err := dr.source.Recv()
-				if err != nil {
-					timer.Stop()
-					if hasValue {
-						dr.output <- latest
+			}
+
+			item, err := dr.source.Recv()
+			if err != nil {
+				// 源流结束，发送最后一个值
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
 					}
+				}
+				if hasValue {
+					dr.output <- latest
+				}
+				close(dr.output)
+				return
+			}
+			latest = item
+			hasValue = true
+
+			// 重置 timer 前先 stop，确保不会有残留的触发
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(dr.duration)
+
+			// 等待 timer 触发或新数据到来
+		waitLoop:
+			for {
+				select {
+				case <-dr.done:
+					timer.Stop()
 					close(dr.output)
 					return
-				}
-				latest = item
-				hasValue = true
-				timer.Reset(dr.duration)
-
-				select {
 				case <-timer.C:
 					if hasValue {
 						dr.output <- latest
 						hasValue = false
 					}
-				default:
+					break waitLoop
 				}
 			}
 		}

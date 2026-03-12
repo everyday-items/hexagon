@@ -358,22 +358,30 @@ type User struct {
 // ctx 用于控制 store 持久化操作的超时和取消。
 func (r *RBAC) AddUser(ctx context.Context, user *User) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 
 	if user.ID == "" {
 		user.ID = util.GenerateID("user")
 	}
 
 	if _, exists := r.users[user.ID]; exists {
+		r.mu.Unlock()
 		return fmt.Errorf("user %s already exists", user.ID)
 	}
 
 	user.CreatedAt = time.Now()
 	user.Enabled = true
 	r.users[user.ID] = user
+	r.mu.Unlock()
 
+	// 在锁外调用 store 持久化，避免持锁执行 I/O
 	if r.store != nil {
-		return r.store.SaveUser(ctx, user)
+		if err := r.store.SaveUser(ctx, user); err != nil {
+			// 持久化失败，回滚内存中的修改
+			r.mu.Lock()
+			delete(r.users, user.ID)
+			r.mu.Unlock()
+			return err
+		}
 	}
 
 	return nil
@@ -884,10 +892,21 @@ func (r *RBAC) evaluateCondition(cond PolicyCondition, ctx map[string]any) bool 
 				if len(pattern) > 1000 {
 					return false
 				}
-				// 使用缓存的编译后正则，避免每次重新编译
+				// 使用带超时的正则匹配，防止 ReDoS
 				re := r.getOrCompileRegex(pattern)
 				if re != nil {
-					return re.MatchString(str)
+					// 通过 goroutine + select 实现超时匹配（100ms）
+					done := make(chan bool, 1)
+					go func() {
+						done <- re.MatchString(str)
+					}()
+					select {
+					case result := <-done:
+						return result
+					case <-time.After(100 * time.Millisecond):
+						// 正则匹配超时，视为不匹配（防御 ReDoS）
+						return false
+					}
 				}
 			}
 		}

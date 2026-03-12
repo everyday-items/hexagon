@@ -396,6 +396,9 @@ func maskEmail(s string) string {
 	}
 	name := s[:at]
 	domain := s[at+1:]
+	if len(name) == 0 {
+		return "***@" + domain
+	}
 	if len(name) <= 2 {
 		return name[:1] + "***@" + domain
 	}

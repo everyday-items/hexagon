@@ -9,7 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/everyday-items/ai-core/tool"
@@ -23,9 +26,10 @@ const (
 
 // HTTPTool HTTP API 调用工具
 type HTTPTool struct {
-	client  *http.Client
-	baseURL string
-	headers map[string]string
+	client       *http.Client
+	baseURL      string
+	headers      map[string]string
+	allowPrivate bool // 是否允许访问内网地址，默认不允许
 }
 
 // Option HTTP 工具选项
@@ -52,6 +56,13 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithAllowPrivateNetwork 允许访问内网地址（默认禁止，防止 SSRF）
+func WithAllowPrivateNetwork() Option {
+	return func(t *HTTPTool) {
+		t.allowPrivate = true
+	}
+}
+
 // NewHTTPTool 创建 HTTP 工具
 func NewHTTPTool(opts ...Option) *HTTPTool {
 	t := &HTTPTool{
@@ -63,6 +74,19 @@ func NewHTTPTool(opts ...Option) *HTTPTool {
 
 	for _, opt := range opts {
 		opt(t)
+	}
+
+	// 限制重定向次数为 5 次，并在每次重定向时检查目标 URL 安全性
+	t.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 5 {
+			return fmt.Errorf("重定向次数过多（最大 5 次）")
+		}
+		if !t.allowPrivate {
+			if err := validateURLSafety(req.URL); err != nil {
+				return fmt.Errorf("重定向目标不安全: %w", err)
+			}
+		}
+		return nil
 	}
 
 	return t
@@ -133,14 +157,25 @@ func Tools(opts ...Option) []tool.Tool {
 }
 
 // request 执行 HTTP 请求
-func (t *HTTPTool) request(ctx context.Context, method, url string, headers map[string]string, body io.Reader) (RequestOutput, error) {
+func (t *HTTPTool) request(ctx context.Context, method, rawURL string, headers map[string]string, body io.Reader) (RequestOutput, error) {
 	// 构建完整 URL
-	if t.baseURL != "" && url[0] == '/' {
-		url = t.baseURL + url
+	if t.baseURL != "" && len(rawURL) > 0 && rawURL[0] == '/' {
+		rawURL = t.baseURL + rawURL
+	}
+
+	// SSRF 防护：验证目标 URL 安全性
+	if !t.allowPrivate {
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil {
+			return RequestOutput{}, fmt.Errorf("无效的 URL: %w", err)
+		}
+		if err := validateURLSafety(parsedURL); err != nil {
+			return RequestOutput{}, fmt.Errorf("URL 安全检查失败: %w", err)
+		}
 	}
 
 	// 创建请求
-	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	req, err := http.NewRequestWithContext(ctx, method, rawURL, body)
 	if err != nil {
 		return RequestOutput{}, fmt.Errorf("创建请求失败: %w", err)
 	}
@@ -306,4 +341,73 @@ func (t *GraphQLTool) Tool() tool.Tool {
 			return output, nil
 		},
 	)
+}
+
+// validateURLSafety 验证 URL 是否安全，防止 SSRF 攻击
+// 禁止访问内网地址、元数据服务、非 HTTP(S) 协议等
+func validateURLSafety(u *url.URL) error {
+	// 只允许 http 和 https 协议
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("不允许的协议: %s（仅支持 http/https）", u.Scheme)
+	}
+
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("URL 缺少主机名")
+	}
+
+	// 禁止 localhost 和常见本地主机名
+	lowerHost := strings.ToLower(host)
+	if lowerHost == "localhost" || lowerHost == "ip6-localhost" || lowerHost == "ip6-loopback" {
+		return fmt.Errorf("不允许访问本地地址: %s", host)
+	}
+
+	// 检查 IP 地址是否为内网/保留地址
+	ip := net.ParseIP(host)
+	if ip != nil {
+		if isPrivateIP(ip) {
+			return fmt.Errorf("不允许访问内网地址: %s", host)
+		}
+	}
+
+	// 通过 DNS 解析域名，检查解析后的 IP 是否为内网地址
+	if ip == nil {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return fmt.Errorf("DNS 解析失败: %w", err)
+		}
+		for _, resolved := range ips {
+			if isPrivateIP(resolved) {
+				return fmt.Errorf("域名 %s 解析到内网地址: %s", host, resolved)
+			}
+		}
+	}
+
+	return nil
+}
+
+// isPrivateIP 检查 IP 是否为内网/保留地址
+func isPrivateIP(ip net.IP) bool {
+	// 回环地址: 127.0.0.0/8, ::1
+	if ip.IsLoopback() {
+		return true
+	}
+
+	// 私有地址: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7
+	if ip.IsPrivate() {
+		return true
+	}
+
+	// 链路本地: 169.254.0.0/16（含 AWS/GCP 元数据服务 169.254.169.254）, fe80::/10
+	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+
+	// 未指定地址: 0.0.0.0, ::
+	if ip.IsUnspecified() {
+		return true
+	}
+
+	return false
 }

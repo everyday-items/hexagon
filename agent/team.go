@@ -225,8 +225,8 @@ func (t *Team) AddAgent(agent Agent) {
 	}
 	t.mu.Lock()
 	t.agents = append(t.agents, agent)
-	t.mu.Unlock()
 	t.globalState.RegisterAgent(agent.ID(), agent)
+	t.mu.Unlock()
 }
 
 // RemoveAgent 从团队移除 Agent

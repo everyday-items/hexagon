@@ -321,9 +321,12 @@ func (s *CompactSynthesizer) Synthesize(ctx context.Context, query string, docs 
 	}
 	compactedContext := strings.Join(contents, s.separator)
 
-	// 截断到最大长度
+	// 截断到最大长度（按 rune 截断，避免中文等多字节字符被切断产生无效 UTF-8）
 	if len(compactedContext) > s.maxContextLength {
-		compactedContext = compactedContext[:s.maxContextLength]
+		runes := []rune(compactedContext)
+		if len(runes) > s.maxContextLength {
+			compactedContext = string(runes[:s.maxContextLength])
+		}
 	}
 
 	// 如果没有 LLM 提供者，返回占位响应

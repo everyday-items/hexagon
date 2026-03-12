@@ -33,7 +33,7 @@ func TestHTTPTools(t *testing.T) {
 	defer server.Close()
 
 	ctx := context.Background()
-	tools := httptool.Tools(httptool.WithBaseURL(server.URL))
+	tools := httptool.Tools(httptool.WithBaseURL(server.URL), httptool.WithAllowPrivateNetwork())
 
 	t.Run("HTTPGet", func(t *testing.T) {
 		getTool := tools[0] // http_get

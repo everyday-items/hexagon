@@ -175,8 +175,8 @@ func (n *NetworkNode) CloseInbox() {
 	n.closeOnce.Do(func() {
 		n.mu.Lock()
 		n.closed = true
-		n.mu.Unlock()
 		close(n.Inbox)
+		n.mu.Unlock()
 	})
 }
 
@@ -859,31 +859,26 @@ func NewMessageRouter(network *AgentNetwork) *MessageRouter {
 // 线程安全：会检查队列是否已关闭，避免向已关闭的 channel 发送消息。
 func (r *MessageRouter) Route(ctx context.Context, msg *NetworkMessage) error {
 	r.mu.RLock()
-	running := r.running
 	closed := r.closed
-	r.mu.RUnlock()
-
-	// 如果队列已关闭，返回错误
+	running := r.running
 	if closed {
+		r.mu.RUnlock()
 		return fmt.Errorf("message router is stopped")
 	}
 
 	if !running {
+		r.mu.RUnlock()
 		// 直接投递
 		return r.deliver(ctx, msg)
 	}
 
-	// 放入队列（使用 defer recover 防止并发关闭导致的 panic）
-	defer func() {
-		if rec := recover(); rec != nil {
-			// channel 已关闭，忽略 panic
-		}
-	}()
-
+	// 在持有读锁的情况下发送到队列，确保 Stop() 不会在此期间关闭 channel
 	select {
 	case r.queue <- msg:
+		r.mu.RUnlock()
 		return nil
 	case <-ctx.Done():
+		r.mu.RUnlock()
 		return ctx.Err()
 	}
 }
@@ -975,32 +970,32 @@ func (r *MessageRouter) deliver(ctx context.Context, msg *NetworkMessage) error 
 		return fmt.Errorf("target agent %s not found", msg.To)
 	}
 
-	// 检查收件箱是否已关闭
-	if node.IsClosed() {
+	// 在持有节点读锁的情况下检查关闭状态并发送，消除 TOCTOU 竞态
+	node.mu.RLock()
+	if node.closed {
+		node.mu.RUnlock()
 		r.messagesFailed.Add(1)
 		return fmt.Errorf("inbox closed for agent %s", msg.To)
 	}
 
 	// 检查节点状态
 	if node.Status == NodeStatusOffline {
+		node.mu.RUnlock()
 		r.messagesFailed.Add(1)
 		return fmt.Errorf("target agent %s is offline", msg.To)
 	}
 
-	// 投递到收件箱（使用 defer recover 防止并发关闭导致的 panic）
-	defer func() {
-		if rec := recover(); rec != nil {
-			// channel 已关闭，忽略 panic
-		}
-	}()
-
+	// 在持有读锁的情况下发送到收件箱，确保 CloseInbox 不会在此期间关闭 channel
 	select {
 	case node.Inbox <- msg:
+		node.mu.RUnlock()
 		r.messagesSent.Add(1)
 		return nil
 	case <-ctx.Done():
+		node.mu.RUnlock()
 		return ctx.Err()
 	default:
+		node.mu.RUnlock()
 		r.messagesFailed.Add(1)
 		return fmt.Errorf("inbox full for agent %s", msg.To)
 	}

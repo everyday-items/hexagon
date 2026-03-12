@@ -228,7 +228,9 @@ func (c *Chain[I, O]) Transform(ctx context.Context, input *stream.StreamReader[
 				writer.CloseWithError(err)
 				return
 			}
-			writer.Send(result)
+			if err := writer.Send(result); err != nil {
+				return
+			}
 		}
 	}()
 	return reader, nil

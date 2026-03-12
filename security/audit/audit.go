@@ -446,21 +446,22 @@ func (l *AuditLogger) Log(event *AuditEvent) {
 	}
 
 	// 发送到缓冲区
-	// 在锁内检查 running 状态并发送，防止向已关闭的 channel 发送
+	// 在锁内检查 running 状态并发送，防止向已关闭的 channel 发送（TOCTOU 防护）
 	l.mu.RLock()
 	running := l.running
-	l.mu.RUnlock()
-
 	if !running {
+		l.mu.RUnlock()
 		// 审计已停止，直接同步写入
 		l.writeEventDirect(event)
 		return
 	}
-
+	// 在持有读锁的情况下发送，确保 Stop() 不会在此期间关闭 buffer
 	select {
 	case l.buffer <- event:
+		l.mu.RUnlock()
 		// 成功加入缓冲区
 	default:
+		l.mu.RUnlock()
 		// 缓冲区满，同步写入以确保审计事件不丢失
 		// 审计日志的完整性比性能更重要
 		l.mu.Lock()

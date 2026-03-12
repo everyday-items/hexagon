@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -192,9 +193,17 @@ func NewBrowser(config ...*BrowserConfig) *Browser {
 	}
 }
 
+// MaxBrowserResponseSize 浏览器最大响应体大小（10MB）
+const MaxBrowserResponseSize = 10 * 1024 * 1024
+
 // GetContent 获取页面内容
 func (b *Browser) GetContent(ctx context.Context, pageURL string) (*PageContent, error) {
 	startTime := time.Now()
+
+	// SSRF 防护：验证目标 URL 安全性
+	if err := validateBrowserURL(pageURL); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrNavigationFailed, err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", pageURL, nil)
 	if err != nil {
@@ -218,9 +227,14 @@ func (b *Browser) GetContent(ctx context.Context, pageURL string) (*PageContent,
 		return nil, fmt.Errorf("%w: status code %d", ErrNavigationFailed, resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	// 使用 LimitReader 防止 OOM
+	limitedReader := io.LimitReader(resp.Body, MaxBrowserResponseSize+1)
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrNavigationFailed, err)
+	}
+	if len(body) > MaxBrowserResponseSize {
+		return nil, fmt.Errorf("%w: 响应体过大（超过 %d bytes）", ErrNavigationFailed, MaxBrowserResponseSize)
 	}
 
 	htmlContent := string(body)
@@ -841,5 +855,39 @@ func (jt *JSONAPITool) Validate(args map[string]any) error {
 	if _, ok := args["url"].(string); !ok {
 		return errors.New("url must be a string")
 	}
+	return nil
+}
+
+// validateBrowserURL 验证浏览器请求的 URL 安全性，防止 SSRF 攻击
+func validateBrowserURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("无效的 URL: %w", err)
+	}
+
+	// 只允许 http 和 https 协议
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("不允许的协议: %s（仅支持 http/https）", u.Scheme)
+	}
+
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("URL 缺少主机名")
+	}
+
+	// 禁止 localhost 和常见本地主机名
+	lowerHost := strings.ToLower(host)
+	if lowerHost == "localhost" || lowerHost == "ip6-localhost" || lowerHost == "ip6-loopback" {
+		return fmt.Errorf("不允许访问本地地址: %s", host)
+	}
+
+	// 检查 IP 地址是否为内网/保留地址
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return fmt.Errorf("不允许访问内网地址: %s", host)
+		}
+	}
+
 	return nil
 }

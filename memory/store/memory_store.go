@@ -353,6 +353,7 @@ func copyItem(item *Item) *Item {
 }
 
 // matchFilter 检查 value 是否匹配所有过滤条件
+// 使用 reflect.DeepEqual 进行类型安全的值比较，避免 int(1) != float64(1.0) 的问题
 func matchFilter(value map[string]any, filter map[string]any) bool {
 	if len(filter) == 0 {
 		return true
@@ -361,11 +362,50 @@ func matchFilter(value map[string]any, filter map[string]any) bool {
 		return false
 	}
 	for k, v := range filter {
-		if mv, ok := value[k]; !ok || fmt.Sprintf("%v", mv) != fmt.Sprintf("%v", v) {
+		mv, ok := value[k]
+		if !ok {
+			return false
+		}
+		if !valuesEqual(mv, v) {
 			return false
 		}
 	}
 	return true
+}
+
+// valuesEqual 比较两个值是否相等，支持跨数值类型比较
+func valuesEqual(a, b any) bool {
+	// 先尝试直接比较
+	if fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b) {
+		return true
+	}
+
+	// 尝试数值比较（处理 int vs float64 等情况）
+	af, aOk := toFloat64(a)
+	bf, bOk := toFloat64(b)
+	if aOk && bOk {
+		return af == bf
+	}
+
+	return false
+}
+
+// toFloat64 尝试将值转换为 float64
+func toFloat64(v any) (float64, bool) {
+	switch n := v.(type) {
+	case int:
+		return float64(n), true
+	case int32:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case float32:
+		return float64(n), true
+	case float64:
+		return n, true
+	default:
+		return 0, false
+	}
 }
 
 // keywordMatch 在 value 的字符串字段中搜索关键词

@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/everyday-items/ai-core/llm"
 	"github.com/everyday-items/ai-core/memory"
@@ -353,23 +355,24 @@ func TestParallelAgent_MergeFunc(t *testing.T) {
 
 // TestParallelAgent_MaxParallel 测试并发限制
 func TestParallelAgent_MaxParallel(t *testing.T) {
-	var maxConcurrent int
-	var currentConcurrent int
-	concurrentChan := make(chan int, 10)
+	var maxConcurrent atomic.Int64
+	var currentConcurrent atomic.Int64
 
 	makeAgent := func(id int) Agent {
 		return newMockAgent(fmt.Sprintf("agent%d", id), func(ctx context.Context, input Input) (Output, error) {
-			// 记录并发数
-			currentConcurrent++
-			concurrentChan <- currentConcurrent
-			if currentConcurrent > maxConcurrent {
-				maxConcurrent = currentConcurrent
+			// 原子操作记录并发数
+			cur := currentConcurrent.Add(1)
+			for {
+				old := maxConcurrent.Load()
+				if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+					break
+				}
 			}
 
 			// 模拟工作
-			// time.Sleep(10 * time.Millisecond) // 移除 sleep，避免竞态
+			time.Sleep(10 * time.Millisecond)
 
-			currentConcurrent--
+			currentConcurrent.Add(-1)
 			return Output{Content: fmt.Sprintf("result%d", id)}, nil
 		})
 	}
@@ -386,13 +389,9 @@ func TestParallelAgent_MaxParallel(t *testing.T) {
 		t.Fatalf("执行失败: %v", err)
 	}
 
-	close(concurrentChan)
-
 	// 验证最大并发数不超过限制
-	// 注意：由于 goroutine 调度的不确定性，这个测试可能不够严格
-	// 这里只做简单验证
-	if maxConcurrent > 5 {
-		t.Errorf("最大并发数超出预期: got %d", maxConcurrent)
+	if maxConcurrent.Load() > 2 {
+		t.Errorf("最大并发数超出预期: got %d, want <= 2", maxConcurrent.Load())
 	}
 }
 

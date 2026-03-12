@@ -131,7 +131,9 @@ func (s *RedisStore) Put(ctx context.Context, namespace []string, key string, va
 	}
 
 	// 使用 Pipeline 批量操作：写入数据 + 更新命名空间索引
-	pipe := s.client.Pipeline()
+	// 注意：Redis Pipeline 不是事务，部分失败时可能导致数据不一致
+	// 这里使用 TxPipeline 确保原子性
+	pipe := s.client.TxPipeline()
 	if ttl > 0 {
 		pipe.Set(ctx, redisKey, data, ttl)
 	} else {

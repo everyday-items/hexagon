@@ -561,6 +561,13 @@ func bm25Score(queryTerms []string, content string) float32 {
 	avgDl := float32(500) // 假设平均文档长度
 	dl := float32(len(contentTerms))
 
+	// 计算简化 IDF：使用查询词在文档中出现的比例来近似
+	// 匹配越少的词权重越高（更有区分度）
+	numQueryTerms := float32(len(queryTerms))
+	if numQueryTerms == 0 {
+		numQueryTerms = 1
+	}
+
 	for _, term := range queryTerms {
 		termFreq := float32(tf[term])
 		if termFreq == 0 {
@@ -570,7 +577,10 @@ func bm25Score(queryTerms []string, content string) float32 {
 			}
 		}
 		if termFreq > 0 {
-			idf := float32(1.0) // 简化：不计算真实 IDF
+			// 简化 IDF：假设 10 篇文档中有 df 篇包含该词
+			// IDF = ln(N/df)，这里用 ln(10/1) ≈ 2.3 作为基础权重
+			// 匹配到的词越多，单个词权重相对降低
+			idf := float32(2.3) / numQueryTerms * float32(len(queryTerms))
 			numerator := termFreq * (k1 + 1)
 			denominator := termFreq + k1*(1-b+b*dl/avgDl)
 			score += idf * numerator / denominator

@@ -230,6 +230,11 @@ func (c *SemanticCache) Put(ctx context.Context, query string, result *CacheResu
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	now := time.Now()
+
+	// 先清理过期条目，释放空间
+	c.cleanExpiredLocked(now)
+
 	// 检查是否已存在相同查询（精确匹配），更新而非重复添加
 	for i, entry := range c.entries {
 		if entry.Query == query {
@@ -237,7 +242,7 @@ func (c *SemanticCache) Put(ctx context.Context, query string, result *CacheResu
 				Query:     query,
 				Embedding: embedding,
 				Result:    result,
-				CreatedAt: time.Now(),
+				CreatedAt: now,
 			}
 			return nil
 		}
@@ -254,10 +259,24 @@ func (c *SemanticCache) Put(ctx context.Context, query string, result *CacheResu
 		Query:     query,
 		Embedding: embedding,
 		Result:    result,
-		CreatedAt: time.Now(),
+		CreatedAt: now,
 	})
 
 	return nil
+}
+
+// cleanExpiredLocked 清理过期缓存条目（调用方必须持有写锁）
+func (c *SemanticCache) cleanExpiredLocked(now time.Time) {
+	n := 0
+	for _, entry := range c.entries {
+		if now.Sub(entry.CreatedAt) <= c.ttl {
+			c.entries[n] = entry
+			n++
+		} else {
+			c.evictions.Add(1)
+		}
+	}
+	c.entries = c.entries[:n]
 }
 
 // Invalidate 使特定缓存失效

@@ -232,6 +232,8 @@ func (f *SensitiveWordFilter) Name() string {
 }
 
 // AddWord 添加敏感词
+//
+// 注意：此方法与 Filter 共享同一把锁（f.mu），确保添加敏感词时不会与过滤操作并发冲突。
 func (f *SensitiveWordFilter) AddWord(word, category string, severity Severity) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -485,6 +487,9 @@ func (t *ACTrie) Match(text string) []TrieMatch {
 	matches := make([]TrieMatch, 0)
 	node := t.root
 
+	// 维护字节位置到正确偏移的映射
+	// range text 的 i 是字节索引，len(word) 也是字节长度
+	// 匹配结束时 i 指向最后一个 rune 的起始字节，需要加上该 rune 的字节长度
 	for i, ch := range text {
 		// 失败跳转
 		for node != t.root && node.children[ch] == nil {
@@ -496,10 +501,15 @@ func (t *ACTrie) Match(text string) []TrieMatch {
 		}
 
 		// 输出匹配
+		// i 是当前 rune 的起始字节索引，匹配的 word 结束于当前 rune
+		// word 的结束字节位置 = i + 当前 rune 的字节长度
+		// word 的起始字节位置 = 结束字节位置 - len(word)（字节长度）
+		runeSize := utf8.RuneLen(ch)
+		endByte := i + runeSize
 		for _, word := range node.output {
 			matches = append(matches, TrieMatch{
 				Word:     word,
-				Position: i - len(word) + 1,
+				Position: endByte - len(word),
 			})
 		}
 	}
@@ -824,9 +834,11 @@ func (c *FilterChain) Filter(ctx context.Context, content string) (*FilterResult
 	var totalScore float64
 	filterCount := 0
 
+	var filterErrors []string
 	for _, filter := range c.filters {
 		result, err := filter.Filter(ctx, content)
 		if err != nil {
+			filterErrors = append(filterErrors, err.Error())
 			continue
 		}
 
@@ -860,6 +872,11 @@ func (c *FilterChain) Filter(ctx context.Context, content string) (*FilterResult
 	combinedResult.Filtered = content
 	if filterCount > 0 {
 		combinedResult.Score = totalScore / float64(filterCount)
+	}
+
+	// 如果有过滤器出错，在元数据中记录（不中断过滤链，但让调用方可感知）
+	if len(filterErrors) > 0 {
+		combinedResult.Metadata["filter_errors"] = filterErrors
 	}
 
 	return combinedResult, nil

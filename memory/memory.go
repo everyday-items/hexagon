@@ -29,8 +29,9 @@ import (
 // WindowMemory 滑动窗口记忆
 // 只保留最近 N 条对话记录，超出时自动移除最旧的
 type WindowMemory struct {
-	mu       sync.RWMutex
-	entries  []coremem.Entry
+	mu         sync.RWMutex
+	entries    []coremem.Entry
+	index      map[string]int // ID -> entries 索引，加速 Get/Delete 查找
 	windowSize int
 }
 
@@ -42,6 +43,7 @@ func NewWindowMemory(windowSize int) *WindowMemory {
 	}
 	return &WindowMemory{
 		entries:    make([]coremem.Entry, 0, windowSize),
+		index:      make(map[string]int, windowSize),
 		windowSize: windowSize,
 	}
 }
@@ -61,6 +63,9 @@ func (m *WindowMemory) Save(_ context.Context, entry coremem.Entry) error {
 		m.entries = m.entries[len(m.entries)-m.windowSize:]
 	}
 
+	// 重建索引
+	m.rebuildIndex()
+
 	return nil
 }
 
@@ -77,11 +82,9 @@ func (m *WindowMemory) Get(_ context.Context, id string) (*coremem.Entry, error)
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	for i := range m.entries {
-		if m.entries[i].ID == id {
-			entry := m.entries[i]
-			return &entry, nil
-		}
+	if idx, ok := m.index[id]; ok && idx < len(m.entries) {
+		entry := m.entries[idx]
+		return &entry, nil
 	}
 	return nil, nil
 }
@@ -104,19 +107,26 @@ func (m *WindowMemory) Delete(_ context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	for i, e := range m.entries {
-		if e.ID == id {
-			m.entries = append(m.entries[:i], m.entries[i+1:]...)
-			return nil
-		}
+	if idx, ok := m.index[id]; ok && idx < len(m.entries) {
+		m.entries = append(m.entries[:idx], m.entries[idx+1:]...)
+		m.rebuildIndex()
 	}
 	return nil
+}
+
+// rebuildIndex 重建 ID 到索引的映射（调用方需持有写锁）
+func (m *WindowMemory) rebuildIndex() {
+	m.index = make(map[string]int, len(m.entries))
+	for i, e := range m.entries {
+		m.index[e.ID] = i
+	}
 }
 
 func (m *WindowMemory) Clear(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.entries = m.entries[:0]
+	m.index = make(map[string]int)
 	return nil
 }
 
