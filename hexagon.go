@@ -35,6 +35,11 @@ import (
 	"github.com/everyday-items/ai-core/tool"
 	"github.com/everyday-items/hexagon/agent"
 	"github.com/everyday-items/hexagon/core"
+	"github.com/everyday-items/hexagon/llm/conversation"
+	"github.com/everyday-items/hexagon/llm/router"
+	"github.com/everyday-items/hexagon/mcp"
+	memstore "github.com/everyday-items/hexagon/memory/store"
+	"github.com/everyday-items/hexagon/observe/eventstream"
 	"github.com/everyday-items/hexagon/observe/metrics"
 	"github.com/everyday-items/hexagon/observe/tracer"
 	"github.com/everyday-items/hexagon/orchestration/chain"
@@ -47,9 +52,8 @@ import (
 	"github.com/everyday-items/hexagon/rag/splitter"
 	"github.com/everyday-items/hexagon/security/cost"
 	"github.com/everyday-items/hexagon/security/guard"
+	"github.com/everyday-items/hexagon/skill"
 	"github.com/everyday-items/hexagon/store/vector"
-	"github.com/everyday-items/hexagon/mcp"
-	memstore "github.com/everyday-items/hexagon/memory/store"
 	"github.com/everyday-items/hexagon/store/vector/qdrant"
 )
 
@@ -873,4 +877,189 @@ type (
 
 	// RAGEngine 是 RAG 引擎
 	RAGEngine = rag.Engine
+)
+
+// ============== LLM 路由器 ==============
+
+// NewLLMRouter 创建 LLM 智能路由器
+//
+// 支持多种路由策略：优先级、成本、轮询、降级、复杂度。
+//
+// 示例：
+//
+//	r := hexagon.NewLLMRouter(configs, hexagon.LLMRouterStrategyCost)
+var NewLLMRouter = router.New
+
+// LLM 路由策略
+const (
+	LLMRouterStrategyPriority   = router.StrategyPriority
+	LLMRouterStrategyCost       = router.StrategyCost
+	LLMRouterStrategyRoundRobin = router.StrategyRoundRobin
+	LLMRouterStrategyFallback   = router.StrategyFallback
+	LLMRouterStrategyComplexity = router.StrategyComplexity
+)
+
+// LLM 路由相关类型
+type (
+	// LLMRouter 是 LLM 路由器
+	LLMRouter = router.Router
+
+	// LLMRouterConfig 是路由器 Provider 配置
+	LLMRouterConfig = router.ProviderConfig
+
+	// LLMRouterStrategy 是路由策略
+	LLMRouterStrategy = router.Strategy
+)
+
+// LLM 路由选项
+var (
+	LLMRouterWithStrategy = router.WithStrategy
+	LLMRouterWithFallback = router.WithFallback
+)
+
+// ============== 对话管理器 ==============
+
+// NewConversationManager 创建多轮对话管理器
+//
+// 示例：
+//
+//	mgr := hexagon.NewConversationManager(
+//	    hexagon.ConvWithMaxTokens(4096),
+//	    hexagon.ConvWithSystemPrompt("你是助手"),
+//	)
+var NewConversationManager = conversation.New
+
+// 对话管理器类型
+type ConversationManager = conversation.Manager
+
+// 对话管理器选项
+var (
+	ConvWithMaxTokens    = conversation.WithMaxTokens
+	ConvWithMaxTurns     = conversation.WithMaxTurns
+	ConvWithSystemPrompt = conversation.WithSystemPrompt
+)
+
+// ============== 对话 Agent ==============
+
+// NewConversationAgent 创建多轮对话 Agent
+//
+// 示例：
+//
+//	conv := hexagon.NewConversationAgent(myAgent,
+//	    hexagon.ConvAgentMaxTurns(20),
+//	)
+//	output, _ := conv.Chat(ctx, "你好")
+var NewConversationAgent = agent.NewConversation
+
+// 对话 Agent 类型
+type ConversationAgent = agent.ConversationAgent
+
+// 对话 Agent 选项
+var (
+	ConvAgentMaxTurns  = agent.WithConvMaxTurns
+	ConvAgentMaxTokens = agent.WithConvMaxTokens
+)
+
+// ============== Agent 持久化 ==============
+
+// NewMemoryCheckpointStore 创建内存检查点存储
+var NewMemoryCheckpointStore = agent.NewMemoryCheckpointStore
+
+// NewFileCheckpointStore 创建文件检查点存储
+var NewFileCheckpointStore = agent.NewFileCheckpointStore
+
+// Agent 持久化相关类型
+type (
+	// Checkpoint 是 Agent 检查点
+	Checkpoint = agent.Checkpoint
+
+	// CheckpointStore 是检查点存储接口
+	CheckpointStore = agent.CheckpointStore
+)
+
+// ============== Skill 系统 ==============
+
+// NewSkillRegistry 创建技能注册中心
+var NewSkillRegistry = skill.NewRegistry
+
+// Skill 相关类型
+type (
+	// Skill 是技能定义
+	Skill = skill.Skill
+
+	// SkillRegistry 是技能注册中心
+	SkillRegistry = skill.Registry
+)
+
+// Skill 签名验证
+var NewHMACSigner = skill.NewHMACSigner
+
+// ============== 事件流 ==============
+
+// NewEventStream 创建 Agent 事件流
+//
+// 示例：
+//
+//	stream := hexagon.NewEventStream()
+//	ch, unsub := stream.Subscribe()
+//	defer unsub()
+var NewEventStream = eventstream.New
+
+// 事件流类型
+type (
+	// EventStream 是事件流
+	EventStream = eventstream.Stream
+
+	// AgentEvent 是 Agent 事件
+	AgentEvent = eventstream.Event
+
+	// AgentEventType 是事件类型
+	AgentEventType = eventstream.EventType
+)
+
+// 事件流选项
+var EventStreamBufferSize = eventstream.WithBufferSize
+
+// 预定义事件类型常量
+const (
+	EventAgentStart  = eventstream.EventAgentStart
+	EventAgentEnd    = eventstream.EventAgentEnd
+	EventAgentError  = eventstream.EventAgentError
+	EventToolCall    = eventstream.EventToolCall
+	EventToolResult  = eventstream.EventToolResult
+	EventLLMRequest  = eventstream.EventLLMRequest
+	EventLLMResponse = eventstream.EventLLMResponse
+
+	EventStreamStateChange = eventstream.EventStateChange
+	EventStreamCheckpoint  = eventstream.EventCheckpoint
+)
+
+// ============== 指标告警 ==============
+
+// NewAlertManager 创建指标告警管理器
+var NewAlertManager = metrics.NewAlertManager
+
+// 告警相关类型
+type (
+	// AlertManager 是告警管理器
+	AlertManager = metrics.AlertManager
+
+	// AlertRule 是告警规则
+	AlertRule = metrics.AlertRule
+
+	// AlertCondition 是告警条件
+	AlertCondition = metrics.AlertCondition
+
+	// Alert 是告警实例
+	Alert = metrics.Alert
+
+	// AlertSeverity 是告警严重度
+	AlertSeverity = metrics.Severity
+)
+
+// 告警严重度常量
+const (
+	AlertSeverityInfo     = metrics.SeverityInfo
+	AlertSeverityWarning  = metrics.SeverityWarning
+	AlertSeverityCritical = metrics.SeverityCritical
 )
