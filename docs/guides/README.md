@@ -129,4 +129,4 @@ Hexagon 是一个完整的 AI Agent 开发生态：
 
 ## 📄 许可证
 
-Hexagon 采用 MIT 许可证开源。
+Hexagon 采用 Apache License 2.0 许可证开源。
