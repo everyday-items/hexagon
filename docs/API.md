@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="API.en.md">English</a></div>
+
 # Hexagon API 参考文档
 
 本文档提供 Hexagon 框架的完整 API 参考。

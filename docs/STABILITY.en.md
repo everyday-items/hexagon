@@ -1,0 +1,195 @@
+<div align="right">Language: <a href="STABILITY.md">中文</a> | English</div>
+
+# Hexagon API Stability Policy
+
+This document describes the API stability levels and compatibility guarantees for each module in the Hexagon framework.
+
+## Versioning
+
+Hexagon follows [Semantic Versioning](https://semver.org/):
+
+```
+MAJOR.MINOR.PATCH[-PRERELEASE]
+```
+
+- **MAJOR**: Incompatible API changes
+- **MINOR**: Backward-compatible new features
+- **PATCH**: Backward-compatible bug fixes
+- **PRERELEASE**: Pre-release identifier (alpha, beta, GA)
+
+## Stability Levels
+
+| Level | Description | Compatibility Guarantee |
+|:---:|------|-----------|
+| **Stable** | Production-ready API | Backward-compatible within a MAJOR version |
+| **Beta** | Feature-complete; minor API adjustments possible | Best-effort compatibility within a MINOR version |
+| **Alpha** | Experimental; API may change significantly | No compatibility guarantee |
+| **Deprecated** | Scheduled for removal in a future version | Retained for at least 1 MINOR version |
+
+## Module Stability
+
+### Stable
+
+The following APIs are backward-compatible within v1.x:
+
+**Top-level API** (`github.com/hexagon-codes/hexagon`)
+- `Chat()`, `ChatWithTools()`, `Run()`
+- `QuickStart()` and its option functions
+- `NewTool()`
+- Exported types (`Input`, `Output`, `Tool`, `Memory`, `Message`, `Schema`)
+
+**Core interfaces** (`github.com/hexagon-codes/hexagon/core`)
+- `Component[I, O]` interface
+- `Stream[T]` interface
+- `Schema` type
+
+**Agent** (`github.com/hexagon-codes/hexagon/agent`)
+- `Agent` interface
+- `Input`, `Output` types
+- `NewReAct()` and its option functions
+- `Role` type
+
+**Graph orchestration** (`github.com/hexagon-codes/hexagon/orchestration/graph`)
+- `State` interface
+- `MapState` type
+- `NewGraph[S]()` builder
+- `Graph[S].Run()`, `Graph[S].Stream()`
+- `START`, `END` constants
+
+### Beta
+
+The following APIs are feature-complete but may be adjusted in MINOR versions:
+
+**Multi-Agent** (`github.com/hexagon-codes/hexagon/agent`)
+- `Team` and its option functions
+- `TeamMode` constants
+- `TransferTo()`, `SwarmRunner`
+- `StateManager` interface
+
+**RAG** (`github.com/hexagon-codes/hexagon/rag`)
+- `Engine` and its option functions
+- `Document`, `Loader`, `Splitter`, `Retriever`, `Indexer`, `Embedder` interfaces
+- Built-in loader, splitter, and retriever implementations
+
+**Security** (`github.com/hexagon-codes/hexagon/security`)
+- `Guard` interface
+- `NewPromptInjectionGuard()`, `NewPIIGuard()`
+- `GuardChain` and its modes
+- `CostController` and its option functions
+
+**Observability** (`github.com/hexagon-codes/hexagon/observe`)
+- `Tracer`, `Span` interfaces
+- `Metrics` interface
+- `NewTracer()`, `NewMetrics()`
+
+### Alpha
+
+The following APIs are experimental and subject to significant changes:
+
+**Workflow** (`github.com/hexagon-codes/hexagon/orchestration/workflow`)
+- `Workflow`, `Step` types
+- Persistence interfaces
+
+**Flow orchestration** (`github.com/hexagon-codes/hexagon/orchestration/flow`)
+- `Flow`, `FlowBuilder` types
+- `WithTimeout()` configurable timeout
+
+**Checkpointing** (`github.com/hexagon-codes/hexagon/orchestration/graph`)
+- `CheckpointSaver` interface
+- Redis checkpoint implementation
+- Interrupt and resume functionality
+- Distributed execution, Barrier synchronization, node caching
+
+**Vector stores** (`github.com/hexagon-codes/hexagon/store/vector`)
+- `VectorStore` interface
+- Qdrant, FAISS, PgVector, Redis, Milvus, Chroma, Pinecone, Weaviate implementations
+
+**Advanced retrievers** (`github.com/hexagon-codes/hexagon/rag/retriever`)
+- `HyDERetriever` - Hypothetical Document Embeddings retrieval
+- `AdaptiveRetriever` - Adaptive retrieval
+- `ParentDocRetriever` - Parent document retrieval
+
+**Advanced loaders** (`github.com/hexagon-codes/hexagon/rag/loader`)
+- `ExcelLoader`, `PPTXLoader`, `CSVLoader` - Office file loading
+- `OCRLoader` - VisionLLM OCR text extraction
+
+**Advanced splitters** (`github.com/hexagon-codes/hexagon/rag/splitter`)
+- `TokenSplitter` - Token-count-based splitting
+- `CodeSplitter` - Code syntax-aware splitting
+
+**Memory sharing** (`github.com/hexagon-codes/hexagon/memory`)
+- Automatic memory sharing across multiple agents
+
+**Agent primitives** (`github.com/hexagon-codes/hexagon/agent`)
+- `Parallel`, `Sequential`, `Route` primitives
+
+**MCP protocol** (`github.com/hexagon-codes/hexagon/mcp`)
+- MCP protocol support
+
+### Deprecated
+
+No deprecated APIs at this time.
+
+## Compatibility Policy
+
+### Backward-Compatible Changes
+
+The following changes are considered backward-compatible:
+
+- Adding new exported functions, types, or constants
+- Adding optional parameters to existing functions (via the options function pattern)
+- Adding methods with default implementations to interfaces
+- Improving error messages
+- Bug fixes
+
+### Breaking Changes
+
+The following changes are considered breaking (require a MAJOR version bump):
+
+- Removing or renaming exported functions, types, or constants
+- Changing function signatures (parameters or return values)
+- Changing interface definitions
+- Changing the semantics of existing behavior
+
+## Deprecation Process
+
+1. **Mark deprecated**: Add a `Deprecated` annotation in documentation and code comments
+2. **Migration guide**: Provide instructions for migrating to the new API
+3. **Runtime warning**: Emit a deprecation warning at runtime
+4. **Retention period**: Retain the deprecated API for at least 1 MINOR version cycle
+5. **Removal**: Remove in the next MAJOR version
+
+## Import Path Stability
+
+The following import paths are stable:
+
+```go
+import "github.com/hexagon-codes/hexagon"                  // top-level API
+import "github.com/hexagon-codes/hexagon/agent"            // Agent
+import "github.com/hexagon-codes/hexagon/core"             // core interfaces
+import "github.com/hexagon-codes/hexagon/orchestration/graph" // graph orchestration
+import "github.com/hexagon-codes/hexagon/rag"              // RAG
+import "github.com/hexagon-codes/hexagon/security/guard"   // security guard
+import "github.com/hexagon-codes/hexagon/observe/tracer"   // tracing
+import "github.com/hexagon-codes/hexagon/observe/metrics"  // metrics
+```
+
+Packages under `internal/` are not public and may change at any time.
+
+## Dependency Stability
+
+Hexagon depends on the following external libraries:
+
+| Dependency | Version | Description |
+|-----|------|------|
+| `github.com/hexagon-codes/ai-core` | v0.0.4 | AI capability library |
+| `github.com/hexagon-codes/toolkit` | v0.0.3 | Go general-purpose toolkit |
+
+Breaking changes to the public APIs of these dependencies will be reflected in Hexagon's own version number.
+
+## Feedback
+
+For questions or suggestions regarding API stability:
+
+- Submit a [GitHub Issue](https://github.com/hexagon-codes/hexagon/issues)
+- Join [GitHub Discussions](https://github.com/hexagon-codes/hexagon/discussions)

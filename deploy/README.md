@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="README.en.md">English</a></div>
+
 # Hexagon 部署指南
 
 ## 快速开始

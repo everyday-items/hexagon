@@ -1,4 +1,6 @@
 
+<div align="right">语言: 中文 | <a href="STABILITY.en.md">English</a></div>
+
 # Hexagon API 稳定性说明
 
 本文档说明 Hexagon 框架各模块的 API 稳定性等级和兼容性承诺。

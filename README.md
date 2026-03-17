@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="README.en.md">English</a></div>
+
 <div align="center">
 
 <img src=".github/assets/logo.jpg" alt="Hexagon Logo" width="160">

@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="rag-integration.en.md">English</a></div>
+
 # RAG 系统使用指南
 
 Hexagon 提供了完整的 RAG (Retrieval-Augmented Generation) 系统，用于构建知识密集型 AI 应用。

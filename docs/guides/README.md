@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="README.en.md">English</a></div>
+
 # Hexagon 使用指南
 
 欢迎使用 Hexagon AI Agent 框架！本目录包含详细的使用指南和最佳实践。

@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="getting-started.en.md">English</a></div>
+
 # 快速入门指南
 
 本指南将帮助您快速上手 Hexagon AI Agent 框架。

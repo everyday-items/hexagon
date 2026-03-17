@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="agent-development.en.md">English</a></div>
+
 # Agent 开发指南
 
 本指南将帮助您快速开始开发 Hexagon AI Agent。

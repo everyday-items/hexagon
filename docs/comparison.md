@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="comparison.en.md">English</a></div>
+
 # AI Agent 框架综合对比
 
 本文档对比 Hexagon 与主流 AI Agent 框架的能力差异，帮助开发者选择合适的框架。

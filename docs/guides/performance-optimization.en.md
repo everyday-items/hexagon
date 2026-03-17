@@ -1,50 +1,50 @@
-<div align="right">语言: 中文 | <a href="performance-optimization.en.md">English</a></div>
+<div align="right">Language: <a href="performance-optimization.md">中文</a> | English</div>
 
-# 性能优化指南
+# Performance Optimization Guide
 
-本指南提供 Hexagon 应用的性能优化最佳实践。
+This guide provides best practices for optimizing Hexagon applications.
 
-## Agent 优化
+## Agent Optimization
 
-### 1. 流式输出
+### 1. Streaming Output
 
 ```go
-// 使用流式输出减少首字节时间
+// Use streaming output to reduce time-to-first-byte
 stream, _ := agent.Stream(ctx, input)
 for chunk := range stream.C {
     fmt.Print(chunk.Content)
 }
 ```
 
-### 2. 批量处理
+### 2. Batch Processing
 
 ```go
-// 批量处理多个请求
+// Process multiple requests in a batch
 inputs := []agent.Input{input1, input2, input3}
 results, _ := agent.Batch(ctx, inputs)
 ```
 
-### 3. 合理的记忆窗口
+### 3. Appropriate Memory Window Size
 
 ```go
-// 避免记忆窗口过大
+// Avoid excessively large memory windows
 memory := memory.NewBufferMemory(
-    memory.WithMaxMessages(10), // 只保留最近10条
+    memory.WithMaxMessages(10), // keep only the last 10 messages
 )
 ```
 
-### 4. 工具执行限制
+### 4. Tool Execution Limits
 
 ```go
-// 限制工具调用次数，防止死循环
+// Limit tool call count to prevent infinite loops
 agent := agent.NewReActAgent(
     agent.WithMaxIterations(5),
 )
 ```
 
-## RAG 优化
+## RAG Optimization
 
-### 1. 向量缓存
+### 1. Embedding Cache
 
 ```go
 embedder := embedder.NewCachedEmbedder(
@@ -53,7 +53,7 @@ embedder := embedder.NewCachedEmbedder(
 )
 ```
 
-### 2. 批量索引
+### 2. Batch Indexing
 
 ```go
 indexer.IndexBatch(ctx, docs,
@@ -62,28 +62,28 @@ indexer.IndexBatch(ctx, docs,
 )
 ```
 
-### 3. 查询缓存
+### 3. Query Cache
 
 ```go
-// 缓存相似查询的结果
+// Cache results for similar queries
 retriever := retriever.NewCachedRetriever(
     baseRetriever,
     cache.NewLRU(100),
 )
 ```
 
-## 多 Agent 优化
+## Multi-Agent Optimization
 
-### 1. 并行执行
+### 1. Parallel Execution
 
 ```go
-// 使用并行模式加速独立任务
+// Use parallel mode to speed up independent tasks
 team := agent.NewTeam(
     agent.WithTeamMode(agent.TeamModeParallel),
 )
 ```
 
-### 2. 超时控制
+### 2. Timeout Control
 
 ```go
 team := agent.NewTeam(
@@ -91,28 +91,28 @@ team := agent.NewTeam(
 )
 ```
 
-### 3. 结果缓存
+### 3. Result Caching
 
 ```go
-// 缓存 Agent 结果避免重复计算
+// Cache Agent results to avoid redundant computation
 agent := agent.NewCachedAgent(baseAgent, cache.NewLRU(50))
 ```
 
-## 系统优化
+## System Optimization
 
-### 1. 连接池
+### 1. Connection Pooling
 
 ```go
-// LLM 客户端使用连接池
+// Use connection pooling for the LLM client
 provider := openai.New(apiKey,
     openai.WithMaxConnections(100),
 )
 ```
 
-### 2. 对象复用
+### 2. Object Reuse
 
 ```go
-// 使用对象池复用对象
+// Use an object pool to reuse objects
 var bufferPool = sync.Pool{
     New: func() any {
         return new(bytes.Buffer)
@@ -120,10 +120,10 @@ var bufferPool = sync.Pool{
 }
 ```
 
-### 3. Goroutine 限制
+### 3. Goroutine Limiting
 
 ```go
-// 限制并发 Goroutine 数量
+// Limit the number of concurrent goroutines
 semaphore := make(chan struct{}, 10)
 for _, task := range tasks {
     semaphore <- struct{}{}
@@ -134,20 +134,20 @@ for _, task := range tasks {
 }
 ```
 
-## 基准测试
+## Benchmarking
 
 ```bash
-# 运行基准测试
+# Run benchmarks
 go test -bench=. -benchmem ./bench/...
 
-# 生成 CPU profile
+# Generate a CPU profile
 go test -cpuprofile=cpu.prof -bench=.
 
-# 生成内存 profile
+# Generate a memory profile
 go test -memprofile=mem.prof -bench=.
 
-# 分析 profile
+# Analyze a profile
 go tool pprof cpu.prof
 ```
 
-更多详情参见 [bench/](../../bench/)。
+For more details, see [bench/](../../bench/).

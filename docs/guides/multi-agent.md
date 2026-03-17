@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="multi-agent.en.md">English</a></div>
+
 # 多 Agent 协作指南
 
 Hexagon 提供强大的多 Agent 协作能力，支持团队协作、Agent 交接和网络通信。

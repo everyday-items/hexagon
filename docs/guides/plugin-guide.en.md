@@ -1,41 +1,41 @@
-<div align="right">语言: 中文 | <a href="plugin-guide.en.md">English</a></div>
+<div align="right">Language: <a href="plugin-guide.md">中文</a> | English</div>
 
-# 插件开发指南
+# Plugin Development Guide
 
-本指南介绍如何为 Hexagon 开发和使用插件。
+This guide explains how to develop and use plugins for Hexagon.
 
-## 概述
+## Overview
 
-Hexagon 插件系统允许您：
+The Hexagon plugin system allows you to:
 
-- 扩展框架功能
-- 添加新的 LLM Provider
-- 集成外部服务
-- 自定义中间件
-- 动态加载和卸载
+- Extend framework functionality
+- Add new LLM Providers
+- Integrate external services
+- Customize middleware
+- Dynamically load and unload components
 
-## 插件结构
+## Plugin Structure
 
-### 插件接口
+### Plugin Interface
 
 ```go
 type Plugin interface {
-    // 插件元信息
+    // Plugin metadata
     Name() string
     Version() string
     Description() string
 
-    // 生命周期
+    // Lifecycle
     Init(ctx context.Context, config map[string]any) error
     Start(ctx context.Context) error
     Stop(ctx context.Context) error
 
-    // 依赖声明
+    // Dependency declarations
     Dependencies() []string
 }
 ```
 
-### 基础实现
+### Basic Implementation
 
 ```go
 type MyPlugin struct {
@@ -44,7 +44,7 @@ type MyPlugin struct {
 
 func (p *MyPlugin) Name() string        { return "my-plugin" }
 func (p *MyPlugin) Version() string     { return "1.0.0" }
-func (p *MyPlugin) Description() string { return "我的自定义插件" }
+func (p *MyPlugin) Description() string { return "My custom plugin" }
 func (p *MyPlugin) Dependencies() []string { return nil }
 
 func (p *MyPlugin) Init(ctx context.Context, config map[string]any) error {
@@ -53,31 +53,31 @@ func (p *MyPlugin) Init(ctx context.Context, config map[string]any) error {
 }
 
 func (p *MyPlugin) Start(ctx context.Context) error {
-    // 启动逻辑
+    // Startup logic
     return nil
 }
 
 func (p *MyPlugin) Stop(ctx context.Context) error {
-    // 停止逻辑
+    // Shutdown logic
     return nil
 }
 ```
 
-## 插件注册
+## Plugin Registration
 
-### 代码注册
+### Code-Based Registration
 
 ```go
 import "github.com/hexagon-codes/hexagon/plugin"
 
-// 注册插件
+// Register a plugin
 plugin.Register(&MyPlugin{})
 
-// 获取插件
+// Retrieve a plugin
 p, err := plugin.Get("my-plugin")
 ```
 
-### 配置文件注册
+### Configuration File Registration
 
 ```yaml
 # plugins.yaml
@@ -90,55 +90,55 @@ plugins:
 ```
 
 ```go
-// 从配置加载
+// Load from configuration
 loader := plugin.NewLoader()
 err := loader.LoadFromConfig("plugins.yaml")
 ```
 
-## 插件生命周期
+## Plugin Lifecycle
 
-### 生命周期管理器
+### Lifecycle Manager
 
 ```go
 lifecycle := plugin.NewLifecycle()
 
-// 添加插件
+// Add plugins
 lifecycle.Add(plugin1)
 lifecycle.Add(plugin2)
 
-// 初始化所有插件
+// Initialize all plugins
 err := lifecycle.InitAll(ctx)
 
-// 启动所有插件
+// Start all plugins
 err := lifecycle.StartAll(ctx)
 
-// 停止所有插件
+// Stop all plugins
 err := lifecycle.StopAll(ctx)
 ```
 
-### 生命周期钩子
+### Lifecycle Hooks
 
 ```go
 lifecycle.OnInit(func(name string) {
-    log.Printf("插件 %s 初始化中...", name)
+    log.Printf("Plugin %s initializing...", name)
 })
 
 lifecycle.OnStart(func(name string) {
-    log.Printf("插件 %s 启动中...", name)
+    log.Printf("Plugin %s starting...", name)
 })
 
 lifecycle.OnStop(func(name string) {
-    log.Printf("插件 %s 停止中...", name)
+    log.Printf("Plugin %s stopping...", name)
 })
 
 lifecycle.OnError(func(name string, err error) {
-    log.Printf("插件 %s 错误: %v", name, err)
+    log.Printf("Plugin %s error: %v", name, err)
 })
 ```
 
-## 依赖管理
+## Dependency Management
 
-### 声明依赖
+### Declaring Dependencies
 
 ```go
 func (p *MyPlugin) Dependencies() []string {
@@ -146,7 +146,7 @@ func (p *MyPlugin) Dependencies() []string {
 }
 ```
 
-### 版本约束
+### Version Constraints
 
 ```go
 func (p *MyPlugin) Dependencies() []string {
@@ -157,50 +157,50 @@ func (p *MyPlugin) Dependencies() []string {
 }
 ```
 
-### 依赖解析
+### Dependency Resolution
 
 ```go
 graph := plugin.NewDependencyGraph()
 graph.Add(plugin1)
 graph.Add(plugin2)
 
-// 检查循环依赖
+// Check for circular dependencies
 if err := graph.CheckCycle(); err != nil {
-    log.Fatal("存在循环依赖:", err)
+    log.Fatal("Circular dependency detected:", err)
 }
 
-// 拓扑排序
+// Topological sort
 sorted, err := graph.TopologicalSort()
 ```
 
-## 热重载
+## Hot Reload
 
-### 启用热重载
+### Enabling Hot Reload
 
 ```go
 reloader := plugin.NewHotReloader(lifecycle)
 
-// 监听插件目录
+// Watch a plugin directory
 reloader.Watch("./plugins")
 
-// 启动监听
+// Start watching
 reloader.Start(ctx)
 defer reloader.Stop()
 ```
 
-### 版本回滚
+### Version Rollback
 
 ```go
-// 获取版本历史
+// Get version history
 history := reloader.GetVersionHistory("my-plugin")
 
-// 回滚到指定版本
+// Roll back to a specific version
 err := reloader.Rollback("my-plugin", "1.0.0")
 ```
 
-## 健康检查
+## Health Checks
 
-### 实现健康检查
+### Implementing Health Checks
 
 ```go
 type HealthChecker interface {
@@ -208,28 +208,28 @@ type HealthChecker interface {
 }
 
 func (p *MyPlugin) HealthCheck(ctx context.Context) error {
-    // 检查数据库连接
+    // Check database connection
     if err := p.db.Ping(); err != nil {
-        return fmt.Errorf("数据库连接失败: %w", err)
+        return fmt.Errorf("database connection failed: %w", err)
     }
     return nil
 }
 ```
 
-### 检查所有插件
+### Checking All Plugins
 
 ```go
 results := lifecycle.HealthCheckAll(ctx)
 for name, err := range results {
     if err != nil {
-        log.Printf("插件 %s 不健康: %v", name, err)
+        log.Printf("Plugin %s is unhealthy: %v", name, err)
     }
 }
 ```
 
-## 插件类型
+## Plugin Types
 
-### LLM Provider 插件
+### LLM Provider Plugin
 
 ```go
 type LLMProviderPlugin struct {
@@ -238,16 +238,16 @@ type LLMProviderPlugin struct {
 }
 
 func (p *LLMProviderPlugin) Init(ctx context.Context, config map[string]any) error {
-    // 初始化 LLM Provider
+    // Initialize the LLM Provider
     p.provider = newMyProvider(config)
 
-    // 注册到全局
+    // Register globally
     llm.RegisterProvider("my-llm", p.provider)
     return nil
 }
 ```
 
-### 工具插件
+### Tool Plugin
 
 ```go
 type ToolPlugin struct {
@@ -256,13 +256,13 @@ type ToolPlugin struct {
 }
 
 func (p *ToolPlugin) Init(ctx context.Context, config map[string]any) error {
-    // 创建工具
+    // Create tools
     p.tools = []tool.Tool{
         newSearchTool(),
         newCalculatorTool(),
     }
 
-    // 注册工具
+    // Register tools
     for _, t := range p.tools {
         tool.Register(t)
     }
@@ -270,7 +270,7 @@ func (p *ToolPlugin) Init(ctx context.Context, config map[string]any) error {
 }
 ```
 
-### 中间件插件
+### Middleware Plugin
 
 ```go
 type MiddlewarePlugin struct {
@@ -278,10 +278,10 @@ type MiddlewarePlugin struct {
 }
 
 func (p *MiddlewarePlugin) Init(ctx context.Context, config map[string]any) error {
-    // 注册中间件
+    // Register middleware
     middleware.Register("my-middleware", func(next agent.AgentHandler) agent.AgentHandler {
         return func(ctx context.Context, input agent.Input) (agent.Output, error) {
-            // 中间件逻辑
+            // Middleware logic
             return next(ctx, input)
         }
     })
@@ -289,15 +289,15 @@ func (p *MiddlewarePlugin) Init(ctx context.Context, config map[string]any) erro
 }
 ```
 
-## 插件清单
+## Plugin Manifest
 
-使用 YAML 描述插件：
+Describe your plugin using YAML:
 
 ```yaml
 # manifest.yaml
 name: my-plugin
 version: 1.0.0
-description: 我的自定义插件
+description: My custom plugin
 author: Your Name
 
 dependencies:
@@ -320,46 +320,46 @@ hooks:
   start: scripts/start.sh
 ```
 
-## 调试插件
+## Debugging Plugins
 
-### 日志
+### Logging
 
 ```go
 func (p *MyPlugin) Init(ctx context.Context, config map[string]any) error {
-    log.Printf("[%s] 初始化配置: %+v", p.Name(), config)
+    log.Printf("[%s] Initializing with config: %+v", p.Name(), config)
     return nil
 }
 ```
 
-### 指标
+### Metrics
 
 ```go
 import "github.com/hexagon-codes/hexagon/observe/metrics"
 
 func (p *MyPlugin) Start(ctx context.Context) error {
-    // 记录启动指标
+    // Record startup metric
     metrics.IncCounter("plugin_starts_total", "plugin", p.Name())
     return nil
 }
 ```
 
-## 最佳实践
+## Best Practices
 
-1. **单一职责**: 每个插件专注一个功能
-2. **优雅降级**: 插件失败不影响主程序
-3. **配置验证**: Init 时验证配置完整性
-4. **资源清理**: Stop 时释放所有资源
-5. **版本管理**: 遵循语义化版本
-6. **文档完善**: 提供清晰的使用说明
+1. **Single Responsibility**: Each plugin should focus on one specific function
+2. **Graceful Degradation**: Plugin failures should not affect the main application
+3. **Configuration Validation**: Validate configuration completeness during `Init`
+4. **Resource Cleanup**: Release all resources during `Stop`
+5. **Version Management**: Follow semantic versioning
+6. **Clear Documentation**: Provide clear usage instructions
 
-## 示例项目
+## Example Projects
 
-完整示例见 `examples/plugins/` 目录：
+Full examples are available in the `examples/plugins/` directory:
 
 ```
 examples/plugins/
-├── llm-provider/      # LLM Provider 插件示例
-├── tool-plugin/       # 工具插件示例
-├── middleware/        # 中间件插件示例
-└── full-example/      # 完整插件示例
+├── llm-provider/      # LLM Provider plugin example
+├── tool-plugin/       # Tool plugin example
+├── middleware/        # Middleware plugin example
+└── full-example/      # Complete plugin example
 ```

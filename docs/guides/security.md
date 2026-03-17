@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="security.en.md">English</a></div>
+
 # 安全防护配置指南
 
 Hexagon 提供多层安全防护机制。

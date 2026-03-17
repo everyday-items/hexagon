@@ -1,25 +1,25 @@
-<div align="right">语言: 中文 | <a href="graph-orchestration.en.md">English</a></div>
+<div align="right">Language: <a href="graph-orchestration.md">中文</a> | English</div>
 
-# 图编排最佳实践
+# Graph Orchestration Best Practices
 
-图编排提供灵活的控制流，支持条件分支、循环和并行执行。
+Graph orchestration provides flexible control flow with support for conditional branching, loops, and parallel execution.
 
-## 快速开始
+## Quick Start
 
 ```go
 import "github.com/hexagon-codes/hexagon/orchestration/graph"
 
-// 定义状态
+// Define state
 type MyState struct {
     Input  string
     Output string
     Count  int
 }
 
-// 创建图
+// Create graph
 g := graph.New[MyState]()
 
-// 添加节点
+// Add nodes
 g.AddNode("start", func(ctx context.Context, state MyState) (MyState, error) {
     state.Count++
     return state, nil
@@ -34,37 +34,37 @@ g.AddNode("end", func(ctx context.Context, state MyState) (MyState, error) {
     return state, nil
 })
 
-// 添加边
+// Add edges
 g.AddEdge("start", "process")
 g.AddEdge("process", "end")
 
-// 设置入口和出口
+// Set entry and finish points
 g.SetEntryPoint("start")
 g.SetFinishPoint("end")
 
-// 编译并运行
+// Compile and run
 compiled, _ := g.Compile()
 result, _ := compiled.Run(ctx, MyState{Input: "hello"})
 
 fmt.Println(result.Output) // "processed: hello"
 ```
 
-## 条件分支
+## Conditional Branching
 
 ```go
-// 添加条件边
+// Add a conditional edge
 g.AddConditionalEdge("process", func(ctx context.Context, state MyState) (string, error) {
     if state.Count > 5 {
         return "end", nil
     }
-    return "start", nil // 循环
+    return "start", nil // loop back
 })
 ```
 
-## 并行执行
+## Parallel Execution
 
 ```go
-// 并行执行多个节点
+// Execute multiple nodes in parallel
 g.AddNode("parallel_start", func(ctx context.Context, state MyState) (MyState, error) {
     return state, nil
 })
@@ -73,56 +73,56 @@ g.AddNode("task1", ...)
 g.AddNode("task2", ...)
 g.AddNode("task3", ...)
 
-// 分支到多个任务
+// Fan out to multiple tasks
 g.AddEdge("parallel_start", "task1")
 g.AddEdge("parallel_start", "task2")
 g.AddEdge("parallel_start", "task3")
 
-// 汇聚
+// Merge results
 g.AddNode("merge", ...)
 g.AddEdge("task1", "merge")
 g.AddEdge("task2", "merge")
 g.AddEdge("task3", "merge")
 ```
 
-## 中断和恢复
+## Interrupts and Resumption
 
 ```go
-// 添加中断点
+// Add an interrupt point
 g.AddInterrupt("approval", graph.InterruptTypeApproval,
-    graph.WithInterruptTitle("需要审批"),
+    graph.WithInterruptTitle("Approval Required"),
     graph.WithInterruptOptions([]graph.InterruptOption{
-        {Value: "approve", Label: "批准"},
-        {Value: "reject", Label: "拒绝"},
+        {Value: "approve", Label: "Approve"},
+        {Value: "reject", Label: "Reject"},
     }),
 )
 
-// 恢复执行
+// Resume execution
 result := <-interrupt.Wait(ctx)
 if result.Value == "approve" {
     compiled.Resume(ctx, interrupt.ID)
 }
 ```
 
-## 检查点
+## Checkpoints
 
 ```go
 import "github.com/hexagon-codes/hexagon/orchestration/graph/checkpoint"
 
-// 使用检查点
+// Use checkpoints
 saver := checkpoint.NewMemorySaver()
 
 compiled, _ := g.Compile(
     graph.WithCheckpointSaver(saver),
 )
 
-// 执行会自动保存检查点
+// Execution automatically saves checkpoints
 result, _ := compiled.Run(ctx, state)
 
-// 从检查点恢复
+// Resume from a checkpoint
 checkpoints := saver.List(threadID)
 latest := checkpoints[len(checkpoints)-1]
 compiled.ResumeFromCheckpoint(ctx, latest)
 ```
 
-更多详情参见 [DESIGN.md](../DESIGN.md#图编排)。
+For more details, see [DESIGN.md](../DESIGN.md#图编排).

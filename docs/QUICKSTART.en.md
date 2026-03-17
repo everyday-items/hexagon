@@ -1,51 +1,51 @@
-<div align="right">语言: 中文 | <a href="QUICKSTART.en.md">English</a></div>
+<div align="right">Language: <a href="QUICKSTART.md">中文</a> | English</div>
 
-# Hexagon 快速入门指南
+# Hexagon Quick Start Guide
 
-本指南帮助你在 30 分钟内上手 Hexagon AI Agent 框架。
+This guide helps you get started with the Hexagon AI Agent framework in 30 minutes.
 
-## 项目简介
+## Project Overview
 
-**Hexagon** 取名自网络热词「六边形战士」，寓意均衡强大、无懈可击。框架聚焦 **易用性、性能、扩展性、任务编排、可观测性、安全性** 六大核心维度，为 Go 开发者打造企业级落地首选的 AI Agent 开发基座。
+**Hexagon** is named after the Chinese internet term "hexagonal warrior" (六边形战士), symbolizing balanced strength with no weak points. The framework focuses on six core dimensions — **ease of use, performance, extensibility, task orchestration, observability, and security** — providing Go developers with a production-ready AI Agent development foundation.
 
-### 生态系统
+### Ecosystem
 
-Hexagon 是一个完整的 AI Agent 开发生态：
+Hexagon is a complete AI Agent development ecosystem:
 
-| 仓库 | 说明 |
+| Repository | Description |
 |-----|------|
-| **hexagon** | AI Agent 框架核心 (编排、RAG、Graph、Hooks) |
-| **ai-core** | AI 基础能力库 (LLM/Tool/Memory/Schema) |
-| **toolkit** | Go 通用工具库 (lang/crypto/net/cache/util) |
-| **hexagon-ui** | Dev UI 前端 (Vue 3 + TypeScript) |
+| **hexagon** | AI Agent framework core (orchestration, RAG, Graph, Hooks) |
+| **ai-core** | AI capability library (LLM/Tool/Memory/Schema) |
+| **toolkit** | Go general-purpose toolkit (lang/crypto/net/cache/util) |
+| **hexagon-ui** | Dev UI frontend (Vue 3 + TypeScript) |
 
-## 目录
+## Table of Contents
 
-- [环境准备](#环境准备)
-- [安装](#安装)
-- [3 行代码入门](#3-行代码入门)
-- [带工具的 Agent](#带工具的-agent)
-- [RAG 检索增强](#rag-检索增强)
-- [图编排](#图编排)
-- [多 Agent 协作](#多-agent-协作)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [3-Line Quick Start](#3-line-quick-start)
+- [Agent with Tools](#agent-with-tools)
+- [RAG Retrieval Augmentation](#rag-retrieval-augmentation)
+- [Graph Orchestration](#graph-orchestration)
+- [Multi-Agent Collaboration](#multi-agent-collaboration)
 - [Dev UI](#dev-ui)
-- [下一步](#下一步)
+- [Next Steps](#next-steps)
 
 ---
 
-## 环境准备
+## Prerequisites
 
-### 系统要求
+### System Requirements
 
-- Go 1.23 或更高版本
-- 网络连接（访问 LLM API）
+- Go 1.23 or higher
+- Network access (to reach LLM APIs)
 
-### 环境变量
+### Environment Variables
 
-Hexagon 支持多种 LLM Provider，需要配置相应的 API Key：
+Hexagon supports multiple LLM providers. Configure the corresponding API key:
 
 ```bash
-# OpenAI (默认)
+# OpenAI (default)
 export OPENAI_API_KEY=your-api-key
 
 # DeepSeek
@@ -54,13 +54,13 @@ export DEEPSEEK_API_KEY=your-api-key
 
 ---
 
-## 安装
+## Installation
 
 ```bash
 go get github.com/hexagon-codes/hexagon
 ```
 
-验证安装：
+Verify the installation:
 
 ```bash
 go list -m github.com/hexagon-codes/hexagon
@@ -68,9 +68,9 @@ go list -m github.com/hexagon-codes/hexagon
 
 ---
 
-## 3 行代码入门
+## 3-Line Quick Start
 
-这是最简单的使用方式：
+The simplest way to get started:
 
 ```go
 package main
@@ -87,7 +87,7 @@ func main() {
 }
 ```
 
-运行：
+Run it:
 
 ```bash
 export OPENAI_API_KEY=your-api-key
@@ -96,9 +96,9 @@ go run main.go
 
 ---
 
-## 带工具的 Agent
+## Agent with Tools
 
-Agent 可以使用工具来完成任务：
+Agents can use tools to accomplish tasks:
 
 ```go
 package main
@@ -109,18 +109,18 @@ import (
     "github.com/hexagon-codes/hexagon"
 )
 
-// 定义计算器工具的输入
+// Define the calculator tool input
 type CalculatorInput struct {
-    A  float64 `json:"a" desc:"第一个数字" required:"true"`
-    B  float64 `json:"b" desc:"第二个数字" required:"true"`
-    Op string  `json:"op" desc:"运算符" required:"true" enum:"add,sub,mul,div"`
+    A  float64 `json:"a" desc:"first number" required:"true"`
+    B  float64 `json:"b" desc:"second number" required:"true"`
+    Op string  `json:"op" desc:"operator" required:"true" enum:"add,sub,mul,div"`
 }
 
 func main() {
     ctx := context.Background()
 
-    // 创建计算器工具
-    calculator := hexagon.NewTool("calculator", "执行数学计算",
+    // Create the calculator tool
+    calculator := hexagon.NewTool("calculator", "Perform mathematical calculations",
         func(ctx context.Context, input CalculatorInput) (float64, error) {
             switch input.Op {
             case "add":
@@ -140,36 +140,36 @@ func main() {
         },
     )
 
-    // 创建带工具的 Agent
+    // Create an agent with tools
     agent := hexagon.QuickStart(
         hexagon.WithTools(calculator),
-        hexagon.WithSystemPrompt("你是一个数学助手"),
+        hexagon.WithSystemPrompt("You are a math assistant"),
     )
 
-    // 执行查询
+    // Run a query
     output, _ := agent.Run(ctx, hexagon.Input{
-        Query: "请计算 123 乘以 456",
+        Query: "Please calculate 123 multiplied by 456",
     })
 
     fmt.Println(output.Content)
 }
 ```
 
-### 工具定义说明
+### Tool Definition Reference
 
-- `name`: 工具名称，LLM 用来识别和调用
-- `desc`: 工具描述，帮助 LLM 理解何时使用
-- 输入结构体标签：
-  - `json`: 字段名
-  - `desc`: 字段描述
-  - `required`: 是否必填
-  - `enum`: 可选值列表
+- `name`: Tool name, used by the LLM to identify and invoke the tool
+- `desc`: Tool description, helps the LLM understand when to use it
+- Input struct tags:
+  - `json`: Field name
+  - `desc`: Field description
+  - `required`: Whether the field is required
+  - `enum`: List of allowed values
 
 ---
 
-## RAG 检索增强
+## RAG Retrieval Augmentation
 
-RAG (Retrieval-Augmented Generation) 让 Agent 能够基于外部知识库回答问题：
+RAG (Retrieval-Augmented Generation) allows an Agent to answer questions based on an external knowledge base:
 
 ```go
 package main
@@ -183,28 +183,28 @@ import (
 func main() {
     ctx := context.Background()
 
-    // 创建内存向量存储
+    // Create an in-memory vector store
     store := hexagon.NewMemoryVectorStore()
 
-    // 创建 Embedder
+    // Create an embedder
     embedder := hexagon.NewOpenAIEmbedder()
 
-    // 创建 RAG 引擎
+    // Create the RAG engine
     engine := hexagon.NewRAGEngine(
         hexagon.WithRAGStore(store),
         hexagon.WithRAGEmbedder(embedder),
     )
 
-    // 索引文档
+    // Index documents
     docs := []hexagon.Document{
-        {ID: "1", Content: "Go 是一种静态类型、编译型语言，由 Google 开发。"},
-        {ID: "2", Content: "Go 支持并发编程，通过 goroutine 和 channel 实现。"},
-        {ID: "3", Content: "Go 的标准库非常丰富，包括 HTTP、JSON、加密等。"},
+        {ID: "1", Content: "Go is a statically typed, compiled language developed by Google."},
+        {ID: "2", Content: "Go supports concurrent programming through goroutines and channels."},
+        {ID: "3", Content: "Go's standard library is extensive, covering HTTP, JSON, cryptography, and more."},
     }
     engine.Index(ctx, docs)
 
-    // 检索相关文档
-    results, _ := engine.Retrieve(ctx, "Go 的并发特性",
+    // Retrieve relevant documents
+    results, _ := engine.Retrieve(ctx, "Go's concurrency features",
         hexagon.WithTopK(2),
         hexagon.WithMinScore(0.5),
     )
@@ -215,12 +215,12 @@ func main() {
 }
 ```
 
-### 使用 Qdrant 向量数据库
+### Using Qdrant Vector Database
 
-对于生产环境，推荐使用 Qdrant：
+For production environments, Qdrant is recommended:
 
 ```go
-// 创建 Qdrant 存储
+// Create a Qdrant store
 store, _ := hexagon.NewQdrantStore(hexagon.QdrantConfig{
     Host:             "localhost",
     Port:             6333,
@@ -232,9 +232,9 @@ store, _ := hexagon.NewQdrantStore(hexagon.QdrantConfig{
 
 ---
 
-## 图编排
+## Graph Orchestration
 
-图编排允许构建复杂的多步骤工作流：
+Graph orchestration allows you to build complex multi-step workflows:
 
 ```go
 package main
@@ -246,7 +246,7 @@ import (
     "github.com/hexagon-codes/hexagon/orchestration/graph"
 )
 
-// 定义状态
+// Define state
 type MyState struct {
     Input   string
     Step1   string
@@ -261,7 +261,7 @@ func (s MyState) Clone() graph.State {
 func main() {
     ctx := context.Background()
 
-    // 构建图
+    // Build the graph
     g, _ := hexagon.NewGraph[MyState]("example-graph").
         AddNode("analyze", func(ctx context.Context, s MyState) (MyState, error) {
             s.Step1 = "Analyzed: " + s.Input
@@ -281,13 +281,13 @@ func main() {
         AddEdge("summarize", hexagon.END).
         Build()
 
-    // 执行
+    // Execute
     result, _ := g.Run(ctx, MyState{Input: "Hello World"})
     fmt.Println(result.Final)
 }
 ```
 
-### 条件分支
+### Conditional Branching
 
 ```go
 g, _ := hexagon.NewGraph[MyState]("conditional-graph").
@@ -311,9 +311,9 @@ g, _ := hexagon.NewGraph[MyState]("conditional-graph").
 
 ---
 
-## 多 Agent 协作
+## Multi-Agent Collaboration
 
-### 团队模式
+### Team Mode
 
 ```go
 package main
@@ -327,86 +327,86 @@ import (
 func main() {
     ctx := context.Background()
 
-    // 创建 Agent
+    // Create agents
     researcher := hexagon.QuickStart(
-        hexagon.WithSystemPrompt("你是一个研究员，负责收集信息"),
+        hexagon.WithSystemPrompt("You are a researcher responsible for gathering information"),
     )
     writer := hexagon.QuickStart(
-        hexagon.WithSystemPrompt("你是一个作家，负责撰写内容"),
+        hexagon.WithSystemPrompt("You are a writer responsible for creating content"),
     )
 
-    // 创建团队（顺序执行）
+    // Create a team (sequential execution)
     team := hexagon.NewTeam("content-team",
         hexagon.WithAgents(researcher, writer),
         hexagon.WithMode(hexagon.TeamModeSequential),
     )
 
-    // 执行
+    // Execute
     output, _ := team.Run(ctx, hexagon.Input{
-        Query: "写一篇关于 Go 语言的介绍",
+        Query: "Write an introduction to the Go programming language",
     })
 
     fmt.Println(output.Content)
 }
 ```
 
-### Agent 交接 (Swarm 模式)
+### Agent Handoff (Swarm Mode)
 
 ```go
-// 创建 Agent
+// Create agents
 salesAgent := hexagon.QuickStart(
-    hexagon.WithSystemPrompt("你是销售客服"),
+    hexagon.WithSystemPrompt("You are a sales representative"),
     hexagon.WithTools(
-        hexagon.TransferTo(supportAgent), // 交接工具
+        hexagon.TransferTo(supportAgent), // handoff tool
     ),
 )
 
 supportAgent := hexagon.QuickStart(
-    hexagon.WithSystemPrompt("你是技术支持"),
+    hexagon.WithSystemPrompt("You are technical support"),
     hexagon.WithTools(
         hexagon.TransferTo(salesAgent),
     ),
 )
 
-// 创建 Swarm 运行器
+// Create Swarm runner
 runner := agent.NewSwarmRunner(salesAgent)
 runner.MaxHandoffs = 5
 
-// 运行
+// Run
 output, _ := runner.Run(ctx, hexagon.Input{
-    Query: "我想了解产品价格，还有一些技术问题",
+    Query: "I'd like to know about pricing, and I also have some technical questions",
 })
 ```
 
 ---
 
-## 安全防护
+## Security
 
-### Prompt 注入检测
+### Prompt Injection Detection
 
 ```go
 guard := hexagon.NewPromptInjectionGuard()
 result, _ := guard.Check(ctx, userInput)
 
 if !result.Passed {
-    fmt.Printf("检测到潜在的注入攻击: %s\n", result.Reason)
+    fmt.Printf("Potential injection attack detected: %s\n", result.Reason)
 }
 ```
 
-### 成本控制
+### Cost Control
 
 ```go
 controller := hexagon.NewCostController(
-    hexagon.WithBudget(10.0),           // $10 预算
-    hexagon.WithMaxTokensTotal(100000), // 总 token 限制
+    hexagon.WithBudget(10.0),           // $10 budget
+    hexagon.WithMaxTokensTotal(100000), // total token limit
 )
 ```
 
 ---
 
-## 可观测性
+## Observability
 
-### 追踪
+### Tracing
 
 ```go
 tracer := hexagon.NewTracer()
@@ -418,7 +418,7 @@ defer span.End()
 span.SetAttribute("user_id", "123")
 ```
 
-### 指标
+### Metrics
 
 ```go
 metrics := hexagon.NewMetrics()
@@ -430,56 +430,56 @@ metrics.Histogram("latency_ms").Observe(123.5)
 
 ## Dev UI
 
-内置开发调试界面，实时查看 Agent 执行过程。
+A built-in development and debugging interface for real-time inspection of agent execution.
 
 ```go
 import "github.com/hexagon-codes/hexagon/observe/devui"
 
-// 创建 DevUI
+// Create DevUI
 ui := devui.New(
     devui.WithAddr(":8080"),
     devui.WithMaxEvents(1000),
 )
 
-// 启动服务
+// Start the server
 go ui.Start()
 
-// 访问 http://localhost:8080
+// Visit http://localhost:8080
 ```
 
-**运行示例：**
+**Running the example:**
 
 ```bash
-# 启动后端
+# Start the backend
 go run examples/devui/main.go
 
-# 启动前端 (hexagon-ui)
+# Start the frontend (hexagon-ui)
 cd ../hexagon-ui
 npm install
 npm run dev
-# 访问 http://localhost:5173
+# Visit http://localhost:5173
 ```
 
-**功能特性：**
-- 实时事件流 (SSE 推送)
-- 指标仪表板
-- 事件详情查看
-- LLM 流式输出展示
+**Features:**
+- Real-time event streaming (SSE push)
+- Metrics dashboard
+- Event detail viewer
+- LLM streaming output display
 
 ---
 
-## 部署
+## Deployment
 
-Hexagon 提供三种部署方式：
+Hexagon supports three deployment options:
 
-### Docker 快速启动
+### Docker Quick Start
 
 ```bash
 cd deploy
 cp .env.example .env
-# 编辑 .env，填入 LLM API Key
+# Edit .env and fill in your LLM API key
 make up
-# 主应用: http://localhost:8000  Dev UI: http://localhost:8080
+# Main app: http://localhost:8000  Dev UI: http://localhost:8080
 ```
 
 ### Kubernetes / Helm
@@ -489,22 +489,22 @@ cd deploy
 make helm-install
 ```
 
-详见 [部署指南](../deploy/README.md)。
+See the [Deployment Guide](../deploy/README.md) for details.
 
 ---
 
-## 下一步
+## Next Steps
 
-- 阅读 [API 参考文档](API.md) 了解完整 API
-- 阅读 [架构设计文档](DESIGN.md) 深入理解框架设计
-- 阅读 [框架对比](comparison.md) 了解与其他框架的差异
-- 阅读 [部署指南](../deploy/README.md) 了解部署配置
-- 查看 [示例代码](../examples/) 获取更多用例
-- 访问 [GitHub](https://github.com/hexagon-codes/hexagon) 参与贡献
+- Read the [API Reference](API.en.md) for the complete API
+- Read the [Architecture Design](DESIGN.en.md) to understand the framework in depth
+- Read the [Framework Comparison](comparison.en.md) to see how Hexagon differs from alternatives
+- Read the [Deployment Guide](../deploy/README.md) for deployment configuration
+- Browse the [Example Code](../examples/) for more use cases
+- Visit [GitHub](https://github.com/hexagon-codes/hexagon) to contribute
 
-## 常见问题
+## FAQ
 
-### Q: 如何切换 LLM Provider？
+### Q: How do I switch LLM providers?
 
 ```go
 import "github.com/hexagon-codes/ai-core/llm/deepseek"
@@ -515,20 +515,20 @@ agent := hexagon.QuickStart(
 )
 ```
 
-### Q: 如何自定义 Memory？
+### Q: How do I customize Memory?
 
 ```go
-// 使用更大的 buffer
+// Use a larger buffer
 memory := hexagon.NewBufferMemory(1000)
 agent := hexagon.QuickStart(
     hexagon.WithMemory(memory),
 )
 ```
 
-### Q: 如何调试 Agent？
+### Q: How do I debug an Agent?
 
 ```go
 agent := hexagon.QuickStart(
-    hexagon.WithVerbose(true), // 开启详细日志
+    hexagon.WithVerbose(true), // enable verbose logging
 )
 ```

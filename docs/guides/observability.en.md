@@ -1,24 +1,24 @@
-<div align="right">语言: 中文 | <a href="observability.en.md">English</a></div>
+<div align="right">Language: <a href="observability.md">中文</a> | English</div>
 
-# 可观测性集成指南
+# Observability Integration Guide
 
-Hexagon 提供完整的可观测性方案，包括追踪、指标和日志。
+Hexagon provides a complete observability solution including tracing, metrics, and logging.
 
-## 追踪 (Tracing)
+## Tracing
 
-### 内存追踪器
+### In-Memory Tracer
 
 ```go
 import "github.com/hexagon-codes/hexagon/observe/tracer"
 
 tracer := tracer.NewMemoryTracer()
 
-// Agent 使用追踪器
+// Use the tracer in an Agent
 agent := agent.NewBaseAgent(
     agent.WithTracer(tracer),
 )
 
-// 查看追踪
+// Inspect traces
 spans := tracer.GetSpans()
 for _, span := range spans {
     fmt.Printf("%s: %v\n", span.Name, span.Duration)
@@ -40,7 +40,7 @@ agent := agent.NewBaseAgent(
 )
 ```
 
-## 指标 (Metrics)
+## Metrics
 
 ### Prometheus
 
@@ -54,25 +54,25 @@ exporter := prometheus.NewExporter(
     prometheus.WithNamespace("hexagon"),
 )
 
-// 暴露 /metrics 端点
+// Expose the /metrics endpoint
 http.Handle("/metrics", exporter.Handler())
 go http.ListenAndServe(":9090", nil)
 
-// Agent 使用指标
+// Use metrics in an Agent
 agent := agent.NewBaseAgent(
     agent.WithMetrics(exporter),
 )
 ```
 
-## 日志 (Logging)
+## Logging
 
 ```go
 import "github.com/hexagon-codes/hexagon/observe/logger"
 
-// 配置日志级别
+// Configure log level
 logger.SetLevel(logger.LevelInfo)
 
-// Agent 会自动记录日志
+// Agent will log automatically
 agent := agent.NewBaseAgent(
     agent.WithLogger(logger.Default()),
 )
@@ -86,7 +86,7 @@ import "github.com/hexagon-codes/hexagon/observe/devui"
 ui := devui.New()
 go ui.Start(":8080")
 
-// 访问 http://localhost:8080 查看实时状态
+// Visit http://localhost:8080 to view real-time status
 ```
 
-更多详情参见 [DESIGN.md](../DESIGN.md#可观测性)。
+For more details, see [DESIGN.md](../DESIGN.md#可观测性).

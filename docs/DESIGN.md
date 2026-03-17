@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="DESIGN.en.md">English</a></div>
+
 # Hexagon 架构设计文档
 
 <div align="center">

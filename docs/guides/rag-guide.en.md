@@ -1,21 +1,21 @@
-<div align="right">语言: 中文 | <a href="rag-guide.en.md">English</a></div>
+<div align="right">Language: <a href="rag-guide.md">中文</a> | English</div>
 
-# RAG 系统使用指南
+# RAG System User Guide
 
-本指南介绍如何使用 Hexagon 构建 RAG（检索增强生成）系统。
+This guide explains how to build a RAG (Retrieval-Augmented Generation) system with Hexagon.
 
-## 概述
+## Overview
 
-RAG 系统通过检索相关文档来增强 LLM 的回答能力，主要包含以下步骤：
+A RAG system enhances LLM responses by retrieving relevant documents. The main steps are:
 
-1. **文档加载**: 从各种来源加载文档
-2. **文档分割**: 将长文档切分为适当大小的块
-3. **向量化**: 将文档转换为向量表示
-4. **索引存储**: 将向量存储到数据库
-5. **检索**: 根据查询检索相关文档
-6. **生成**: 基于检索结果生成回答
+1. **Document Loading**: Load documents from various sources
+2. **Document Splitting**: Split long documents into appropriately sized chunks
+3. **Vectorization**: Convert documents into vector representations
+4. **Index Storage**: Store vectors in a database
+5. **Retrieval**: Retrieve relevant documents based on a query
+6. **Generation**: Generate answers based on the retrieved results
 
-## 快速开始
+## Quick Start
 
 ```go
 import (
@@ -23,47 +23,47 @@ import (
     "github.com/hexagon-codes/hexagon/store/vector/qdrant"
 )
 
-// 1. 创建向量存储
+// 1. Create vector store
 store, err := qdrant.New(ctx,
     qdrant.WithCollection("knowledge"),
     qdrant.WithDimension(1536),
 )
 
-// 2. 创建嵌入器
+// 2. Create embedder
 embedder := rag.NewOpenAIEmbedder(openaiClient)
 
-// 3. 创建检索器
+// 3. Create retriever
 retriever := rag.NewVectorRetriever(store, embedder,
     rag.WithTopK(5),
 )
 
-// 4. 创建 RAG 管道
+// 4. Create RAG pipeline
 pipeline := rag.NewPipeline(
     rag.WithRetriever(retriever),
     rag.WithLLM(llm),
 )
 
-// 5. 查询
-response, err := pipeline.Query(ctx, "什么是 Hexagon？")
+// 5. Query
+response, err := pipeline.Query(ctx, "What is Hexagon?")
 ```
 
-## 文档加载
+## Document Loading
 
-### 文本文件
+### Text Files
 
 ```go
 loader := rag.NewTextLoader("./docs")
 docs, err := loader.Load(ctx)
 ```
 
-### PDF 文件
+### PDF Files
 
 ```go
 loader := rag.NewPDFLoader("./documents/manual.pdf")
 docs, err := loader.Load(ctx)
 ```
 
-### 网页
+### Web Pages
 
 ```go
 loader := rag.NewWebLoader([]string{
@@ -73,20 +73,20 @@ loader := rag.NewWebLoader([]string{
 docs, err := loader.Load(ctx)
 ```
 
-### 自定义加载器
+### Custom Loader
 
 ```go
 type MyLoader struct{}
 
 func (l *MyLoader) Load(ctx context.Context) ([]rag.Document, error) {
-    // 自定义加载逻辑
+    // Custom loading logic
     return docs, nil
 }
 ```
 
-## 文档分割
+## Document Splitting
 
-### 字符分割
+### Character Splitting
 
 ```go
 splitter := rag.NewCharacterSplitter(
@@ -96,7 +96,7 @@ splitter := rag.NewCharacterSplitter(
 chunks, err := splitter.Split(docs)
 ```
 
-### 递归分割
+### Recursive Splitting
 
 ```go
 splitter := rag.NewRecursiveSplitter(
@@ -106,7 +106,7 @@ splitter := rag.NewRecursiveSplitter(
 chunks, err := splitter.Split(docs)
 ```
 
-### 语义分割
+### Semantic Splitting
 
 ```go
 splitter := rag.NewSemanticSplitter(embedder,
@@ -115,7 +115,7 @@ splitter := rag.NewSemanticSplitter(embedder,
 chunks, err := splitter.Split(docs)
 ```
 
-## 向量存储
+## Vector Storage
 
 ### Qdrant
 
@@ -148,15 +148,15 @@ store, err := milvus.NewStore(ctx,
 )
 ```
 
-### 内存存储（开发测试）
+### In-Memory Store (Development & Testing)
 
 ```go
 store := vector.NewMemoryStore(1536)
 ```
 
-## 检索策略
+## Retrieval Strategies
 
-### 向量检索
+### Vector Retrieval
 
 ```go
 retriever := rag.NewVectorRetriever(store, embedder,
@@ -165,7 +165,7 @@ retriever := rag.NewVectorRetriever(store, embedder,
 )
 ```
 
-### 关键词检索
+### Keyword Retrieval
 
 ```go
 retriever := rag.NewKeywordRetriever(index,
@@ -173,7 +173,7 @@ retriever := rag.NewKeywordRetriever(index,
 )
 ```
 
-### 混合检索
+### Hybrid Retrieval
 
 ```go
 retriever := rag.NewHybridRetriever(
@@ -184,11 +184,11 @@ retriever := rag.NewHybridRetriever(
 )
 ```
 
-## 重排序
+## Reranking
 
-提高检索结果的相关性：
+Improve the relevance of retrieved results:
 
-### 分数过滤
+### Score Filtering
 
 ```go
 reranker := reranker.NewScoreReranker(
@@ -197,7 +197,7 @@ reranker := reranker.NewScoreReranker(
 )
 ```
 
-### 跨编码器重排序
+### Cross-Encoder Reranking
 
 ```go
 reranker := reranker.NewCrossEncoderReranker(
@@ -206,7 +206,7 @@ reranker := reranker.NewCrossEncoderReranker(
 )
 ```
 
-### Cohere 重排序
+### Cohere Reranking
 
 ```go
 reranker := reranker.NewCohereReranker(apiKey,
@@ -215,7 +215,7 @@ reranker := reranker.NewCohereReranker(apiKey,
 )
 ```
 
-### LLM 重排序
+### LLM Reranking
 
 ```go
 reranker := reranker.NewLLMReranker(llm,
@@ -223,9 +223,9 @@ reranker := reranker.NewLLMReranker(llm,
 )
 ```
 
-### RRF 融合
+### RRF Fusion
 
-合并多个检索结果：
+Merge results from multiple retrievers:
 
 ```go
 reranker := reranker.NewRRFReranker(
@@ -233,11 +233,11 @@ reranker := reranker.NewRRFReranker(
     reranker.WithRRFTopK(10),
 )
 
-// 融合多个排名列表
+// Fuse multiple ranking lists
 results := reranker.FuseRankings(ranking1, ranking2, ranking3)
 ```
 
-### 链式重排序
+### Chained Reranking
 
 ```go
 chain := reranker.NewChainReranker(
@@ -246,28 +246,28 @@ chain := reranker.NewChainReranker(
 )
 ```
 
-## 响应合成
+## Response Synthesis
 
-### 简单合成
+### Simple Synthesis
 
 ```go
 synthesizer := rag.NewSimpleSynthesizer(llm)
 response, err := synthesizer.Synthesize(ctx, query, docs)
 ```
 
-### 精炼合成
+### Refine Synthesis
 
-迭代优化回答：
+Iteratively refine the answer:
 
 ```go
 synthesizer := rag.NewRefineSynthesizer(llm,
-    rag.WithRefinePrompt("基于以下新信息完善回答..."),
+    rag.WithRefinePrompt("Improve the answer based on the following new information..."),
 )
 ```
 
-### 压缩合成
+### Compact Synthesis
 
-压缩多个文档：
+Compress multiple documents:
 
 ```go
 synthesizer := rag.NewCompactSynthesizer(llm,
@@ -275,35 +275,35 @@ synthesizer := rag.NewCompactSynthesizer(llm,
 )
 ```
 
-## 完整管道
+## Full Pipeline
 
 ```go
-// 配置管道
+// Configure the pipeline
 pipeline := rag.NewPipeline(
-    // 检索配置
+    // Retrieval configuration
     rag.WithRetriever(hybridRetriever),
 
-    // 重排序配置
+    // Reranking configuration
     rag.WithReranker(crossEncoderReranker),
 
-    // 合成配置
+    // Synthesis configuration
     rag.WithSynthesizer(refineSynthesizer),
 
-    // LLM 配置
+    // LLM configuration
     rag.WithLLM(llm),
 
-    // 其他配置
+    // Other options
     rag.WithTopK(10),
     rag.WithMaxContextLength(4000),
 )
 
-// 执行查询
-response, err := pipeline.Query(ctx, "你的问题")
+// Execute query
+response, err := pipeline.Query(ctx, "Your question")
 ```
 
-## 索引管道
+## Indexing Pipeline
 
-一次性完成文档索引：
+Index documents in one pass:
 
 ```go
 indexer := rag.NewIndexer(
@@ -314,32 +314,32 @@ indexer := rag.NewIndexer(
     rag.WithBatchSize(100),
 )
 
-// 索引文档
+// Index documents
 err := indexer.Index(ctx)
 ```
 
-## 监控指标
+## Monitoring Metrics
 
 ```go
 import "github.com/hexagon-codes/hexagon/observe/metrics"
 
 collector := metrics.GetHexagonMetrics()
 
-// 检索指标自动记录
-// 也可以手动记录
+// Retrieval metrics are recorded automatically
+// You can also record them manually
 collector.RecordRetrieval(ctx, "vector_search", docCount, duration)
 
-// 查看统计
+// View statistics
 stats := collector.GetRetrievalStats()
-fmt.Printf("平均检索时间: %v\n", stats.AverageDuration)
-fmt.Printf("平均文档数: %.2f\n", stats.AverageDocCount)
+fmt.Printf("Average retrieval time: %v\n", stats.AverageDuration)
+fmt.Printf("Average document count: %.2f\n", stats.AverageDocCount)
 ```
 
-## 最佳实践
+## Best Practices
 
-1. **合理的分块大小**: 通常 500-1500 字符效果较好
-2. **适当的重叠**: 10-20% 的重叠避免信息丢失
-3. **多级检索**: 先粗筛后精排
-4. **缓存嵌入**: 避免重复计算向量
-5. **监控召回率**: 定期评估检索质量
-6. **增量更新**: 支持文档的增删改
+1. **Reasonable chunk size**: 500–1500 characters typically works well
+2. **Appropriate overlap**: 10–20% overlap prevents information loss
+3. **Multi-stage retrieval**: Coarse filtering followed by fine ranking
+4. **Cache embeddings**: Avoid recomputing vectors redundantly
+5. **Monitor recall**: Regularly evaluate retrieval quality
+6. **Incremental updates**: Support adding, deleting, and modifying documents

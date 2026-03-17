@@ -1,3 +1,5 @@
+<div align="right">语言: 中文 | <a href="CONTRIBUTING.en.md">English</a></div>
+
 # 贡献指南
 
 感谢你对 Hexagon 项目的关注！我们欢迎各种形式的贡献。

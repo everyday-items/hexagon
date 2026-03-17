@@ -1,20 +1,20 @@
-<div align="right">语言: 中文 | <a href="a2a-protocol.en.md">English</a></div>
+<div align="right">Language: <a href="a2a-protocol.md">中文</a> | English</div>
 
-# A2A (Agent-to-Agent) 协议指南
+# A2A (Agent-to-Agent) Protocol Guide
 
-Hexagon 实现了 Google A2A 协议，使 AI Agent 能够安全地相互通信、协调任务、共享上下文。
+Hexagon implements the Google A2A protocol, enabling AI Agents to communicate securely, coordinate tasks, and share context with each other.
 
-## 概述
+## Overview
 
-A2A (Agent-to-Agent) 是一个开放协议，定义了 AI Agent 之间标准化的通信方式。通过 A2A 协议，您可以：
+A2A (Agent-to-Agent) is an open protocol that defines a standardized communication method between AI Agents. With the A2A protocol, you can:
 
-- 将 Hexagon Agent 暴露为标准 A2A 服务
-- 连接任意符合 A2A 规范的远程 Agent
-- 实现跨平台、跨框架的 Agent 互操作
+- Expose Hexagon Agents as standard A2A services
+- Connect to any remote Agent that conforms to the A2A specification
+- Achieve cross-platform, cross-framework Agent interoperability
 
-## 快速开始
+## Quick Start
 
-### 创建 A2A 服务器
+### Creating an A2A Server
 
 ```go
 import (
@@ -22,45 +22,45 @@ import (
     "github.com/hexagon-codes/hexagon/agent"
 )
 
-// 创建 Hexagon Agent
+// Create a Hexagon Agent
 myAgent := agent.NewBaseAgent(
     agent.WithName("assistant"),
     agent.WithLLM(llmProvider),
 )
 
-// 一键暴露为 A2A 服务
+// Expose it as an A2A service with one line
 server := a2a.ExposeAgent(myAgent, "http://localhost:8080")
 server.Start(":8080")
 ```
 
-### 连接 A2A Agent
+### Connecting to an A2A Agent
 
 ```go
-// 连接远程 A2A Agent
+// Connect to a remote A2A Agent
 client := a2a.NewClient("http://localhost:8080")
 
-// 获取 Agent Card
+// Retrieve the Agent Card
 card, _ := client.GetAgentCard(ctx)
 fmt.Printf("Agent: %s - %s\n", card.Name, card.Description)
 
-// 发送消息
+// Send a message
 task, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
-    Message: a2a.NewUserMessage("你好"),
+    Message: a2a.NewUserMessage("Hello"),
 })
 
 fmt.Printf("Task ID: %s, Status: %s\n", task.ID, task.Status.State)
 ```
 
-## 核心概念
+## Core Concepts
 
 ### Agent Card
 
-Agent Card 是 A2A 协议的核心概念，描述了 Agent 的基本信息、能力和技能。
+The Agent Card is a central concept in the A2A protocol. It describes an Agent's basic information, capabilities, and skills.
 
 ```go
 card := &a2a.AgentCard{
     Name:        "assistant",
-    Description: "通用助手 Agent",
+    Description: "General-purpose assistant Agent",
     URL:         "http://localhost:8080",
     Version:     "1.0.0",
     Provider: &a2a.AgentProvider{
@@ -68,21 +68,21 @@ card := &a2a.AgentCard{
         URL:          "https://example.com",
     },
     Capabilities: a2a.AgentCapabilities{
-        Streaming:         true,  // 支持流式响应
-        PushNotifications: true,  // 支持推送通知
+        Streaming:         true,  // supports streaming responses
+        PushNotifications: true,  // supports push notifications
     },
     Skills: []a2a.AgentSkill{
-        {ID: "search", Name: "搜索", Description: "网络搜索"},
-        {ID: "code", Name: "编程", Description: "代码生成"},
+        {ID: "search", Name: "Search", Description: "Web search"},
+        {ID: "code", Name: "Coding", Description: "Code generation"},
     },
 }
 ```
 
-Agent Card 通过 `/.well-known/agent-card.json` 路径提供。
+The Agent Card is served at `/.well-known/agent-card.json`.
 
-### Task 生命周期
+### Task Lifecycle
 
-Task 是 A2A 中的核心工作单元，表示一次 Agent 交互的完整生命周期。
+A Task is the core unit of work in A2A, representing the complete lifecycle of a single Agent interaction.
 
 ```
 submitted → working → input-required → completed
@@ -90,27 +90,27 @@ submitted → working → input-required → completed
                    → failed/canceled
 ```
 
-状态说明：
-- `submitted`: 任务已创建，等待处理
-- `working`: Agent 正在处理任务
-- `input-required`: 等待用户提供更多信息
-- `completed`: 任务成功完成
-- `failed`: 任务执行失败
-- `canceled`: 任务被取消
+State descriptions:
+- `submitted`: Task created, awaiting processing
+- `working`: Agent is processing the task
+- `input-required`: Waiting for the user to provide more information
+- `completed`: Task completed successfully
+- `failed`: Task execution failed
+- `canceled`: Task was canceled
 
 ### Message
 
-Message 是 Agent 与用户之间的通信单元，支持多模态内容。
+A Message is the communication unit between an Agent and a user, and supports multimodal content.
 
 ```go
-// 文本消息
+// Text message
 msg := a2a.NewUserMessage("Hello")
 
-// 多模态消息
+// Multimodal message
 msg := a2a.Message{
     Role: a2a.RoleUser,
     Parts: []a2a.Part{
-        &a2a.TextPart{Text: "请分析这张图片"},
+        &a2a.TextPart{Text: "Please analyze this image"},
         &a2a.FilePart{
             File: a2a.FileContent{
                 Name:     "image.png",
@@ -124,14 +124,14 @@ msg := a2a.Message{
 
 ### Artifact
 
-Artifact 是任务执行过程中生成的输出产物。
+An Artifact is an output produced during task execution.
 
 ```go
 artifact := a2a.Artifact{
     Name:        "analysis_result",
-    Description: "分析结果",
+    Description: "Analysis result",
     Parts: []a2a.Part{
-        &a2a.TextPart{Text: "分析完成..."},
+        &a2a.TextPart{Text: "Analysis complete..."},
         &a2a.DataPart{
             Data: map[string]any{
                 "score": 0.95,
@@ -142,9 +142,9 @@ artifact := a2a.Artifact{
 }
 ```
 
-## 服务端开发
+## Server-Side Development
 
-### 自定义 TaskHandler
+### Custom TaskHandler
 
 ```go
 type MyHandler struct {
@@ -152,10 +152,10 @@ type MyHandler struct {
 }
 
 func (h *MyHandler) HandleTask(ctx context.Context, task *a2a.Task, msg *a2a.Message) (*a2a.TaskUpdate, error) {
-    // 获取用户消息
+    // Retrieve user message text
     userText := msg.GetTextContent()
 
-    // 调用 LLM 处理
+    // Call LLM for processing
     resp, err := h.llm.Complete(ctx, llm.CompletionRequest{
         Messages: []llm.Message{
             {Role: "user", Content: userText},
@@ -165,7 +165,7 @@ func (h *MyHandler) HandleTask(ctx context.Context, task *a2a.Task, msg *a2a.Mes
         return a2a.NewFailedUpdate(err.Error()), nil
     }
 
-    // 返回完成状态
+    // Return completed status
     return a2a.NewCompletedUpdate(&a2a.Message{
         Role: a2a.RoleAgent,
         Parts: []a2a.Part{
@@ -175,7 +175,7 @@ func (h *MyHandler) HandleTask(ctx context.Context, task *a2a.Task, msg *a2a.Mes
 }
 ```
 
-### 流式处理
+### Streaming Processing
 
 ```go
 func (h *MyHandler) HandleTaskStream(ctx context.Context, task *a2a.Task, msg *a2a.Message) (<-chan *a2a.TaskUpdate, error) {
@@ -184,7 +184,7 @@ func (h *MyHandler) HandleTaskStream(ctx context.Context, task *a2a.Task, msg *a
     go func() {
         defer close(updates)
 
-        // 流式生成内容
+        // Stream content generation
         stream, _ := h.llm.Stream(ctx, req)
 
         for chunk := range stream {
@@ -199,7 +199,7 @@ func (h *MyHandler) HandleTaskStream(ctx context.Context, task *a2a.Task, msg *a
             }
         }
 
-        // 发送完成状态
+        // Send completion status
         updates <- a2a.NewCompletedUpdate(...)
     }()
 
@@ -207,7 +207,7 @@ func (h *MyHandler) HandleTaskStream(ctx context.Context, task *a2a.Task, msg *a
 }
 ```
 
-### 创建完整服务器
+### Creating a Full Server
 
 ```go
 card := &a2a.AgentCard{
@@ -230,9 +230,9 @@ server := a2a.NewServer(card, handler,
 server.Start(":8080")
 ```
 
-## 客户端开发
+## Client-Side Development
 
-### 基本使用
+### Basic Usage
 
 ```go
 client := a2a.NewClient("http://localhost:8080",
@@ -241,14 +241,14 @@ client := a2a.NewClient("http://localhost:8080",
 )
 defer client.Close()
 
-// 发送消息并获取结果
+// Send a message and get the result
 task, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
     Message: a2a.NewUserMessage("Hello"),
 })
 
-// 检查任务状态
+// Check task status
 if task.Status.State == a2a.TaskStateCompleted {
-    // 获取 Agent 响应
+    // Retrieve Agent response
     for _, msg := range task.History {
         if msg.Role == a2a.RoleAgent {
             fmt.Println(msg.GetTextContent())
@@ -257,11 +257,11 @@ if task.Status.State == a2a.TaskStateCompleted {
 }
 ```
 
-### 流式交互
+### Streaming Interaction
 
 ```go
 events, _ := client.SendMessageStream(ctx, &a2a.SendMessageRequest{
-    Message: a2a.NewUserMessage("写一首诗"),
+    Message: a2a.NewUserMessage("Write a poem"),
 })
 
 for event := range events {
@@ -273,52 +273,52 @@ for event := range events {
         fmt.Print(e.Artifact.GetTextContent())
 
     case *a2a.DoneEvent:
-        fmt.Println("\n完成!")
+        fmt.Println("\nDone!")
     }
 }
 ```
 
-### 多轮对话
+### Multi-Turn Conversation
 
 ```go
-// 第一轮
+// First turn
 task1, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
-    Message: a2a.NewUserMessage("你好"),
+    Message: a2a.NewUserMessage("Hello"),
 })
 
-// 第二轮 - 继续同一任务
+// Second turn - continue the same task
 task2, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
-    TaskID:  task1.ID,  // 继续现有任务
-    Message: a2a.NewUserMessage("请继续"),
+    TaskID:  task1.ID,  // continue existing task
+    Message: a2a.NewUserMessage("Please continue"),
 })
 ```
 
-## 认证和安全
+## Authentication and Security
 
-### 服务端认证
+### Server-Side Authentication
 
 ```go
-// Bearer Token 认证
+// Bearer Token authentication
 validator := a2a.NewBearerTokenValidator()
 validator.AddToken("secret-token", "client-1")
 
-// API Key 认证
+// API Key authentication
 validator := a2a.NewAPIKeyValidator("X-API-Key", "header")
 validator.AddKey("my-api-key", "client-1")
 
-// RBAC 权限控制
+// RBAC access control
 rbac := a2a.NewRBACValidator(validator)
 rbac.SetPermissions("client-1",
     a2a.PermissionRead,
     a2a.PermissionSendMessage,
 )
 
-// 应用认证中间件
+// Apply authentication middleware
 mux := http.NewServeMux()
 handler := a2a.AuthMiddleware(validator)(server.Handler())
 ```
 
-### 客户端认证
+### Client-Side Authentication
 
 ```go
 // Bearer Token
@@ -344,18 +344,18 @@ client := a2a.NewClient(url,
 )
 ```
 
-## 推送通知
+## Push Notifications
 
-### 配置推送
+### Configuring Push Notifications
 
 ```go
-// 客户端配置推送
+// Client-side push notification configuration
 client.SetPushNotification(ctx, task.ID, &a2a.PushNotificationConfig{
     URL:   "https://my-webhook.example.com/callback",
     Token: "callback-token",
 })
 
-// 或在发送消息时配置
+// Or configure when sending a message
 task, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
     Message: a2a.NewUserMessage("Hello"),
     PushNotification: &a2a.PushNotificationConfig{
@@ -364,7 +364,7 @@ task, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
 })
 ```
 
-### 处理推送回调
+### Handling Push Callbacks
 
 ```go
 http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
@@ -377,9 +377,9 @@ http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 })
 ```
 
-## Agent 发现
+## Agent Discovery
 
-### 静态发现
+### Static Discovery
 
 ```go
 discovery := a2a.NewStaticDiscovery(
@@ -387,186 +387,186 @@ discovery := a2a.NewStaticDiscovery(
     &a2a.AgentCard{Name: "agent-2", URL: "http://agent2.example.com"},
 )
 
-// 发现所有 Agent
+// Discover all Agents
 cards, _ := discovery.Discover(ctx, nil)
 
-// 按技能过滤
+// Filter by skill
 cards, _ := discovery.Discover(ctx, &a2a.AgentFilter{
     Skills: []string{"search"},
 })
 ```
 
-### Registry 集成
+### Registry Integration
 
 ```go
-// 与 Hexagon Registry 集成
+// Integrate with the Hexagon Registry
 registry := agent.GlobalRegistry()
 discovery := a2a.NewRegistryDiscovery(registry, "http://localhost:8080")
 
-// Registry 中注册的 Agent 自动可发现
+// Agents registered in the Registry are automatically discoverable
 cards, _ := discovery.Discover(ctx, nil)
 ```
 
-### 远程发现
+### Remote Discovery
 
 ```go
-// 远程 Agent 发现
-discovery := a2a.NewRemoteDiscovery(5 * time.Minute) // 缓存 5 分钟
+// Remote Agent discovery
+discovery := a2a.NewRemoteDiscovery(5 * time.Minute) // cache for 5 minutes
 discovery.AddAgent("http://agent1.example.com")
 discovery.AddAgent("http://agent2.example.com")
 
-// 自动获取 Agent Card
+// Automatically fetches Agent Cards
 cards, _ := discovery.Discover(ctx, nil)
 ```
 
-## 与 Hexagon 整合
+## Integration with Hexagon
 
-### 包装现有 Agent
+### Wrapping an Existing Agent
 
 ```go
-// 将 Hexagon Agent 包装为 A2A Handler
+// Wrap a Hexagon Agent as an A2A Handler
 myAgent := agent.NewReActAgent(...)
 handler := a2a.WrapAgent(myAgent)
 
-// 或使用流式包装器
+// Or use a streaming wrapper
 handler := a2a.WrapStreamingAgent(myAgent)
 ```
 
-### 使用远程 A2A Agent
+### Using a Remote A2A Agent
 
 ```go
-// 连接远程 A2A Agent 作为 Hexagon Agent 使用
+// Connect to a remote A2A Agent and use it as a Hexagon Agent
 remoteAgent, _ := a2a.ConnectToA2AAgent("http://remote-agent.example.com")
 defer remoteAgent.Close()
 
-// 像普通 Agent 一样使用
+// Use it just like a local Agent
 output, _ := remoteAgent.Run(ctx, agent.Input{Query: "Hello"})
 ```
 
-### 在 Agent 网络中使用
+### Using in an Agent Network
 
 ```go
-// 创建 Agent 网络
+// Create an Agent network
 network := agent.NewAgentNetwork("my-network")
 
-// 添加本地 Agent
+// Add a local Agent
 network.Register(localAgent)
 
-// 添加远程 A2A Agent
+// Add a remote A2A Agent
 remoteAgent, _ := a2a.ConnectToA2AAgent("http://remote.example.com")
 network.Register(remoteAgent)
 
-// Agent 间可以正常通信
-network.SendTo(ctx, "local-agent", "remote-agent", "协作消息")
+// Agents can communicate normally
+network.SendTo(ctx, "local-agent", "remote-agent", "Collaboration message")
 ```
 
-## API 参考
+## API Reference
 
-### 路径
+### Endpoints
 
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/.well-known/agent-card.json` | GET | 获取 Agent Card |
-| `/tasks` | POST | JSON-RPC 端点 |
-| `/tasks/sendSubscribe` | POST | 流式发送消息 |
-| `/tasks/resubscribe` | POST | 重新订阅任务 |
+| Path | Method | Description |
+|------|--------|-------------|
+| `/.well-known/agent-card.json` | GET | Retrieve Agent Card |
+| `/tasks` | POST | JSON-RPC endpoint |
+| `/tasks/sendSubscribe` | POST | Stream message sending |
+| `/tasks/resubscribe` | POST | Resubscribe to a task |
 
-### JSON-RPC 方法
+### JSON-RPC Methods
 
-| 方法 | 说明 |
-|------|------|
-| `tasks/send` | 发送消息 |
-| `tasks/get` | 获取任务 |
-| `tasks/list` | 列出任务 |
-| `tasks/cancel` | 取消任务 |
-| `tasks/pushNotification/set` | 设置推送配置 |
-| `tasks/pushNotification/get` | 获取推送配置 |
+| Method | Description |
+|--------|-------------|
+| `tasks/send` | Send a message |
+| `tasks/get` | Get a task |
+| `tasks/list` | List tasks |
+| `tasks/cancel` | Cancel a task |
+| `tasks/pushNotification/set` | Set push notification config |
+| `tasks/pushNotification/get` | Get push notification config |
 
-### 错误码
+### Error Codes
 
-| 代码 | 含义 |
-|------|------|
-| -32700 | JSON 解析错误 |
-| -32600 | 无效请求 |
-| -32601 | 方法不存在 |
-| -32602 | 无效参数 |
-| -32603 | 内部错误 |
-| -32001 | 任务不存在 |
-| -32002 | 任务不可取消 |
-| -32003 | 不支持推送通知 |
-| -32010 | 需要认证 |
-| -32011 | 认证失败 |
-| -32012 | 权限不足 |
+| Code | Meaning |
+|------|---------|
+| -32700 | JSON parse error |
+| -32600 | Invalid request |
+| -32601 | Method not found |
+| -32602 | Invalid parameters |
+| -32603 | Internal error |
+| -32001 | Task not found |
+| -32002 | Task cannot be canceled |
+| -32003 | Push notifications not supported |
+| -32010 | Authentication required |
+| -32011 | Authentication failed |
+| -32012 | Insufficient permissions |
 
-## 最佳实践
+## Best Practices
 
-### 1. 设计清晰的 Agent Card
+### 1. Design a Clear Agent Card
 
 ```go
 card := &a2a.AgentCard{
-    Name:        "customer-service",  // 简洁明确的名称
-    Description: "企业客服 Agent，提供产品咨询和技术支持",  // 详细描述
-    Version:     "1.2.0",  // 语义化版本
+    Name:        "customer-service",  // concise, descriptive name
+    Description: "Enterprise customer service Agent for product inquiries and technical support",
+    Version:     "1.2.0",  // semantic versioning
     Skills: []a2a.AgentSkill{
         {
             ID:          "product-qa",
-            Name:        "产品咨询",
-            Description: "回答产品功能、价格、使用方法等问题",
-            Examples:    []string{"这个产品有什么功能？", "价格是多少？"},
+            Name:        "Product Inquiries",
+            Description: "Answers questions about product features, pricing, and usage",
+            Examples:    []string{"What features does this product have?", "How much does it cost?"},
         },
         {
             ID:          "tech-support",
-            Name:        "技术支持",
-            Description: "解决技术问题和故障排查",
-            Examples:    []string{"无法登录怎么办？", "为什么显示错误？"},
+            Name:        "Technical Support",
+            Description: "Resolves technical issues and troubleshooting",
+            Examples:    []string{"I can't log in, what should I do?", "Why am I seeing an error?"},
         },
     },
 }
 ```
 
-### 2. 优雅处理错误
+### 2. Handle Errors Gracefully
 
 ```go
 func (h *MyHandler) HandleTask(ctx context.Context, task *a2a.Task, msg *a2a.Message) (*a2a.TaskUpdate, error) {
-    // 业务错误应返回 TaskUpdate，不要返回 error
+    // Business errors should return a TaskUpdate, not an error
     if !isValid(msg) {
-        return a2a.NewFailedUpdate("消息格式不正确，请重试"), nil
+        return a2a.NewFailedUpdate("Invalid message format, please try again"), nil
     }
 
     result, err := h.process(ctx, msg)
     if err != nil {
-        // 区分可重试和不可重试错误
+        // Distinguish between retryable and non-retryable errors
         if isRetryable(err) {
-            return a2a.NewFailedUpdate("服务暂时不可用，请稍后重试"), nil
+            return a2a.NewFailedUpdate("Service temporarily unavailable, please try again later"), nil
         }
-        return a2a.NewFailedUpdate("处理失败: " + err.Error()), nil
+        return a2a.NewFailedUpdate("Processing failed: " + err.Error()), nil
     }
 
     return a2a.NewCompletedUpdate(result), nil
 }
 ```
 
-### 3. 使用会话管理多轮对话
+### 3. Use Sessions for Multi-Turn Conversations
 
 ```go
-// 通过 SessionID 关联多个任务
+// Associate multiple tasks via SessionID
 task1, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
     SessionID: "user-session-123",
-    Message:   a2a.NewUserMessage("第一轮"),
+    Message:   a2a.NewUserMessage("First turn"),
 })
 
 task2, _ := client.SendMessage(ctx, &a2a.SendMessageRequest{
-    SessionID: "user-session-123",  // 同一会话
-    Message:   a2a.NewUserMessage("第二轮"),
+    SessionID: "user-session-123",  // same session
+    Message:   a2a.NewUserMessage("Second turn"),
 })
 
-// 查询会话中的所有任务
+// Query all tasks in the session
 tasks, _ := client.ListTasks(ctx, &a2a.ListTasksRequest{
     SessionID: "user-session-123",
 })
 ```
 
-## 参考资料
+## References
 
 - [Google A2A Protocol Specification](https://google.github.io/A2A/)
 - [JSON-RPC 2.0 Specification](https://www.jsonrpc.org/specification)
