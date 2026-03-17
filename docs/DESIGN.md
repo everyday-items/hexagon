@@ -707,7 +707,7 @@ hexagon/
 ├── docs/                         # 公开文档
 ├── internal/                     # 内部实现
 │
-├── hexagon.go                    # 主入口包 (版本: v0.3.0-beta)
+├── hexagon.go                    # 主入口包 (版本: v0.3.1-beta)
 ├── go.mod
 ├── Makefile
 └── README.md
