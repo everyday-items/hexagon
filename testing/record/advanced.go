@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ============== Tool Recording ==============
@@ -602,8 +602,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/testing/record"
-	"github.com/everyday-items/ai-core/llm"
+	"github.com/hexagon-codes/hexagon/testing/record"
+	"github.com/hexagon-codes/ai-core/llm"
 )
 
 func Test%s(t *testing.T) {

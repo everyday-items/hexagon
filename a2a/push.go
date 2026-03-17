@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/toolkit/util/rate"
-	"github.com/everyday-items/toolkit/util/retry"
+	"github.com/hexagon-codes/toolkit/util/rate"
+	"github.com/hexagon-codes/toolkit/util/retry"
 )
 
 // ============== Push 通知 ==============

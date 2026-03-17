@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/internal/util"
 )
 
 // ============== 增强检查点类型 ==============

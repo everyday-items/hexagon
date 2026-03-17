@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
-	coremem "github.com/everyday-items/ai-core/memory"
+	"github.com/hexagon-codes/ai-core/llm"
+	coremem "github.com/hexagon-codes/ai-core/memory"
 )
 
 // ============== WindowMemory ==============
@@ -190,10 +190,14 @@ func (m *SummaryMemory) Save(ctx context.Context, entry coremem.Entry) error {
 // summarize 将旧记忆压缩为摘要
 func (m *SummaryMemory) summarize(ctx context.Context) {
 	m.mu.RLock()
-	// 取前半部分做摘要
+	// 取前半部分做摘要，记录这些条目的 ID 用于后续安全删除
 	half := len(m.entries) / 2
 	toSummarize := make([]coremem.Entry, half)
 	copy(toSummarize, m.entries[:half])
+	summarizedIDs := make(map[string]struct{}, half)
+	for _, e := range toSummarize {
+		summarizedIDs[e.ID] = struct{}{}
+	}
 	currentSummary := m.summary
 	m.mu.RUnlock()
 
@@ -227,8 +231,14 @@ func (m *SummaryMemory) summarize(ctx context.Context) {
 	}
 
 	m.summary = resp.Content
-	// 移除已摘要的条目
-	m.entries = m.entries[half:]
+	// 按 ID 移除已摘要的条目，避免因并发 Save 导致索引偏移而误删新条目
+	remaining := make([]coremem.Entry, 0, len(m.entries))
+	for _, e := range m.entries {
+		if _, ok := summarizedIDs[e.ID]; !ok {
+			remaining = append(remaining, e)
+		}
+	}
+	m.entries = remaining
 }
 
 func (m *SummaryMemory) SaveBatch(ctx context.Context, entries []coremem.Entry) error {

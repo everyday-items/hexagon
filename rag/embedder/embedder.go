@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/store/vector"
 	"golang.org/x/sync/singleflight"
 )
 

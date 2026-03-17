@@ -37,7 +37,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // DistanceMetric 距离度量方式

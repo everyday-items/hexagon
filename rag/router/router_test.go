@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // mockRetriever 模拟检索器

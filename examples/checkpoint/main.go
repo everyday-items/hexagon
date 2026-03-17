@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/everyday-items/hexagon/orchestration/graph"
+	"github.com/hexagon-codes/hexagon/orchestration/graph"
 )
 
 func main() {

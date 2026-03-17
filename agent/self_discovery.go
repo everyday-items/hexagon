@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/hooks"
-	"github.com/everyday-items/hexagon/internal/util"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/hooks"
+	"github.com/hexagon-codes/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // SelfDiscoveryAgent 自我发现 Agent

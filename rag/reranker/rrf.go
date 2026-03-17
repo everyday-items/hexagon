@@ -5,7 +5,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // RRFReranker 倒数排名融合（Reciprocal Rank Fusion）重排序器

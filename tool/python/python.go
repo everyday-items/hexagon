@@ -31,7 +31,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // validPythonIdentifier 验证 Python 变量名：只允许字母、数字、下划线，不能以数字开头，

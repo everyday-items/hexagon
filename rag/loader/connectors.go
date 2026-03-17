@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // Document 是 rag.Document 的别名

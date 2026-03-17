@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // CohereReranker 使用 Cohere API 进行重排序

@@ -4,13 +4,13 @@
 #   - 内置组件 enabled=true 时，由本 Chart 部署对应 StatefulSet
 #   - 内置组件 enabled=false 时，通过 external.* 指定外部服务地址
 #
-# 参考: https://github.com/everyday-items/docker-dev-env
+# 参考: https://github.com/hexagon-codes/docker-dev-env
 
 # ============== 主应用 ==============
 app:
   replicaCount: 2
   image:
-    repository: ghcr.io/everyday-items/hexagon
+    repository: ghcr.io/hexagon-codes/hexagon
     tag: latest
     pullPolicy: IfNotPresent
   service:
@@ -31,7 +31,7 @@ devui:
   enabled: true
   replicaCount: 1
   image:
-    repository: ghcr.io/everyday-items/hexagon
+    repository: ghcr.io/hexagon-codes/hexagon
     tag: latest
     pullPolicy: IfNotPresent
   service:

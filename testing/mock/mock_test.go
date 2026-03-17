@@ -14,11 +14,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/memory"
-	"github.com/everyday-items/ai-core/schema"
-	toolpkg "github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/memory"
+	"github.com/hexagon-codes/ai-core/schema"
+	toolpkg "github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ============================================================================

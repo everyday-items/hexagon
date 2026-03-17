@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/everyday-items/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/agent"
 )
 
 // BenchmarkNetworkCreation 测试 Agent 网络创建性能

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/internal/util"
 )
 
 // RBAC 角色权限控制系统

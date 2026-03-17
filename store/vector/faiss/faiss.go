@@ -37,7 +37,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // IndexType 索引类型

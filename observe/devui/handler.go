@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/hexagon/observe/tracer"
+	"github.com/hexagon-codes/hexagon/observe/tracer"
 )
 
 // statusCodeToString 将 StatusCode 转换为字符串

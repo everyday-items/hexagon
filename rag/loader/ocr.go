@@ -32,10 +32,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/template"
-	"github.com/everyday-items/hexagon/internal/util"
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/template"
+	"github.com/hexagon-codes/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ============== OCR 引擎接口 ==============

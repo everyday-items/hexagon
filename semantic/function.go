@@ -21,8 +21,8 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/schema"
 )
 
 // ============== 核心类型 ==============

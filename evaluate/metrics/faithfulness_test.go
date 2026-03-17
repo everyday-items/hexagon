@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/everyday-items/hexagon/evaluate"
+	"github.com/hexagon-codes/hexagon/evaluate"
 )
 
 // TestFaithfulnessEvaluator 测试忠实度评估器

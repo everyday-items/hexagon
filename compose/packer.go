@@ -19,8 +19,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // ============== 六范式函数类型 ==============

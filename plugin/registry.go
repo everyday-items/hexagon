@@ -48,10 +48,10 @@ func (r *Registry) UnregisterFactory(name string) {
 // Register 注册插件实例
 func (r *Registry) Register(plugin Plugin) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 
 	info := plugin.Info()
 	if _, exists := r.plugins[info.Name]; exists {
+		r.mu.Unlock()
 		return fmt.Errorf("plugin %s already registered", info.Name)
 	}
 
@@ -59,7 +59,9 @@ func (r *Registry) Register(plugin Plugin) error {
 		Plugin: plugin,
 		State:  PluginStateLoaded,
 	}
+	r.mu.Unlock()
 
+	// emitEvent 内部会加读锁，必须在写锁释放后调用，否则同一 goroutine 重入死锁
 	r.emitEvent(PluginEvent{
 		Type:   PluginEventLoaded,
 		Plugin: info.Name,
@@ -71,20 +73,23 @@ func (r *Registry) Register(plugin Plugin) error {
 // Unregister 注销插件
 func (r *Registry) Unregister(name string) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 
 	instance, exists := r.plugins[name]
 	if !exists {
+		r.mu.Unlock()
 		return fmt.Errorf("plugin %s not found", name)
 	}
 
 	// 如果插件正在运行，不允许注销
 	if instance.State == PluginStateRunning {
+		r.mu.Unlock()
 		return fmt.Errorf("cannot unregister running plugin %s", name)
 	}
 
 	delete(r.plugins, name)
+	r.mu.Unlock()
 
+	// emitEvent 内部会加读锁，必须在写锁释放后调用，否则同一 goroutine 重入死锁
 	r.emitEvent(PluginEvent{
 		Type:   PluginEventUnloaded,
 		Plugin: name,
@@ -220,9 +225,18 @@ func (r *Registry) OnEvent(handler PluginEventHandler) {
 	r.handlers = append(r.handlers, handler)
 }
 
+// emitEvent 通知所有事件处理器
+//
+// 同步调用处理器：handler 应当快速返回，耗时操作应在 handler 内部自行异步化。
+// 避免为每个 handler 无限制地 spawn goroutine，防止慢 handler + 高频事件导致 goroutine 无界增长。
 func (r *Registry) emitEvent(event PluginEvent) {
-	for _, handler := range r.handlers {
-		go handler(event)
+	r.mu.RLock()
+	handlers := make([]PluginEventHandler, len(r.handlers))
+	copy(handlers, r.handlers)
+	r.mu.RUnlock()
+
+	for _, handler := range handlers {
+		handler(event)
 	}
 }
 

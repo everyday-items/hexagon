@@ -31,24 +31,24 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 
 以下 API 在 v1.x 版本内保持向后兼容：
 
-**顶层 API** (`github.com/everyday-items/hexagon`)
+**顶层 API** (`github.com/hexagon-codes/hexagon`)
 - `Chat()`, `ChatWithTools()`, `Run()`
 - `QuickStart()` 及其选项函数
 - `NewTool()`
 - 类型导出 (`Input`, `Output`, `Tool`, `Memory`, `Message`, `Schema`)
 
-**核心接口** (`github.com/everyday-items/hexagon/core`)
+**核心接口** (`github.com/hexagon-codes/hexagon/core`)
 - `Component[I, O]` 接口
 - `Stream[T]` 接口
 - `Schema` 类型
 
-**Agent** (`github.com/everyday-items/hexagon/agent`)
+**Agent** (`github.com/hexagon-codes/hexagon/agent`)
 - `Agent` 接口
 - `Input`, `Output` 类型
 - `NewReAct()` 及其选项函数
 - `Role` 类型
 
-**图编排** (`github.com/everyday-items/hexagon/orchestration/graph`)
+**图编排** (`github.com/hexagon-codes/hexagon/orchestration/graph`)
 - `State` 接口
 - `MapState` 类型
 - `NewGraph[S]()` 构建器
@@ -59,24 +59,24 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 
 以下 API 功能完整，但可能在 MINOR 版本中微调：
 
-**多 Agent** (`github.com/everyday-items/hexagon/agent`)
+**多 Agent** (`github.com/hexagon-codes/hexagon/agent`)
 - `Team` 及其选项函数
 - `TeamMode` 常量
 - `TransferTo()`, `SwarmRunner`
 - `StateManager` 接口
 
-**RAG** (`github.com/everyday-items/hexagon/rag`)
+**RAG** (`github.com/hexagon-codes/hexagon/rag`)
 - `Engine` 及其选项函数
 - `Document`, `Loader`, `Splitter`, `Retriever`, `Indexer`, `Embedder` 接口
 - 内置加载器、分割器、检索器实现
 
-**安全** (`github.com/everyday-items/hexagon/security`)
+**安全** (`github.com/hexagon-codes/hexagon/security`)
 - `Guard` 接口
 - `NewPromptInjectionGuard()`, `NewPIIGuard()`
 - `GuardChain` 及其模式
 - `CostController` 及其选项函数
 
-**可观测性** (`github.com/everyday-items/hexagon/observe`)
+**可观测性** (`github.com/hexagon-codes/hexagon/observe`)
 - `Tracer`, `Span` 接口
 - `Metrics` 接口
 - `NewTracer()`, `NewMetrics()`
@@ -85,44 +85,44 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 
 以下 API 处于实验阶段，可能有较大改动：
 
-**工作流** (`github.com/everyday-items/hexagon/orchestration/workflow`)
+**工作流** (`github.com/hexagon-codes/hexagon/orchestration/workflow`)
 - `Workflow`, `Step` 类型
 - 持久化接口
 
-**Flow 流程编排** (`github.com/everyday-items/hexagon/orchestration/flow`)
+**Flow 流程编排** (`github.com/hexagon-codes/hexagon/orchestration/flow`)
 - `Flow`, `FlowBuilder` 类型
 - `WithTimeout()` 可配置超时
 
-**检查点** (`github.com/everyday-items/hexagon/orchestration/graph`)
+**检查点** (`github.com/hexagon-codes/hexagon/orchestration/graph`)
 - `CheckpointSaver` 接口
 - Redis 检查点实现
 - 中断和恢复功能
 - 分布式执行、Barrier 同步、节点缓存
 
-**向量存储** (`github.com/everyday-items/hexagon/store/vector`)
+**向量存储** (`github.com/hexagon-codes/hexagon/store/vector`)
 - `VectorStore` 接口
 - Qdrant、FAISS、PgVector、Redis、Milvus、Chroma、Pinecone、Weaviate 实现
 
-**高级检索器** (`github.com/everyday-items/hexagon/rag/retriever`)
+**高级检索器** (`github.com/hexagon-codes/hexagon/rag/retriever`)
 - `HyDERetriever` - 假设文档检索
 - `AdaptiveRetriever` - 自适应检索
 - `ParentDocRetriever` - 父文档检索
 
-**高级加载器** (`github.com/everyday-items/hexagon/rag/loader`)
+**高级加载器** (`github.com/hexagon-codes/hexagon/rag/loader`)
 - `ExcelLoader`, `PPTXLoader`, `CSVLoader` - Office 文件加载
 - `OCRLoader` - VisionLLM OCR 文字提取
 
-**高级分割器** (`github.com/everyday-items/hexagon/rag/splitter`)
+**高级分割器** (`github.com/hexagon-codes/hexagon/rag/splitter`)
 - `TokenSplitter` - Token 计数分割
 - `CodeSplitter` - 代码语法分割
 
-**记忆共享** (`github.com/everyday-items/hexagon/memory`)
+**记忆共享** (`github.com/hexagon-codes/hexagon/memory`)
 - 多 Agent 记忆自动共享
 
-**Agent 原语** (`github.com/everyday-items/hexagon/agent`)
+**Agent 原语** (`github.com/hexagon-codes/hexagon/agent`)
 - `Parallel`, `Sequential`, `Route` 原语
 
-**MCP 协议** (`github.com/everyday-items/hexagon/mcp`)
+**MCP 协议** (`github.com/hexagon-codes/hexagon/mcp`)
 - MCP 协议支持
 
 ### Deprecated (已弃用)
@@ -163,14 +163,14 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 以下导入路径是稳定的：
 
 ```go
-import "github.com/everyday-items/hexagon"                  // 顶层 API
-import "github.com/everyday-items/hexagon/agent"            // Agent
-import "github.com/everyday-items/hexagon/core"             // 核心接口
-import "github.com/everyday-items/hexagon/orchestration/graph" // 图编排
-import "github.com/everyday-items/hexagon/rag"              // RAG
-import "github.com/everyday-items/hexagon/security/guard"   // 安全守卫
-import "github.com/everyday-items/hexagon/observe/tracer"   // 追踪
-import "github.com/everyday-items/hexagon/observe/metrics"  // 指标
+import "github.com/hexagon-codes/hexagon"                  // 顶层 API
+import "github.com/hexagon-codes/hexagon/agent"            // Agent
+import "github.com/hexagon-codes/hexagon/core"             // 核心接口
+import "github.com/hexagon-codes/hexagon/orchestration/graph" // 图编排
+import "github.com/hexagon-codes/hexagon/rag"              // RAG
+import "github.com/hexagon-codes/hexagon/security/guard"   // 安全守卫
+import "github.com/hexagon-codes/hexagon/observe/tracer"   // 追踪
+import "github.com/hexagon-codes/hexagon/observe/metrics"  // 指标
 ```
 
 `internal/` 包不对外公开，可能随时更改。
@@ -181,8 +181,8 @@ Hexagon 依赖以下外部库：
 
 | 依赖 | 版本 | 说明 |
 |-----|------|------|
-| `github.com/everyday-items/ai-core` | v1.x | AI 基础能力库 |
-| `github.com/everyday-items/toolkit` | v1.x | Go 通用工具库 |
+| `github.com/hexagon-codes/ai-core` | v1.x | AI 基础能力库 |
+| `github.com/hexagon-codes/toolkit` | v1.x | Go 通用工具库 |
 
 这些依赖的公开 API 变更会同步反映在 Hexagon 的版本号中。
 
@@ -190,5 +190,5 @@ Hexagon 依赖以下外部库：
 
 如果您对 API 稳定性有任何问题或建议：
 
-- 提交 [GitHub Issue](https://github.com/everyday-items/hexagon/issues)
-- 参与 [GitHub Discussions](https://github.com/everyday-items/hexagon/discussions)
+- 提交 [GitHub Issue](https://github.com/hexagon-codes/hexagon/issues)
+- 参与 [GitHub Discussions](https://github.com/hexagon-codes/hexagon/discussions)

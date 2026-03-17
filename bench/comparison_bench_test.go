@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/agent"
-	"github.com/everyday-items/hexagon/orchestration/graph"
-	"github.com/everyday-items/hexagon/rag"
-	"github.com/everyday-items/hexagon/rag/splitter"
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/orchestration/graph"
+	"github.com/hexagon-codes/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag/splitter"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // ============== 竞品对标基准测试 ==============

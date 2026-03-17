@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/ai-core/memory"
+	"github.com/hexagon-codes/ai-core/memory"
 )
 
 // ============== SharedMemory 基础测试 ==============

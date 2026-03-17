@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/evaluate"
+	"github.com/hexagon-codes/hexagon/evaluate"
 )
 
 // ============== ConsistencyEvaluator 测试 ==============

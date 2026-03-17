@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/rag"
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // ParentDocRetriever 父子文档检索器

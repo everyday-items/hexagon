@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/ai-core/schema"
-	aitool "github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/toolkit/util/retry"
+	"github.com/hexagon-codes/ai-core/schema"
+	aitool "github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/toolkit/util/retry"
 )
 
 // ============== 中间件类型 ==============

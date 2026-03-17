@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/plugin"
+	"github.com/hexagon-codes/hexagon/plugin"
 )
 
 // mockPlugin 基准测试用的 mock 插件

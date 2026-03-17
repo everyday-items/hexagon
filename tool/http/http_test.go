@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	httptool "github.com/everyday-items/hexagon/tool/http"
+	httptool "github.com/hexagon-codes/hexagon/tool/http"
 )
 
 // TestHTTPTools 测试 HTTP 工具

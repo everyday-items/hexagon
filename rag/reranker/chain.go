@@ -5,7 +5,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ChainReranker 链式组合重排序器

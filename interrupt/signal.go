@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/internal/util"
 )
 
 // ============== InterruptSignal 中断信号 ==============

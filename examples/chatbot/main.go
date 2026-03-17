@@ -20,9 +20,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/everyday-items/ai-core/llm/openai"
-	coretool "github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/agent"
+	"github.com/hexagon-codes/ai-core/llm/openai"
+	coretool "github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/agent"
 )
 
 func main() {

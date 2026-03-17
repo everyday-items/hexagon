@@ -725,7 +725,7 @@ hexagon (主框架)
 
 ### ai-core — AI 基础能力库
 
-`github.com/everyday-items/ai-core`
+`github.com/hexagon-codes/ai-core`
 
 提供 LLM、Tool、Memory、Schema 等核心抽象：
 
@@ -738,7 +738,7 @@ hexagon (主框架)
 
 ### toolkit — Go 通用工具库
 
-`github.com/everyday-items/toolkit`
+`github.com/hexagon-codes/toolkit`
 
 生产级 Go 通用工具包，提供语言增强、加密、网络、缓存、协程池等基础能力：
 

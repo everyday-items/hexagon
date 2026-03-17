@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/everyday-items/hexagon/rag"
-	"github.com/everyday-items/hexagon/rag/embedder"
-	"github.com/everyday-items/hexagon/rag/retriever"
-	"github.com/everyday-items/hexagon/rag/splitter"
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag/embedder"
+	"github.com/hexagon-codes/hexagon/rag/retriever"
+	"github.com/hexagon-codes/hexagon/rag/splitter"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // BenchmarkDocumentCreation 测试文档创建性能

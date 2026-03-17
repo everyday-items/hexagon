@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/toolkit/util/idgen"
+	"github.com/hexagon-codes/toolkit/util/idgen"
 )
 
 // ============== 错误定义 ==============

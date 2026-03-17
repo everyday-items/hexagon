@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	memstore "github.com/everyday-items/hexagon/memory/store"
+	memstore "github.com/hexagon-codes/hexagon/memory/store"
 )
 
 // BenchmarkMemoryStoreCreation 测试内存存储创建性能

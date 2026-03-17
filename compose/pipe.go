@@ -23,8 +23,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // ============== Pipe 管道操作符 ==============

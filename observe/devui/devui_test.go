@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/hooks"
+	"github.com/hexagon-codes/hexagon/hooks"
 )
 
 // TestNewDevUI 测试创建 DevUI 实例

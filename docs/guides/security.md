@@ -7,7 +7,7 @@ Hexagon 提供多层安全防护机制。
 ### Prompt 注入检测
 
 ```go
-import "github.com/everyday-items/hexagon/security/guard"
+import "github.com/hexagon-codes/hexagon/security/guard"
 
 // 创建 Prompt 注入检测守卫
 detector := guard.NewPromptInjectionGuard()
@@ -63,7 +63,7 @@ agent := agent.NewBaseAgent(
 ### RBAC
 
 ```go
-import "github.com/everyday-items/hexagon/security/rbac"
+import "github.com/hexagon-codes/hexagon/security/rbac"
 
 // 定义角色
 admin := rbac.NewRole("admin")
@@ -86,7 +86,7 @@ if admin.HasPermission("agent:write") {
 ## 成本控制
 
 ```go
-import "github.com/everyday-items/hexagon/security/cost"
+import "github.com/hexagon-codes/hexagon/security/cost"
 
 controller := cost.NewController(
     cost.WithDailyBudget(100.0), // 每日预算 $100
@@ -102,7 +102,7 @@ agent := agent.NewBaseAgent(
 ## 审计日志
 
 ```go
-import "github.com/everyday-items/hexagon/security/audit"
+import "github.com/hexagon-codes/hexagon/security/audit"
 
 auditor := audit.NewAuditor()
 

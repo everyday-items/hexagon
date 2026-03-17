@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // Retriever Mock Retriever 实现

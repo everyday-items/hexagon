@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/toolkit/util/rate"
+	"github.com/hexagon-codes/toolkit/util/rate"
 )
 
 // Controller 成本控制器

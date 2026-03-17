@@ -3,7 +3,7 @@ package mcp
 import (
 	"testing"
 
-	"github.com/everyday-items/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/schema"
 )
 
 // TestSchemaToMCP 测试 ai-core Schema 到 MCP JSONSchema 的转换

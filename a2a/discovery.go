@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/agent"
 )
 
 // ============== Discovery 接口 ==============

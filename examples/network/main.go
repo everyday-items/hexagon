@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/everyday-items/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/agent"
 )
 
 func main() {

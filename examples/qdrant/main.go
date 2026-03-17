@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/hexagon"
+	"github.com/hexagon-codes/hexagon"
 )
 
 func main() {

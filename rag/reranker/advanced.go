@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ============== MMRReranker ==============

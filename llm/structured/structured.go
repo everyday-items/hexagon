@@ -46,9 +46,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/schema"
-	"github.com/everyday-items/hexagon/llm/parser"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/hexagon/llm/parser"
 )
 
 // ============== 错误类型 ==============

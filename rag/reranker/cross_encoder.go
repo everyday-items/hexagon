@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // CrossEncoderReranker 跨编码器重排序器

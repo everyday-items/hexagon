@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/memory"
-	"github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/memory"
+	"github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // ============== Mock Agent ==============
@@ -582,11 +582,13 @@ func TestLoopAgent_Error(t *testing.T) {
 
 // TestLoopAgent_ContextCancellation 测试上下文取消
 func TestLoopAgent_ContextCancellation(t *testing.T) {
-	loopCount := 0
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	loopAgent := newMockAgent("loop", func(ctx context.Context, input Input) (Output, error) {
-		loopCount++
-		// 检查上下文是否取消
+		// 第一次被调用时立即取消上下文，cancel() 是同步的，
+		// 调用后 ctx.Done() 立即关闭，无需跨 goroutine 同步。
+		cancel()
 		select {
 		case <-ctx.Done():
 			return Output{}, ctx.Err()
@@ -596,13 +598,6 @@ func TestLoopAgent_ContextCancellation(t *testing.T) {
 	})
 
 	loop := NewLoopAgent("loop", loopAgent, WithMaxLoops(100))
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	// 在第一次循环后取消
-	go func() {
-		cancel()
-	}()
 
 	_, err := loop.Run(ctx, Input{Query: "test"})
 	if err == nil {

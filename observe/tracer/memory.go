@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/internal/util"
 )
 
 // 默认最大 Span 数量

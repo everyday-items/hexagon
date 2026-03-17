@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/orchestration/graph"
+	"github.com/hexagon-codes/hexagon/orchestration/graph"
 )
 
 // WorkflowState represents state for integration tests

@@ -123,9 +123,9 @@ Hexagon 是一个完整的 AI Agent 开发生态：
 
 ## 🤝 获取帮助
 
-- 📝 [GitHub Issues](https://github.com/everyday-items/hexagon/issues)
-- 💬 [Discussions](https://github.com/everyday-items/hexagon/discussions)
-- 📧 Email: support@everyday-items.com
+- 📝 [GitHub Issues](https://github.com/hexagon-codes/hexagon/issues)
+- 💬 [Discussions](https://github.com/hexagon-codes/hexagon/discussions)
+- 📧 Email: support@hexagon-codes.com
 
 ## 📄 许可证
 

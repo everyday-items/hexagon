@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // Store Weaviate 向量存储

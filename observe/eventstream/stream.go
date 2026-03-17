@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/everyday-items/toolkit/event"
+	"github.com/hexagon-codes/toolkit/event"
 )
 
 // ============== 事件类型 ==============
@@ -150,20 +150,31 @@ func (s *Stream) Subscribe() (<-chan Event, func()) {
 // Publish 非阻塞发布事件
 //
 // 向所有订阅者发送事件。若某个订阅者的缓冲区满，该订阅者会丢失此事件。
+// 若订阅者 channel 被外部意外关闭，会安全地移除该订阅者而非 panic。
 func (s *Stream) Publish(event Event) {
 	if s.closed.Load() {
 		return
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	for _, ch := range s.subscribers {
-		select {
-		case ch <- event:
-		default:
-			// 缓冲区满，丢弃事件
-		}
+	for id, ch := range s.subscribers {
+		// 使用 recover 防护：若订阅者 channel 被外部意外关闭，
+		// 避免 send on closed channel panic 导致整个事件流崩溃
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// channel 已被关闭，安全移除该订阅者
+					delete(s.subscribers, id)
+				}
+			}()
+			select {
+			case ch <- event:
+			default:
+				// 缓冲区满，丢弃事件
+			}
+		}()
 	}
 }
 

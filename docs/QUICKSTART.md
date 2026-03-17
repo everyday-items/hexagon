@@ -55,13 +55,13 @@ export DEEPSEEK_API_KEY=your-api-key
 ## 安装
 
 ```bash
-go get github.com/everyday-items/hexagon
+go get github.com/hexagon-codes/hexagon
 ```
 
 验证安装：
 
 ```bash
-go list -m github.com/everyday-items/hexagon
+go list -m github.com/hexagon-codes/hexagon
 ```
 
 ---
@@ -76,7 +76,7 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
+    "github.com/hexagon-codes/hexagon"
 )
 
 func main() {
@@ -104,7 +104,7 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
+    "github.com/hexagon-codes/hexagon"
 )
 
 // 定义计算器工具的输入
@@ -175,7 +175,7 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
+    "github.com/hexagon-codes/hexagon"
 )
 
 func main() {
@@ -240,8 +240,8 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
-    "github.com/everyday-items/hexagon/orchestration/graph"
+    "github.com/hexagon-codes/hexagon"
+    "github.com/hexagon-codes/hexagon/orchestration/graph"
 )
 
 // 定义状态
@@ -319,7 +319,7 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
+    "github.com/hexagon-codes/hexagon"
 )
 
 func main() {
@@ -431,7 +431,7 @@ metrics.Histogram("latency_ms").Observe(123.5)
 内置开发调试界面，实时查看 Agent 执行过程。
 
 ```go
-import "github.com/everyday-items/hexagon/observe/devui"
+import "github.com/hexagon-codes/hexagon/observe/devui"
 
 // 创建 DevUI
 ui := devui.New(
@@ -498,14 +498,14 @@ make helm-install
 - 阅读 [框架对比](comparison.md) 了解与其他框架的差异
 - 阅读 [部署指南](../deploy/README.md) 了解部署配置
 - 查看 [示例代码](../examples/) 获取更多用例
-- 访问 [GitHub](https://github.com/everyday-items/hexagon) 参与贡献
+- 访问 [GitHub](https://github.com/hexagon-codes/hexagon) 参与贡献
 
 ## 常见问题
 
 ### Q: 如何切换 LLM Provider？
 
 ```go
-import "github.com/everyday-items/ai-core/llm/deepseek"
+import "github.com/hexagon-codes/ai-core/llm/deepseek"
 
 provider := deepseek.New(os.Getenv("DEEPSEEK_API_KEY"))
 agent := hexagon.QuickStart(

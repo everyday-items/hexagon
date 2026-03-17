@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 func main() {

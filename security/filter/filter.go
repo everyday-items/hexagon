@@ -248,11 +248,28 @@ func (f *SensitiveWordFilter) AddWord(word, category string, severity Severity) 
 }
 
 // AddWords 批量添加敏感词
+//
+// 在同一把锁内完成所有词的添加和 trie 重建，避免：
+// 1. 循环中多次加解锁导致的中间状态对并发 Filter 可见
+// 2. buildTrie 调用时 words map 与 trie 不一致
 func (f *SensitiveWordFilter) AddWords(words []string, category string, severity Severity) {
+	f.mu.Lock()
 	for _, word := range words {
-		f.AddWord(word, category, severity)
+		f.words[strings.ToLower(word)] = SensitiveWord{
+			Word:     word,
+			Category: category,
+			Severity: severity,
+			Action:   f.config.Action,
+		}
+		f.categories[category] = append(f.categories[category], word)
 	}
-	f.buildTrie()
+	// 在持锁状态下重建 trie，确保原子性
+	allWords := make([]string, 0, len(f.words))
+	for w := range f.words {
+		allWords = append(allWords, w)
+	}
+	f.trie = NewACTrie(allWords)
+	f.mu.Unlock()
 }
 
 // RemoveWord 移除敏感词

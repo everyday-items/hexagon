@@ -33,7 +33,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/core"
+	"github.com/hexagon-codes/hexagon/core"
 )
 
 // ============== 错误定义 ==============

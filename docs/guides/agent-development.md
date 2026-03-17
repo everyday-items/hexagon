@@ -13,8 +13,8 @@ import (
     "context"
     "fmt"
 
-    "github.com/everyday-items/hexagon/agent"
-    "github.com/everyday-items/ai-core/llm/openai"
+    "github.com/hexagon-codes/hexagon/agent"
+    "github.com/hexagon-codes/ai-core/llm/openai"
 )
 
 func main() {
@@ -95,8 +95,8 @@ reactAgent := agent.NewReActAgent(
 
 ```go
 import (
-    "github.com/everyday-items/hexagon/tool/file"
-    "github.com/everyday-items/hexagon/tool/shell"
+    "github.com/hexagon-codes/hexagon/tool/file"
+    "github.com/hexagon-codes/hexagon/tool/shell"
 )
 
 // 文件操作工具
@@ -113,7 +113,7 @@ agent := agent.NewBaseAgent(
 ### 创建自定义工具
 
 ```go
-import "github.com/everyday-items/ai-core/tool"
+import "github.com/hexagon-codes/ai-core/tool"
 
 // 使用函数式工具
 weatherTool := tool.NewFunc(
@@ -142,7 +142,7 @@ weatherTool := tool.NewFunc(
 ### 配置记忆
 
 ```go
-import "github.com/everyday-items/ai-core/memory"
+import "github.com/hexagon-codes/ai-core/memory"
 
 // 创建记忆实例
 mem := memory.NewBufferMemory(
@@ -190,7 +190,7 @@ memory:
 ```
 
 ```go
-import "github.com/everyday-items/hexagon/config"
+import "github.com/hexagon-codes/hexagon/config"
 
 // 从配置文件加载
 cfg, err := config.LoadAgentConfig("agent.yaml")
@@ -272,7 +272,7 @@ for chunk := range stream.C {
 ### 启用详细日志
 
 ```go
-import "github.com/everyday-items/hexagon/observe/logger"
+import "github.com/hexagon-codes/hexagon/observe/logger"
 
 // 设置日志级别
 logger.SetLevel(logger.LevelDebug)
@@ -284,7 +284,7 @@ agent.SetDebug(true)
 ### 使用 Dev UI
 
 ```go
-import "github.com/everyday-items/hexagon/observe/devui"
+import "github.com/hexagon-codes/hexagon/observe/devui"
 
 // 启动 Dev UI
 ui := devui.New()

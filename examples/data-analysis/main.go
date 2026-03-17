@@ -20,7 +20,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/everyday-items/hexagon/orchestration/graph"
+	"github.com/hexagon-codes/hexagon/orchestration/graph"
 )
 
 // AnalysisState 数据分析状态

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/everyday-items/ai-core/schema"
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // MCPProxyTool 将远程 MCP 工具包装为 ai-core tool.Tool

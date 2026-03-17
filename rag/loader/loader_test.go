@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ============== TextLoader 测试 ==============

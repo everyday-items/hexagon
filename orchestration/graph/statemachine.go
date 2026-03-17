@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/everyday-items/hexagon/interrupt"
+	"github.com/hexagon-codes/hexagon/interrupt"
 )
 
 // ============== 错误定义 ==============

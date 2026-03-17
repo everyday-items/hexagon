@@ -28,9 +28,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/hexagon/rag"
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // VectorMergeStrategy 假设文档向量合并策略

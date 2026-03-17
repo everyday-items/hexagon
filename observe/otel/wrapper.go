@@ -12,7 +12,7 @@
 package otel
 
 import (
-	toolkitOtel "github.com/everyday-items/toolkit/infra/otel"
+	toolkitOtel "github.com/hexagon-codes/toolkit/infra/otel"
 )
 
 // 重新导出类型

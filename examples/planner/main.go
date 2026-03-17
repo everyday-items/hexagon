@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/everyday-items/hexagon/orchestration/planner"
+	"github.com/hexagon-codes/hexagon/orchestration/planner"
 )
 
 func main() {

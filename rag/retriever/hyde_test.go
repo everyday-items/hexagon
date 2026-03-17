@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/rag"
-	"github.com/everyday-items/hexagon/store/vector"
-	"github.com/everyday-items/hexagon/testing/mock"
+	"github.com/hexagon-codes/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/testing/mock"
 )
 
 // ============== TestHyDERetriever_Basic ==============

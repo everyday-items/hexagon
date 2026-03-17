@@ -36,8 +36,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/everyday-items/hexagon/stream"
-	"github.com/everyday-items/toolkit/util/retry"
+	"github.com/hexagon-codes/hexagon/stream"
+	"github.com/hexagon-codes/toolkit/util/retry"
 )
 
 // ============== 切面时机 ==============

@@ -248,9 +248,17 @@ func (c *SemanticCache) Put(ctx context.Context, query string, result *CacheResu
 		}
 	}
 
-	// 容量检查，淘汰最旧的条目
+	// 容量检查，淘汰最久未命中且最旧的条目（近似 LRU）
 	for len(c.entries) >= c.maxSize {
-		c.entries = c.entries[1:]
+		victim := 0
+		for i := 1; i < len(c.entries); i++ {
+			vi, ci := c.entries[victim], c.entries[i]
+			// 优先淘汰命中次数少的；命中次数相同时淘汰更旧的
+			if ci.HitCount < vi.HitCount || (ci.HitCount == vi.HitCount && ci.CreatedAt.Before(vi.CreatedAt)) {
+				victim = i
+			}
+		}
+		c.entries = append(c.entries[:victim], c.entries[victim+1:]...)
 		c.evictions.Add(1)
 	}
 

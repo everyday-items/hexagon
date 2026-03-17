@@ -7,7 +7,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/everyday-items/hexagon/evaluate"
+	"github.com/hexagon-codes/hexagon/evaluate"
 )
 
 // ============== Consistency Evaluator ==============

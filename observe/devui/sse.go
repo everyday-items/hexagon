@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/everyday-items/toolkit/util/poolx"
+	"github.com/hexagon-codes/toolkit/util/poolx"
 )
 
 // sseBufferPool SSE 消息缓冲区对象池

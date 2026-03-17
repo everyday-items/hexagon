@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // Engine RAG 引擎

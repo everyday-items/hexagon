@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/everyday-items/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/llm"
 )
 
 // ============== AgentAsTool 测试 ==============

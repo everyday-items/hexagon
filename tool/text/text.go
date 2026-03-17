@@ -16,7 +16,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // Tools 返回文本处理工具集合

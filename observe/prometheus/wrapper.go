@@ -11,7 +11,7 @@
 package prometheus
 
 import (
-	toolkitProm "github.com/everyday-items/toolkit/infra/prometheus"
+	toolkitProm "github.com/hexagon-codes/toolkit/infra/prometheus"
 )
 
 // 重新导出类型

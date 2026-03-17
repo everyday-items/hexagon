@@ -14,7 +14,7 @@
 package vector
 
 import (
-	aicoreVector "github.com/everyday-items/ai-core/store/vector"
+	aicoreVector "github.com/hexagon-codes/ai-core/store/vector"
 )
 
 // 重新导出类型

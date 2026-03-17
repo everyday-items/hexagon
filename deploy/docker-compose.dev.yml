@@ -11,7 +11,7 @@
 #      cd /path/to/docker-dev-env/redis && docker compose up -d
 #      # 按需启动其他服务...
 #
-#   3. 参考: https://github.com/everyday-items/docker-dev-env
+#   3. 参考: https://github.com/hexagon-codes/docker-dev-env
 #
 # 使用方式:
 #

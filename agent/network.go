@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/internal/util"
 )
 
 // NetworkTopology 网络拓扑类型

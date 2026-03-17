@@ -28,10 +28,10 @@ package client
 import (
 	"context"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/advisor"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/advisor"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // ============== ChatClient ==============

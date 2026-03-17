@@ -12,15 +12,15 @@ package main
 import (
     "context"
 
-    "github.com/everyday-items/hexagon/rag"
-    "github.com/everyday-items/hexagon/rag/loader"
-    "github.com/everyday-items/hexagon/rag/splitter"
-    "github.com/everyday-items/hexagon/rag/embedder"
-    "github.com/everyday-items/hexagon/rag/indexer"
-    "github.com/everyday-items/hexagon/rag/retriever"
-    "github.com/everyday-items/hexagon/rag/synthesizer"
-    "github.com/everyday-items/hexagon/store/vector"
-    "github.com/everyday-items/ai-core/llm/openai"
+    "github.com/hexagon-codes/hexagon/rag"
+    "github.com/hexagon-codes/hexagon/rag/loader"
+    "github.com/hexagon-codes/hexagon/rag/splitter"
+    "github.com/hexagon-codes/hexagon/rag/embedder"
+    "github.com/hexagon-codes/hexagon/rag/indexer"
+    "github.com/hexagon-codes/hexagon/rag/retriever"
+    "github.com/hexagon-codes/hexagon/rag/synthesizer"
+    "github.com/hexagon-codes/hexagon/store/vector"
+    "github.com/hexagon-codes/ai-core/llm/openai"
 )
 
 func main() {
@@ -206,7 +206,7 @@ store := vector.NewMemoryStore(1536) // 向量维度
 生产环境推荐，性能优秀。
 
 ```go
-import "github.com/everyday-items/hexagon/store/vector/qdrant"
+import "github.com/hexagon-codes/hexagon/store/vector/qdrant"
 
 store, err := qdrant.New(qdrant.Config{
     Host:       "localhost",
@@ -276,7 +276,7 @@ retriever := retriever.NewMultiQueryRetriever(
 提升检索结果的相关性。
 
 ```go
-import "github.com/everyday-items/hexagon/rag/reranker"
+import "github.com/hexagon-codes/hexagon/rag/reranker"
 
 // 创建重排序器
 reranker := reranker.NewLLMReranker(llmProvider)
@@ -393,7 +393,7 @@ engine := rag.NewEngine(
 ### 检索质量
 
 ```go
-import "github.com/everyday-items/hexagon/evaluate/metrics"
+import "github.com/hexagon-codes/hexagon/evaluate/metrics"
 
 // 相关性评估
 relevance := metrics.NewRelevanceMetric(llmProvider)

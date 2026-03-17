@@ -33,7 +33,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // SandboxType 沙箱类型

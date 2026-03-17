@@ -39,7 +39,7 @@ linters-settings:
     simplify: true
 
   goimports:
-    local-prefixes: github.com/everyday-items/hexagon
+    local-prefixes: github.com/hexagon-codes/hexagon
 
   misspell:
     locale: US

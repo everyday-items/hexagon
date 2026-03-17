@@ -23,7 +23,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/everyday-items/toolkit/util/poolx"
+	"github.com/hexagon-codes/toolkit/util/poolx"
 )
 
 // ============== 全局协程池 ==============

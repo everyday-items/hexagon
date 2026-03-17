@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ============== RuleClassifier 测试 ==============

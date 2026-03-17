@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/schema"
-	"github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/orchestration/planner"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/orchestration/planner"
 )
 
 // mockPlanner 模拟规划器

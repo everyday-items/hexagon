@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/hooks"
-	"github.com/everyday-items/hexagon/observe/metrics"
+	"github.com/hexagon-codes/hexagon/hooks"
+	"github.com/hexagon-codes/hexagon/observe/metrics"
 )
 
 // ============== Metrics Hooks 配置 ==============

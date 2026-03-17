@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/agent"
-	"github.com/everyday-items/hexagon/core"
+	"github.com/hexagon-codes/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/core"
 )
 
 // BenchmarkAgentCreation 测试 Agent 创建性能

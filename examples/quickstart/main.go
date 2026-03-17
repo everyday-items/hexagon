@@ -14,7 +14,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/everyday-items/hexagon"
+	"github.com/hexagon-codes/hexagon"
 )
 
 func main() {

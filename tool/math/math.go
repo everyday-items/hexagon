@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // Tools 返回数学计算工具集合

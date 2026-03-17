@@ -168,13 +168,25 @@ func (sr *StreamReader[T]) Recv() (T, error) {
 	case readerTypeDistinct:
 		return sr.distinctR.recv()
 	case readerTypeDistinctBy:
-		return sr.distinctByR.(interface{ recv() (T, error) }).recv()
+		if r, ok := sr.distinctByR.(interface{ recv() (T, error) }); ok {
+			return r.recv()
+		}
+		var zero T
+		return zero, ErrStreamClosed
 	case readerTypeZip:
 		return sr.zipR.recv()
 	case readerTypeBatch:
-		return sr.batchR.(interface{ recv() (T, error) }).recv()
+		if r, ok := sr.batchR.(interface{ recv() (T, error) }); ok {
+			return r.recv()
+		}
+		var zero T
+		return zero, ErrStreamClosed
 	case readerTypeWindow:
-		return sr.windowR.(interface{ recv() (T, error) }).recv()
+		if r, ok := sr.windowR.(interface{ recv() (T, error) }); ok {
+			return r.recv()
+		}
+		var zero T
+		return zero, ErrStreamClosed
 	case readerTypeDebounce:
 		return sr.debounceR.recv()
 	case readerTypeThrottle:

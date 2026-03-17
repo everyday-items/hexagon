@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/everyday-items/hexagon/testing/mock"
+	"github.com/hexagon-codes/hexagon/testing/mock"
 )
 
 func TestBaseAgentRun(t *testing.T) {

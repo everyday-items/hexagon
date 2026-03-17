@@ -17,8 +17,8 @@ RAG 系统通过检索相关文档来增强 LLM 的回答能力，主要包含�
 
 ```go
 import (
-    "github.com/everyday-items/hexagon/rag"
-    "github.com/everyday-items/hexagon/store/vector/qdrant"
+    "github.com/hexagon-codes/hexagon/rag"
+    "github.com/hexagon-codes/hexagon/store/vector/qdrant"
 )
 
 // 1. 创建向量存储
@@ -319,7 +319,7 @@ err := indexer.Index(ctx)
 ## 监控指标
 
 ```go
-import "github.com/everyday-items/hexagon/observe/metrics"
+import "github.com/hexagon-codes/hexagon/observe/metrics"
 
 collector := metrics.GetHexagonMetrics()
 

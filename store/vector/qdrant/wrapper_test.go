@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/store/vector/qdrant"
+	"github.com/hexagon-codes/hexagon/store/vector/qdrant"
 )
 
 // TestConfig 测试配置

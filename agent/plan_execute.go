@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/hooks"
-	"github.com/everyday-items/hexagon/internal/util"
-	"github.com/everyday-items/hexagon/orchestration/planner"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/hooks"
+	"github.com/hexagon-codes/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/orchestration/planner"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // PlanExecuteAgent 计划执行分离的 Agent

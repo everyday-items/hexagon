@@ -7,7 +7,7 @@ Hexagon 提供完整的可观测性方案，包括追踪、指标和日志。
 ### 内存追踪器
 
 ```go
-import "github.com/everyday-items/hexagon/observe/tracer"
+import "github.com/hexagon-codes/hexagon/observe/tracer"
 
 tracer := tracer.NewMemoryTracer()
 
@@ -26,7 +26,7 @@ for _, span := range spans {
 ### OpenTelemetry
 
 ```go
-import "github.com/everyday-items/hexagon/observe/otel"
+import "github.com/hexagon-codes/hexagon/observe/otel"
 
 otelTracer := otel.NewOTelTracer(
     otel.WithServiceName("my-agent"),
@@ -44,7 +44,7 @@ agent := agent.NewBaseAgent(
 
 ```go
 import (
-    "github.com/everyday-items/hexagon/observe/prometheus"
+    "github.com/hexagon-codes/hexagon/observe/prometheus"
     "net/http"
 )
 
@@ -65,7 +65,7 @@ agent := agent.NewBaseAgent(
 ## 日志 (Logging)
 
 ```go
-import "github.com/everyday-items/hexagon/observe/logger"
+import "github.com/hexagon-codes/hexagon/observe/logger"
 
 // 配置日志级别
 logger.SetLevel(logger.LevelInfo)
@@ -79,7 +79,7 @@ agent := agent.NewBaseAgent(
 ## Dev UI
 
 ```go
-import "github.com/everyday-items/hexagon/observe/devui"
+import "github.com/hexagon-codes/hexagon/observe/devui"
 
 ui := devui.New()
 go ui.Start(":8080")

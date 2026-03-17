@@ -18,8 +18,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/everyday-items/hexagon"
-	"github.com/everyday-items/hexagon/agent"
+	"github.com/hexagon-codes/hexagon"
+	"github.com/hexagon-codes/hexagon/agent"
 )
 
 func main() {

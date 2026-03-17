@@ -330,7 +330,11 @@ func (r *CheckpointRunner[S]) getInitialPendingNodes() []string {
 
 // saveInterruptCheckpoint 保存中断检查点
 func (r *CheckpointRunner[S]) saveInterruptCheckpoint(ctx context.Context, state S, pendingNodes []string) {
-	stateBytes, _ := json.Marshal(state)
+	stateBytes, marshalErr := json.Marshal(state)
+	if marshalErr != nil {
+		// 序列化失败时记录错误到元数据，使用空状态继续保存以保留其他上下文
+		r.currentCheckpoint.Metadata["marshal_error"] = marshalErr.Error()
+	}
 	r.currentCheckpoint.State = stateBytes
 	r.currentCheckpoint.PendingNodes = pendingNodes
 	r.currentCheckpoint.Status = CheckpointStatusInterrupted
@@ -339,7 +343,10 @@ func (r *CheckpointRunner[S]) saveInterruptCheckpoint(ctx context.Context, state
 
 // saveErrorCheckpoint 保存错误检查点
 func (r *CheckpointRunner[S]) saveErrorCheckpoint(ctx context.Context, state S, failedNode string, pendingNodes []string, err error) {
-	stateBytes, _ := json.Marshal(state)
+	stateBytes, marshalErr := json.Marshal(state)
+	if marshalErr != nil {
+		r.currentCheckpoint.Metadata["marshal_error"] = marshalErr.Error()
+	}
 	r.currentCheckpoint.State = stateBytes
 	r.currentCheckpoint.PendingNodes = append([]string{failedNode}, pendingNodes...)
 	r.currentCheckpoint.Status = CheckpointStatusFailed

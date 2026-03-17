@@ -66,7 +66,7 @@ func (p *MyPlugin) Stop(ctx context.Context) error {
 ### 代码注册
 
 ```go
-import "github.com/everyday-items/hexagon/plugin"
+import "github.com/hexagon-codes/hexagon/plugin"
 
 // 注册插件
 plugin.Register(&MyPlugin{})
@@ -332,7 +332,7 @@ func (p *MyPlugin) Init(ctx context.Context, config map[string]any) error {
 ### 指标
 
 ```go
-import "github.com/everyday-items/hexagon/observe/metrics"
+import "github.com/hexagon-codes/hexagon/observe/metrics"
 
 func (p *MyPlugin) Start(ctx context.Context) error {
     // 记录启动指标

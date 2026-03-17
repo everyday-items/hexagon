@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 func TestNewSliceStream(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // mockRetriever 模拟检索器

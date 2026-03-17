@@ -13,7 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // StdioTransport 标准输入输出传输层

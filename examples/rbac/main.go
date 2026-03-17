@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/everyday-items/hexagon/security/rbac"
+	"github.com/hexagon-codes/hexagon/security/rbac"
 )
 
 func main() {

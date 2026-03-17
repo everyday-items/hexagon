@@ -18,7 +18,7 @@
 
 ## 顶层 API
 
-`github.com/everyday-items/hexagon` 包提供最简洁的入口 API。
+`github.com/hexagon-codes/hexagon` 包提供最简洁的入口 API。
 
 ### 便捷函数
 
@@ -728,7 +728,7 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
+    "github.com/hexagon-codes/hexagon"
 )
 
 type SearchInput struct {
@@ -765,7 +765,7 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
+    "github.com/hexagon-codes/hexagon"
 )
 
 func main() {

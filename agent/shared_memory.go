@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/everyday-items/ai-core/memory"
+	"github.com/hexagon-codes/ai-core/memory"
 )
 
 // SharedMemory 团队级共享记忆容器

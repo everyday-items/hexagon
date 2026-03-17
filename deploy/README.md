@@ -24,7 +24,7 @@ make up
 
 ### Docker Compose（开发模式）
 
-适用于已通过 [docker-dev-env](https://github.com/everyday-items/docker-dev-env) 启动基础设施的团队开发者：
+适用于已通过 [docker-dev-env](https://github.com/hexagon-codes/docker-dev-env) 启动基础设施的团队开发者：
 
 ```bash
 cd deploy

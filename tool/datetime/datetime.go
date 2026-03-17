@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // Tools 返回日期时间工具集合

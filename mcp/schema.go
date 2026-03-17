@@ -4,7 +4,7 @@
 package mcp
 
 import (
-	"github.com/everyday-items/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/schema"
 )
 
 // SchemaToMCP 将 ai-core Schema 转换为 MCP JSONSchema

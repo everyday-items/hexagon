@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/toolkit/util/idgen"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/toolkit/util/idgen"
 )
 
 // Planner 规划器接口

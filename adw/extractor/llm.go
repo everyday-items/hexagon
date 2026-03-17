@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/hexagon/adw"
-	"github.com/everyday-items/toolkit/util/idgen"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/hexagon/adw"
+	"github.com/hexagon-codes/toolkit/util/idgen"
 )
 
 // LLMExtractor 基于 LLM 的提取器

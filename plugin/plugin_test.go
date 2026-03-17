@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/plugin"
+	"github.com/hexagon-codes/hexagon/plugin"
 )
 
 // TestPluginInfo 测试插件信息

@@ -9,7 +9,7 @@ package reranker
 import (
 	"context"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // Reranker 文档重排序器接口

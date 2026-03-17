@@ -5,7 +5,7 @@
 ## 安装
 
 ```bash
-go get github.com/everyday-items/hexagon
+go get github.com/hexagon-codes/hexagon
 ```
 
 ## 最简示例
@@ -19,8 +19,8 @@ import (
     "context"
     "fmt"
 
-    "github.com/everyday-items/hexagon/agent"
-    "github.com/everyday-items/ai-core/llm/openai"
+    "github.com/hexagon-codes/hexagon/agent"
+    "github.com/hexagon-codes/ai-core/llm/openai"
 )
 
 func main() {
@@ -86,7 +86,7 @@ output, err := handler(ctx, input)
 让 Agent 能够执行具体任务：
 
 ```go
-import "github.com/everyday-items/ai-core/tool"
+import "github.com/hexagon-codes/ai-core/tool"
 
 // 定义搜索工具
 searchTool := tool.NewFunc("web_search",
@@ -111,7 +111,7 @@ myAgent := agent.NewReActAgent(
 为 Agent 添加对话记忆：
 
 ```go
-import "github.com/everyday-items/ai-core/memory"
+import "github.com/hexagon-codes/ai-core/memory"
 
 // 创建记忆
 mem := memory.NewConversationMemory(10) // 保留最近 10 轮对话
@@ -129,8 +129,8 @@ myAgent := agent.NewBaseAgent(
 
 ```go
 import (
-    "github.com/everyday-items/hexagon/rag"
-    "github.com/everyday-items/hexagon/store/vector/qdrant"
+    "github.com/hexagon-codes/hexagon/rag"
+    "github.com/hexagon-codes/hexagon/store/vector/qdrant"
 )
 
 // 创建向量存储
@@ -151,7 +151,7 @@ ragAgent := agent.NewRAGAgent(
 添加指标和追踪：
 
 ```go
-import "github.com/everyday-items/hexagon/observe/metrics"
+import "github.com/hexagon-codes/hexagon/observe/metrics"
 
 // 获取指标收集器
 collector := metrics.GetHexagonMetrics()

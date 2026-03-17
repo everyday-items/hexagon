@@ -4,9 +4,9 @@
 
 **Go 生态全能型 AI Agent 框架**
 
-[![Go Reference](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go&logoColor=white)](https://pkg.go.dev/github.com/everyday-items/hexagon)
+[![Go Reference](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go&logoColor=white)](https://pkg.go.dev/github.com/hexagon-codes/hexagon)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://img.shields.io/badge/CI-passing-brightgreen)](https://github.com/everyday-items/hexagon/actions)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen)](https://github.com/hexagon-codes/hexagon/actions)
 
 </div>
 
@@ -37,20 +37,20 @@ Hexagon 是一个完整的 AI Agent 开发生态，由多个仓库组成：
 
 | 仓库 | 说明 | 链接 |
 |-----|------|------|
-| **hexagon** | AI Agent 框架核心 (编排、RAG、Graph、Hooks) | [github.com/everyday-items/hexagon](https://github.com/everyday-items/hexagon) |
-| **ai-core** | AI 基础能力库 (LLM/Tool/Memory/Schema) | [github.com/everyday-items/ai-core](https://github.com/everyday-items/ai-core) |
-| **toolkit** | Go 通用工具库 (lang/crypto/net/cache/util) | [github.com/everyday-items/toolkit](https://github.com/everyday-items/toolkit) |
-| **hexagon-ui** | Dev UI 前端 (Vue 3 + TypeScript) | [github.com/everyday-items/hexagon-ui](https://github.com/everyday-items/hexagon-ui) |
+| **hexagon** | AI Agent 框架核心 (编排、RAG、Graph、Hooks) | [github.com/hexagon-codes/hexagon](https://github.com/hexagon-codes/hexagon) |
+| **ai-core** | AI 基础能力库 (LLM/Tool/Memory/Schema) | [github.com/hexagon-codes/ai-core](https://github.com/hexagon-codes/ai-core) |
+| **toolkit** | Go 通用工具库 (lang/crypto/net/cache/util) | [github.com/hexagon-codes/toolkit](https://github.com/hexagon-codes/toolkit) |
+| **hexagon-ui** | Dev UI 前端 (Vue 3 + TypeScript) | [github.com/hexagon-codes/hexagon-ui](https://github.com/hexagon-codes/hexagon-ui) |
 
 ### 🧠 ai-core — AI 基础能力库
 
 提供 LLM、Tool、Memory、Schema 等核心抽象，支持多种 LLM Provider：
 
 ```go
-import "github.com/everyday-items/ai-core/llm"
-import "github.com/everyday-items/ai-core/llm/openai"
-import "github.com/everyday-items/ai-core/tool"
-import "github.com/everyday-items/ai-core/memory"
+import "github.com/hexagon-codes/ai-core/llm"
+import "github.com/hexagon-codes/ai-core/llm/openai"
+import "github.com/hexagon-codes/ai-core/tool"
+import "github.com/hexagon-codes/ai-core/memory"
 ```
 
 **主要模块：**
@@ -67,15 +67,15 @@ import "github.com/everyday-items/ai-core/memory"
 生产级 Go 通用工具包，提供语言增强、加密、网络、缓存、协程池等基础能力：
 
 ```go
-import "github.com/everyday-items/toolkit/lang/conv"      // 类型转换
-import "github.com/everyday-items/toolkit/lang/stringx"   // 字符串工具
-import "github.com/everyday-items/toolkit/lang/syncx"     // 并发工具
-import "github.com/everyday-items/toolkit/net/httpx"      // HTTP 客户端
-import "github.com/everyday-items/toolkit/net/sse"        // SSE 客户端
-import "github.com/everyday-items/toolkit/util/retry"     // 重试机制
-import "github.com/everyday-items/toolkit/util/idgen"     // ID 生成
-import "github.com/everyday-items/toolkit/util/poolx"     // 协程池
-import "github.com/everyday-items/toolkit/cache/local"    // 本地缓存
+import "github.com/hexagon-codes/toolkit/lang/conv"      // 类型转换
+import "github.com/hexagon-codes/toolkit/lang/stringx"   // 字符串工具
+import "github.com/hexagon-codes/toolkit/lang/syncx"     // 并发工具
+import "github.com/hexagon-codes/toolkit/net/httpx"      // HTTP 客户端
+import "github.com/hexagon-codes/toolkit/net/sse"        // SSE 客户端
+import "github.com/hexagon-codes/toolkit/util/retry"     // 重试机制
+import "github.com/hexagon-codes/toolkit/util/idgen"     // ID 生成
+import "github.com/hexagon-codes/toolkit/util/poolx"     // 协程池
+import "github.com/hexagon-codes/toolkit/cache/local"    // 本地缓存
 ```
 
 **主要模块：**
@@ -108,7 +108,7 @@ npm run dev
 ### 📦 安装
 
 ```bash
-go get github.com/everyday-items/hexagon
+go get github.com/hexagon-codes/hexagon
 ```
 
 ### ⚙️ 环境配置
@@ -129,7 +129,7 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
+    "github.com/hexagon-codes/hexagon"
 )
 
 func main() {
@@ -146,7 +146,7 @@ package main
 import (
     "context"
     "fmt"
-    "github.com/everyday-items/hexagon"
+    "github.com/hexagon-codes/hexagon"
 )
 
 func main() {
@@ -204,7 +204,7 @@ docs, _ := engine.Retrieve(ctx, "Go 的特性", hexagon.WithTopK(2))
 ### 📊 图编排
 
 ```go
-import "github.com/everyday-items/hexagon/orchestration/graph"
+import "github.com/hexagon-codes/hexagon/orchestration/graph"
 
 // 构建工作流图
 g, _ := graph.NewGraph[MyState]("workflow").
@@ -239,7 +239,7 @@ output, _ := team.Run(ctx, hexagon.Input{Query: "写一篇技术文章"})
 根据任务类型、复杂度自动选择最优模型：
 
 ```go
-import "github.com/everyday-items/ai-core/llm/router"
+import "github.com/hexagon-codes/ai-core/llm/router"
 
 // 创建智能路由器
 smartRouter := router.NewSmartRouter(baseRouter,
@@ -266,7 +266,7 @@ resp, decision, _ := smartRouter.CompleteWithRouting(ctx, req, routingCtx)
 状态机驱动的业务流程框架：
 
 ```go
-import "github.com/everyday-items/hexagon/process"
+import "github.com/hexagon-codes/hexagon/process"
 
 // 定义订单处理流程
 p, _ := process.NewProcess("order-processing").
@@ -307,9 +307,9 @@ output, _ := p.Invoke(ctx, process.ProcessInput{
 超越传统 RAG 的端到端文档自动化：
 
 ```go
-import "github.com/everyday-items/hexagon/adw"
-import "github.com/everyday-items/hexagon/adw/extractor"
-import "github.com/everyday-items/hexagon/adw/validator"
+import "github.com/hexagon-codes/hexagon/adw"
+import "github.com/hexagon-codes/hexagon/adw/extractor"
+import "github.com/hexagon-codes/hexagon/adw/validator"
 
 // 定义提取 Schema
 schema := adw.NewExtractionSchema("invoice").
@@ -353,7 +353,7 @@ for _, doc := range output.Documents {
 实现 Google A2A 协议，支持标准化的 Agent 间通信：
 
 ```go
-import "github.com/everyday-items/hexagon/a2a"
+import "github.com/hexagon-codes/hexagon/a2a"
 
 // 将 Hexagon Agent 暴露为 A2A 服务
 server := a2a.ExposeAgent(myAgent, "http://localhost:8080")
@@ -511,7 +511,7 @@ hexagon/
 内置开发调试界面，实时查看 Agent 执行过程。
 
 ```go
-import "github.com/everyday-items/hexagon/observe/devui"
+import "github.com/hexagon-codes/hexagon/observe/devui"
 
 // 创建 DevUI
 ui := devui.New(
@@ -594,7 +594,7 @@ make fmt     # 格式化
 [Apache License 2.0](LICENSE)
 
 ```
-Copyright 2026 everyday-items
+Copyright 2026 hexagon-codes
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

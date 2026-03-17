@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/everyday-items/hexagon/interrupt"
+	"github.com/hexagon-codes/hexagon/interrupt"
 )
 
 // Graph 图定义

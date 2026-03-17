@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/rag"
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // mockSplitter 模拟分割器

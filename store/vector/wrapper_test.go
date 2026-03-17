@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // TestMemoryStore 测试内存向量存储

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/observe/otel"
+	"github.com/hexagon-codes/hexagon/observe/otel"
 )
 
 // TestOTelTypes 测试导出的类型

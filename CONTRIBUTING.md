@@ -10,7 +10,7 @@
 
 ### 报告 Bug
 
-1. 确保 Bug 尚未被报告 - 搜索 [Issues](https://github.com/everyday-items/hexagon/issues)
+1. 确保 Bug 尚未被报告 - 搜索 [Issues](https://github.com/hexagon-codes/hexagon/issues)
 2. 如果找不到相关 Issue，创建一个新的
 3. 使用清晰的标题和详细的描述
 4. 提供复现步骤、期望行为和实际行为
@@ -35,7 +35,7 @@
    ```
 3. 添加上游仓库：
    ```bash
-   git remote add upstream https://github.com/everyday-items/hexagon.git
+   git remote add upstream https://github.com/hexagon-codes/hexagon.git
    ```
 4. 创建分支：
    ```bash
@@ -148,8 +148,8 @@ hexagon/
 ## 获取帮助
 
 - 查阅 [文档](docs/)
-- 提交 [Issue](https://github.com/everyday-items/hexagon/issues)
-- 参与 [Discussions](https://github.com/everyday-items/hexagon/discussions)
+- 提交 [Issue](https://github.com/hexagon-codes/hexagon/issues)
+- 参与 [Discussions](https://github.com/hexagon-codes/hexagon/discussions)
 
 ## 许可证
 

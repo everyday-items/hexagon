@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/hexagon/rag"
-	"github.com/everyday-items/hexagon/testing/mock"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/testing/mock"
 )
 
 // ============================================================================

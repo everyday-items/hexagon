@@ -3,7 +3,7 @@ package a2a
 import (
 	"maps"
 
-	"github.com/everyday-items/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/agent"
 )
 
 // ============== AgentInfo <-> AgentCard 转换 ==============

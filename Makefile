@@ -32,7 +32,7 @@ lint:
 fmt:
 	go fmt ./...
 	@if command -v goimports >/dev/null 2>&1; then \
-		goimports -w -local github.com/everyday-items/hexagon .; \
+		goimports -w -local github.com/hexagon-codes/hexagon .; \
 	fi
 
 # 代码检查 (vet)

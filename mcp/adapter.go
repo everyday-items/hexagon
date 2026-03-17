@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // ============== Server 端适配 (ai-core -> MCP) ==============

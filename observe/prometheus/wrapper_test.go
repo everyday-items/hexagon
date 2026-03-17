@@ -3,7 +3,7 @@ package prometheus_test
 import (
 	"testing"
 
-	"github.com/everyday-items/hexagon/observe/prometheus"
+	"github.com/hexagon-codes/hexagon/observe/prometheus"
 )
 
 // TestPrometheusTypes 测试导出的类型

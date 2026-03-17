@@ -32,12 +32,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/memory"
-	"github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/internal/util"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/memory"
+	"github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // ============== primitiveBase 公共基础 ==============

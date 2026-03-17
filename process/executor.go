@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/stream"
-	"github.com/everyday-items/toolkit/util/idgen"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/stream"
+	"github.com/hexagon-codes/toolkit/util/idgen"
 )
 
 // ProcessInstance 流程实例
@@ -58,6 +58,10 @@ type ProcessInstance struct {
 	// transitionMu 序列化所有状态变更操作（Start/SendEvent/Pause/Resume/Cancel）
 	// 确保同一时刻只有一个状态变更在执行，防止并发 SendEvent 导致状态机语义被破坏
 	transitionMu sync.Mutex
+
+	// initializing 标记 Start 正在执行 enterState，
+	// 防止 SendEvent 在初始状态还未完全进入时就触发转换
+	initializing bool
 
 	// 暂停通道
 	pauseCh chan struct{}
@@ -179,6 +183,8 @@ func (p *ProcessInstance) Start(ctx context.Context, input ProcessInput) error {
 	}
 
 	p.currentState = initialState
+	// 标记正在初始化，防止 SendEvent 在 enterState 前介入
+	p.initializing = true
 	p.mu.Unlock()
 
 	// 发布流程开始事件（无锁状态下调用，handler 可安全读取流程状态）
@@ -194,6 +200,11 @@ func (p *ProcessInstance) Start(ctx context.Context, input ProcessInput) error {
 		p.setError(err)
 		return err
 	}
+
+	// 初始化完成，允许 SendEvent 触发状态转换
+	p.mu.Lock()
+	p.initializing = false
+	p.mu.Unlock()
 
 	// 检查是否有自动转换
 	p.processAutoTransitions(ctx)
@@ -216,6 +227,9 @@ func (p *ProcessInstance) SendEvent(ctx context.Context, event Event) error {
 	// 检查状态
 	if status == StatusPending {
 		return ErrProcessNotStarted
+	}
+	if p.initializing {
+		return fmt.Errorf("%w: 流程正在初始化中，请等待初始状态进入完成", ErrProcessNotStarted)
 	}
 	if status == StatusPaused {
 		return ErrProcessPaused

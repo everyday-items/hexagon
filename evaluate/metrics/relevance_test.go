@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/everyday-items/hexagon/evaluate"
+	"github.com/hexagon-codes/hexagon/evaluate"
 )
 
 // mockLLMJudge 用于测试的模拟 LLM 判断器

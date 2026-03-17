@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/everyday-items/hexagon/security/filter"
-	"github.com/everyday-items/hexagon/security/guard"
-	"github.com/everyday-items/hexagon/security/rbac"
+	"github.com/hexagon-codes/hexagon/security/filter"
+	"github.com/hexagon-codes/hexagon/security/guard"
+	"github.com/hexagon-codes/hexagon/security/rbac"
 )
 
 // ============== Guard Benchmarks ==============

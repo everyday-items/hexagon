@@ -7,7 +7,7 @@
 | 维度 | Hexagon | LangChain | LangGraph | LlamaIndex | Eino | Semantic Kernel | Spring AI |
 |------|:-------:|:---------:|:---------:|:----------:|:----:|:---------------:|:---------:|
 | **语言** | **Go** | Python/JS | Python/JS | Python | **Go** | C#/Python | Java |
-| **开发者** | everyday-items | LangChain Inc. | LangChain Inc. | LlamaIndex Inc. | 字节跳动 | Microsoft | VMware |
+| **开发者** | hexagon-codes | LangChain Inc. | LangChain Inc. | LlamaIndex Inc. | 字节跳动 | Microsoft | VMware |
 | **协议** | Apache 2.0 | MIT | MIT | MIT | Apache 2.0 | MIT | Apache 2.0 |
 | **定位** | 全能型 Agent 框架 | LLM 应用框架 | 图编排引擎 | RAG 数据框架 | 流式 AI 框架 | 企业级 AI 编排 | Spring 生态 AI |
 | **生态** | hexagon + ai-core + toolkit | LangSmith + LangServe | LangSmith | LlamaHub | 独立 | Azure 生态 | Spring 生态 |

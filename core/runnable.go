@@ -33,10 +33,12 @@ package core
 
 import (
 	"context"
+	"errors"
+	"io"
 
-	"github.com/everyday-items/ai-core/schema"
-	"github.com/everyday-items/hexagon/internal/pool"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/hexagon/internal/pool"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // ============== 类型别名 ==============
@@ -403,7 +405,8 @@ func (r *BaseRunnable[I, O]) Transform(ctx context.Context, input *StreamReader[
 					// 区分 EOF 和真正的错误
 					// EOF 表示输入流正常结束，不需要报错
 					// 其他错误需要传递给输出流
-					if err.Error() != "EOF" && err.Error() != "stream closed" {
+					// 使用 errors.Is 而非字符串比较，以正确识别被包装的 EOF 错误
+					if !errors.Is(err, io.EOF) && err.Error() != "stream closed" {
 						writer.CloseWithError(err)
 					}
 					return

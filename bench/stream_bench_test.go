@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // BenchmarkStreamPipe 测试管道流创建和收集性能

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/hexagon/orchestration/chain"
+	"github.com/hexagon-codes/hexagon/orchestration/chain"
 )
 
 func main() {

@@ -5,7 +5,7 @@
 ## 快速开始
 
 ```go
-import "github.com/everyday-items/hexagon/orchestration/graph"
+import "github.com/hexagon-codes/hexagon/orchestration/graph"
 
 // 定义状态
 type MyState struct {
@@ -105,7 +105,7 @@ if result.Value == "approve" {
 ## 检查点
 
 ```go
-import "github.com/everyday-items/hexagon/orchestration/graph/checkpoint"
+import "github.com/hexagon-codes/hexagon/orchestration/graph/checkpoint"
 
 // 使用检查点
 saver := checkpoint.NewMemorySaver()

@@ -7,8 +7,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/everyday-items/hexagon/internal/util"
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // Embedder 是向量生成器接口（简化版，避免循环依赖）

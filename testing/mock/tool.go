@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/everyday-items/ai-core/schema"
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // Tool Mock Tool 实现

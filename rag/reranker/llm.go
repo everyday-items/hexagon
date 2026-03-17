@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // defaultMaxDocuments LLM 重排序的默认最大文档数

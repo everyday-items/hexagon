@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/everyday-items/hexagon/hooks"
-	"github.com/everyday-items/hexagon/observe/devui"
+	"github.com/hexagon-codes/hexagon/hooks"
+	"github.com/hexagon-codes/hexagon/observe/devui"
 )
 
 func main() {

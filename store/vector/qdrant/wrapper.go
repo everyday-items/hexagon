@@ -17,7 +17,7 @@
 package qdrant
 
 import (
-	aicoreQdrant "github.com/everyday-items/ai-core/store/vector/qdrant"
+	aicoreQdrant "github.com/hexagon-codes/ai-core/store/vector/qdrant"
 )
 
 // 重新导出类型

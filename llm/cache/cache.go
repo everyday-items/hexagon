@@ -423,7 +423,17 @@ func (g *CacheKeyGenerator) GenerateKey(request *CacheRequest) string {
 	}
 
 	// 序列化
-	data, _ := json.Marshal(keyParts)
+	data, err := json.Marshal(keyParts)
+	if err != nil {
+		// 序列化失败时使用消息内容的字符串拼接作为降级键，
+		// 避免所有失败请求共享同一个哈希导致缓存污染
+		fallback := g.config.KeyPrefix
+		for _, msg := range request.Messages {
+			fallback += msg.Role + ":" + msg.Content + ";"
+		}
+		fallbackHash := sha256.Sum256([]byte(fallback))
+		return g.config.KeyPrefix + hex.EncodeToString(fallbackHash[:])
+	}
 
 	// 计算哈希
 	hash := sha256.Sum256(data)

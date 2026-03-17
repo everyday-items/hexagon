@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/everyday-items/hexagon/evaluate"
+	"github.com/hexagon-codes/hexagon/evaluate"
 )
 
 // ============== BLEU Score ==============

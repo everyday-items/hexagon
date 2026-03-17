@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"sync"
 
-	tklogger "github.com/everyday-items/toolkit/util/logger"
+	tklogger "github.com/hexagon-codes/toolkit/util/logger"
 )
 
 // Logger 是 Hexagon 框架的日志接口

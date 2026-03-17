@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/toolkit/util/poolx"
+	"github.com/hexagon-codes/toolkit/util/poolx"
 )
 
 // EventType 事件类型

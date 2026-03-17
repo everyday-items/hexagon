@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	coremem "github.com/everyday-items/ai-core/memory"
+	coremem "github.com/hexagon-codes/ai-core/memory"
 )
 
 // newTestPersistentMemory 创建测试用的 PersistentMemory（基于 InMemoryStore）

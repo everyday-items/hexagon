@@ -2,7 +2,7 @@
 package reranker
 
 import (
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // RankedDocument 带排名信息的文档

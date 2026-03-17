@@ -25,8 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/everyday-items/ai-core/schema"
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/tool"
 )
 
 // Config 文件工具配置

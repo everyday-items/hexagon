@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/toolkit/util/rate"
+	"github.com/hexagon-codes/toolkit/util/rate"
 )
 
 // ============== 类型测试 ==============

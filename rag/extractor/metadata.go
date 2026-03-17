@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // MetadataExtractor 元数据提取器接口

@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // Chain 链式组件

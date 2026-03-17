@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/store/vector"
 )
 
 // ============== 模拟 Weaviate 服务器 ==============

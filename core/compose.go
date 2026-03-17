@@ -22,7 +22,7 @@ package core
 import (
 	"context"
 
-	"github.com/everyday-items/hexagon/stream"
+	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // InvokeToStream 将 Invoke-only 的 Runnable 适配为返回流

@@ -8,13 +8,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/llm/deepseek"
-	"github.com/everyday-items/ai-core/llm/openai"
-	"github.com/everyday-items/ai-core/memory"
-	"github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/agent"
-	"github.com/everyday-items/hexagon/orchestration/workflow"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/llm/deepseek"
+	"github.com/hexagon-codes/ai-core/llm/openai"
+	"github.com/hexagon-codes/ai-core/memory"
+	"github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/orchestration/workflow"
 	"gopkg.in/yaml.v3"
 )
 

@@ -2,7 +2,7 @@
 package milvus
 
 import (
-	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/internal/util"
 )
 
 // generateID 生成唯一 ID

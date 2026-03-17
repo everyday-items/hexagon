@@ -19,7 +19,7 @@ updates:
       - "dependencies"
       - "go"
     reviewers:
-      - "everyday-items/hexagon-maintainers"
+      - "hexagon-codes/hexagon-maintainers"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -36,4 +36,4 @@ updates:
       - "dependencies"
       - "ci"
     reviewers:
-      - "everyday-items/hexagon-infra"
+      - "hexagon-codes/hexagon-infra"

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/config"
+	"github.com/hexagon-codes/hexagon/config"
 )
 
 // TestHotReloader 测试配置热更新

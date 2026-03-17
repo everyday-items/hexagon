@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/hexagon-codes/hexagon/internal/util"
 )
 
 // AuditLogger 审计日志记录器
@@ -40,6 +40,9 @@ type AuditLogger struct {
 
 	// bufferOverflowCount 缓冲区溢出计数（用于监控）
 	bufferOverflowCount int64
+
+	// storeFailCount 存储写入失败计数（用于监控审计日志丢失情况）
+	storeFailCount int64
 
 	mu sync.RWMutex
 }
@@ -469,8 +472,15 @@ func (l *AuditLogger) Log(event *AuditEvent) {
 		l.mu.Unlock()
 
 		// 直接同步写入存储
+		// 审计日志不可静默丢弃，记录失败时更新失败计数并写入 stderr
 		if l.store != nil {
-			_ = l.store.Save(context.Background(), event)
+			if err := l.store.Save(context.Background(), event); err != nil {
+				l.mu.Lock()
+				l.storeFailCount++
+				l.mu.Unlock()
+				// 审计日志写入存储失败，输出到 stderr 确保可观测
+				fmt.Fprintf(os.Stderr, "hexagon/audit: store.Save failed: %v\n", err)
+			}
 		}
 
 		// 直接写入 writers

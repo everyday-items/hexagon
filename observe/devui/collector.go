@@ -6,9 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/everyday-items/hexagon/hooks"
-	"github.com/everyday-items/hexagon/observe/tracer"
-	"github.com/everyday-items/toolkit/util/idgen"
+	"github.com/hexagon-codes/hexagon/hooks"
+	"github.com/hexagon-codes/hexagon/observe/tracer"
+	"github.com/hexagon-codes/toolkit/util/idgen"
 )
 
 // Collector 事件收集器

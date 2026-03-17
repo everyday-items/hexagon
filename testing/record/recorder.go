@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/llm"
 )
 
 // Interaction 表示一次 LLM 交互

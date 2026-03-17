@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/everyday-items/hexagon"
+	"github.com/hexagon-codes/hexagon"
 )
 
 func main() {

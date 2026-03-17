@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/security/guard"
-	"github.com/everyday-items/hexagon/security/rbac"
+	"github.com/hexagon-codes/hexagon/security/guard"
+	"github.com/hexagon-codes/hexagon/security/rbac"
 )
 
 // TestRBACCompleteWorkflow tests the complete RBAC workflow

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/everyday-items/hexagon/testing/mock"
+	"github.com/hexagon-codes/hexagon/testing/mock"
 )
 
 func TestSequentialPlannerCreation(t *testing.T) {

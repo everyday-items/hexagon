@@ -29,7 +29,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ============== 错误定义 ==============

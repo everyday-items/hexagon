@@ -4,7 +4,7 @@ package reranker
 import (
 	"sort"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // truncateText 截断文本到指定长度

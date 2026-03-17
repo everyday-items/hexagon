@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/hexagon/hooks"
-	"github.com/everyday-items/hexagon/observe/tracer"
+	"github.com/hexagon-codes/hexagon/hooks"
+	"github.com/hexagon-codes/hexagon/observe/tracer"
 )
 
 // DevUI 开发调试界面服务器

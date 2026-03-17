@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/llm"
 )
 
 // ============== 对话管理器 ==============

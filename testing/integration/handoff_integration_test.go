@@ -12,9 +12,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/agent"
-	"github.com/everyday-items/hexagon/testing/mock"
+	"github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/testing/mock"
 )
 
 // TestTransferToCreation 测试创建转交工具

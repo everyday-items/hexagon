@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	coremem "github.com/everyday-items/ai-core/memory"
+	coremem "github.com/hexagon-codes/ai-core/memory"
 )
 
 // PersistentMemory 将 MemoryStore 适配为 ai-core memory.Memory 接口

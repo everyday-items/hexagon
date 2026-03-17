@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/everyday-items/ai-core/schema"
-	"github.com/everyday-items/ai-core/tool"
+	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/tool"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/everyday-items/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag"
 )
 
 // ============== CharacterSplitter 测试 ==============

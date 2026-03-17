@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/hexagon/testing/mock"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/hexagon/testing/mock"
 )
 
 func TestReActAgentCreation(t *testing.T) {

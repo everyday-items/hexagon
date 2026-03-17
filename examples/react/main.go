@@ -15,7 +15,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/everyday-items/hexagon"
+	"github.com/hexagon-codes/hexagon"
 )
 
 // CalculatorInput 定义计算器工具的输入参数

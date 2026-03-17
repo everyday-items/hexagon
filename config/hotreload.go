@@ -176,6 +176,9 @@ func (r *HotReloader) watch() {
 }
 
 // checkAndReload 检查文件变化并重新加载
+//
+// 使用写锁原子地检查和更新 lastModTime，防止多个 goroutine
+// 同时检测到变化而重复触发 reload（TOCTOU 竞态防护）。
 func (r *HotReloader) checkAndReload() {
 	// 检查文件修改时间
 	info, err := os.Stat(r.path)
@@ -184,19 +187,21 @@ func (r *HotReloader) checkAndReload() {
 		return
 	}
 
-	// 比较修改时间
-	r.mu.RLock()
-	lastMod := r.lastModTime
-	r.mu.RUnlock()
-
-	if info.ModTime().After(lastMod) {
-		// 文件已修改，重新加载
-		r.reload(info.ModTime())
+	// 原子地比较并更新修改时间，防止并发重复 reload
+	r.mu.Lock()
+	if !info.ModTime().After(r.lastModTime) {
+		r.mu.Unlock()
+		return
 	}
+	r.lastModTime = info.ModTime()
+	r.mu.Unlock()
+
+	// 文件已修改且时间已更新，执行 reload（其他并发检查会因时间已更新而跳过）
+	r.reload()
 }
 
 // reload 重新加载配置
-func (r *HotReloader) reload(modTime time.Time) {
+func (r *HotReloader) reload() {
 	// 读取配置文件
 	data, err := os.ReadFile(r.path)
 	if err != nil {
@@ -240,10 +245,7 @@ func (r *HotReloader) reload(modTime time.Time) {
 		return
 	}
 
-	// 更新修改时间
-	r.mu.Lock()
-	r.lastModTime = modTime
-	r.mu.Unlock()
+	// lastModTime 已在 checkAndReload 中原子更新，此处无需重复设置
 
 	// 触发回调
 	r.callback(config, nil)
@@ -256,7 +258,12 @@ func (r *HotReloader) Reload() error {
 		return fmt.Errorf("failed to stat config file: %w", err)
 	}
 
-	r.reload(info.ModTime())
+	// 手动 reload 时也更新 lastModTime，防止下一次 watch 重复加载
+	r.mu.Lock()
+	r.lastModTime = info.ModTime()
+	r.mu.Unlock()
+
+	r.reload()
 	return nil
 }
 

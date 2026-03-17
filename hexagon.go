@@ -29,39 +29,39 @@ import (
 	"os"
 	"sync"
 
-	"github.com/everyday-items/ai-core/llm"
-	"github.com/everyday-items/ai-core/llm/openai"
-	"github.com/everyday-items/ai-core/memory"
-	"github.com/everyday-items/ai-core/tool"
-	"github.com/everyday-items/hexagon/agent"
-	"github.com/everyday-items/hexagon/core"
-	"github.com/everyday-items/hexagon/llm/conversation"
-	"github.com/everyday-items/hexagon/llm/router"
-	"github.com/everyday-items/hexagon/mcp"
-	memstore "github.com/everyday-items/hexagon/memory/store"
-	"github.com/everyday-items/hexagon/observe/eventstream"
-	"github.com/everyday-items/hexagon/observe/metrics"
-	"github.com/everyday-items/hexagon/observe/tracer"
-	"github.com/everyday-items/hexagon/orchestration/chain"
-	"github.com/everyday-items/hexagon/orchestration/graph"
-	"github.com/everyday-items/hexagon/rag"
-	"github.com/everyday-items/hexagon/rag/embedder"
-	"github.com/everyday-items/hexagon/rag/indexer"
-	"github.com/everyday-items/hexagon/rag/loader"
-	"github.com/everyday-items/hexagon/rag/retriever"
-	"github.com/everyday-items/hexagon/rag/splitter"
-	"github.com/everyday-items/hexagon/security/cost"
-	"github.com/everyday-items/hexagon/security/guard"
-	"github.com/everyday-items/hexagon/skill"
-	"github.com/everyday-items/hexagon/store/vector"
-	"github.com/everyday-items/hexagon/store/vector/qdrant"
+	"github.com/hexagon-codes/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/llm/openai"
+	"github.com/hexagon-codes/ai-core/memory"
+	"github.com/hexagon-codes/ai-core/tool"
+	"github.com/hexagon-codes/hexagon/agent"
+	"github.com/hexagon-codes/hexagon/core"
+	"github.com/hexagon-codes/hexagon/llm/conversation"
+	"github.com/hexagon-codes/hexagon/llm/router"
+	"github.com/hexagon-codes/hexagon/mcp"
+	memstore "github.com/hexagon-codes/hexagon/memory/store"
+	"github.com/hexagon-codes/hexagon/observe/eventstream"
+	"github.com/hexagon-codes/hexagon/observe/metrics"
+	"github.com/hexagon-codes/hexagon/observe/tracer"
+	"github.com/hexagon-codes/hexagon/orchestration/chain"
+	"github.com/hexagon-codes/hexagon/orchestration/graph"
+	"github.com/hexagon-codes/hexagon/rag"
+	"github.com/hexagon-codes/hexagon/rag/embedder"
+	"github.com/hexagon-codes/hexagon/rag/indexer"
+	"github.com/hexagon-codes/hexagon/rag/loader"
+	"github.com/hexagon-codes/hexagon/rag/retriever"
+	"github.com/hexagon-codes/hexagon/rag/splitter"
+	"github.com/hexagon-codes/hexagon/security/cost"
+	"github.com/hexagon-codes/hexagon/security/guard"
+	"github.com/hexagon-codes/hexagon/skill"
+	"github.com/hexagon-codes/hexagon/store/vector"
+	"github.com/hexagon-codes/hexagon/store/vector/qdrant"
 )
 
 // Version information for the Hexagon framework.
 const (
 	// Version is the current version of the Hexagon framework.
 	// Format: MAJOR.MINOR.PATCH[-PRERELEASE]
-	Version = "0.3.0-beta"
+	Version = "0.3.1-beta"
 
 	// VersionMajor is the major version number.
 	VersionMajor = 0
@@ -70,7 +70,7 @@ const (
 	VersionMinor = 3
 
 	// VersionPatch is the patch version number.
-	VersionPatch = 0
+	VersionPatch = 1
 
 	// VersionPrerelease is the pre-release identifier (empty for stable releases).
 	VersionPrerelease = "beta"
@@ -534,6 +534,15 @@ type (
 
 	// OpenAIOption 是 OpenAI Provider 的配置选项
 	OpenAIOption = openai.Option
+
+	// LLMStream 是 LLM 流式响应
+	LLMStream = llm.Stream
+
+	// LLMStreamChunk 是流式响应的单个片段
+	LLMStreamChunk = llm.StreamChunk
+
+	// LLMStreamResult 是流式响应的最终结果
+	LLMStreamResult = llm.StreamResult
 )
 
 // LLM 角色常量

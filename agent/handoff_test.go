@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/everyday-items/hexagon/testing/mock"
+	"github.com/hexagon-codes/hexagon/testing/mock"
 )
 
 func TestTransferToTool(t *testing.T) {

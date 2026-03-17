@@ -4,32 +4,32 @@
 # 详见: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # 全局默认所有者
-* @everyday-items/hexagon-maintainers
+* @hexagon-codes/hexagon-maintainers
 
 # 核心模块
-/agent/ @everyday-items/hexagon-core
-/core/ @everyday-items/hexagon-core
-/hexagon.go @everyday-items/hexagon-core
+/agent/ @hexagon-codes/hexagon-core
+/core/ @hexagon-codes/hexagon-core
+/hexagon.go @hexagon-codes/hexagon-core
 
 # RAG 系统
-/rag/ @everyday-items/hexagon-rag
+/rag/ @hexagon-codes/hexagon-rag
 
 # 编排引擎
-/orchestration/ @everyday-items/hexagon-orchestration
+/orchestration/ @hexagon-codes/hexagon-orchestration
 
 # 安全
-/security/ @everyday-items/hexagon-security
+/security/ @hexagon-codes/hexagon-security
 
 # 可观测性
-/observe/ @everyday-items/hexagon-observability
+/observe/ @hexagon-codes/hexagon-observability
 
 # 文档
-/docs/ @everyday-items/hexagon-docs
-*.md @everyday-items/hexagon-docs
+/docs/ @hexagon-codes/hexagon-docs
+*.md @hexagon-codes/hexagon-docs
 
 # CI/CD
-/.github/ @everyday-items/hexagon-infra
-/Makefile @everyday-items/hexagon-infra
+/.github/ @hexagon-codes/hexagon-infra
+/Makefile @hexagon-codes/hexagon-infra
 
 # 示例
-/examples/ @everyday-items/hexagon-docs
+/examples/ @hexagon-codes/hexagon-docs

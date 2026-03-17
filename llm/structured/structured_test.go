@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/everyday-items/ai-core/llm"
+	"github.com/hexagon-codes/ai-core/llm"
 )
 
 // ============== 测试用类型 ==============

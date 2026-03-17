@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/ai-core/memory"
-	"github.com/everyday-items/hexagon/internal/util"
+	"github.com/hexagon-codes/ai-core/memory"
+	"github.com/hexagon-codes/hexagon/internal/util"
 )
 
 // Memory Mock Memory 实现

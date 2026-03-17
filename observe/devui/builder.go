@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/everyday-items/toolkit/util/idgen"
+	"github.com/hexagon-codes/toolkit/util/idgen"
 )
 
 // GraphDefinition 可视化图定义
