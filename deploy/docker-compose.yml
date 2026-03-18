@@ -1,22 +1,17 @@
-# Hexagon Docker Compose 部署方案
+# Hexagon 开发基础设施
 #
-# 自包含 + 可切换架构：
-#   - 默认启动全部服务（应用 + 基础设施），适合快速体验和演示
-#   - 基础设施可通过环境变量切换为外部服务
+# 提供本地开发所需的基础设施服务（向量数据库、缓存、关系数据库）。
 #
 # 使用方式:
 #
-#   # 一键启动全部（推荐新用户）
+#   # 启动全部基础设施
 #   docker compose up -d
 #
-#   # 仅启动应用，基础设施用外部服务
-#   docker compose up -d hexagon-app hexagon-devui
-#
-#   # 仅启动基础设施（本地开发调试）
-#   docker compose up -d qdrant redis postgres
+#   # 按需启动
+#   docker compose up -d qdrant redis
 #
 #   # 查看日志
-#   docker compose logs -f hexagon-app
+#   docker compose logs -f
 #
 #   # 停止并清理
 #   docker compose down
@@ -26,88 +21,7 @@
 #   cp .env.example .env
 
 services:
-  # ============== 应用服务 ==============
-
-  hexagon-app:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
-      target: app
-    container_name: hexagon-app
-    restart: unless-stopped
-    ports:
-      - "${APP_PORT:-8000}:8000"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
-      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
-      - REDIS_URL=${REDIS_URL:-redis:6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - POSTGRES_DSN=${POSTGRES_DSN:-postgres://hexagon:hexagon@postgres:5432/hexagon?sslmode=disable}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-    depends_on:
-      qdrant:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    networks:
-      - hexagon-net
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 2G
-        reservations:
-          cpus: "0.5"
-          memory: 256M
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "5"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-
-  hexagon-devui:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
-      target: devui
-    container_name: hexagon-devui
-    restart: unless-stopped
-    ports:
-      - "${DEVUI_PORT:-8080}:8080"
-    environment:
-      - DEVUI_ADDR=:8080
-      - HEXAGON_APP_URL=http://hexagon-app:8000
-    networks:
-      - hexagon-net
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
-        reservations:
-          cpus: "0.25"
-          memory: 128M
-    logging:
-      driver: json-file
-      options:
-        max-size: "20m"
-        max-file: "3"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  # ============== 基础设施（可禁用，使用外部服务替代） ==============
+  # ============== 基础设施 ==============
 
   qdrant:
     image: qdrant/qdrant:v1.11.0
