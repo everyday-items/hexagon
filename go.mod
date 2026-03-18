@@ -8,7 +8,7 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.3.0
 	github.com/redis/go-redis/v9 v9.17.3
 	golang.org/x/net v0.52.0
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
