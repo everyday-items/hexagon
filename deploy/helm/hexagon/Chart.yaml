@@ -3,7 +3,7 @@ name: hexagon
 description: Hexagon - Go 生态全能型 AI Agent 框架
 type: application
 version: 0.1.0
-appVersion: "0.3.1-beta"
+appVersion: "0.3.2-beta"
 keywords:
   - ai
   - agent

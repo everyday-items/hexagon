@@ -61,7 +61,7 @@ import (
 const (
 	// Version is the current version of the Hexagon framework.
 	// Format: MAJOR.MINOR.PATCH[-PRERELEASE]
-	Version = "0.3.1-beta"
+	Version = "0.3.2-beta"
 
 	// VersionMajor is the major version number.
 	VersionMajor = 0
@@ -70,7 +70,7 @@ const (
 	VersionMinor = 3
 
 	// VersionPatch is the patch version number.
-	VersionPatch = 1
+	VersionPatch = 2
 
 	// VersionPrerelease is the pre-release identifier (empty for stable releases).
 	VersionPrerelease = "beta"

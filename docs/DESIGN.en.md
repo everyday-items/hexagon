@@ -709,7 +709,7 @@ hexagon/
 ├── docs/                         # Public documentation
 ├── internal/                     # Internal implementation
 │
-├── hexagon.go                    # Main package entry (version: v0.3.1-beta)
+├── hexagon.go                    # Main package entry (version: v0.3.2-beta)
 ├── go.mod
 ├── Makefile
 └── README.md

@@ -709,7 +709,7 @@ hexagon/
 ├── docs/                         # 公开文档
 ├── internal/                     # 内部实现
 │
-├── hexagon.go                    # 主入口包 (版本: v0.3.1-beta)
+├── hexagon.go                    # 主入口包 (版本: v0.3.2-beta)
 ├── go.mod
 ├── Makefile
 └── README.md
@@ -764,5 +764,4 @@ hexagon (主框架)
 | 通义千问 (Qwen) | ✅ 已完成 |
 | 豆包 (Ark) | ✅ 已完成 |
 | Ollama (本地模型) | ✅ 已完成 |
-
 

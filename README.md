@@ -461,7 +461,7 @@ hexagon/
 ├── testing/            # 测试工具 (Mock/Record)
 ├── deploy/             # 部署配置 (Docker Compose/Helm Chart/CI)
 ├── examples/           # 示例代码
-└── hexagon.go          # 入口 (v0.3.1-beta)
+└── hexagon.go          # 入口 (v0.3.2-beta)
 ```
 
 ## 📚 文档

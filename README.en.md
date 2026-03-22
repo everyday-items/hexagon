@@ -461,7 +461,7 @@ hexagon/
 ├── testing/            # Testing utilities (Mock/Record)
 ├── deploy/             # Deployment configs (Docker Compose/Helm Chart/CI)
 ├── examples/           # Example code
-└── hexagon.go          # Entry point (v0.3.1-beta)
+└── hexagon.go          # Entry point (v0.3.2-beta)
 ```
 
 ## 📚 Documentation
