@@ -35,9 +35,9 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 
 **顶层 API** (`github.com/hexagon-codes/hexagon`)
 - `Chat()`, `ChatWithTools()`, `Run()`
-- `QuickStart()` 及其选项函数
-- `NewTool()`
-- 类型导出 (`Input`, `Output`, `Tool`, `Memory`, `Message`, `Schema`)
+- `QuickStart()` 及其选项函数 (`WithProvider`, `WithTools`, `WithSystemPrompt`, `WithMemory`)
+- `NewTool()`, `SetDefaultProvider()`
+- 类型导出 (`Input`, `Output`, `Tool`, `Memory`, `Message`, `Agent`, `Provider`)
 
 **核心接口** (`github.com/hexagon-codes/hexagon/core`)
 - `Component[I, O]` 接口
@@ -129,7 +129,34 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 
 ### Deprecated (已弃用)
 
-当前无已弃用的 API。
+**顶层重导出** (`github.com/hexagon-codes/hexagon` — `deprecated.go`)
+
+自 v0.3.2-beta 起，`hexagon.go` 的导出符号从 98 个精简至 18 个核心符号。原先通过顶层包暴露的便捷别名已全部移至 `deprecated.go`，将在下一个大版本中移除。涉及的符号包括但不限于：
+
+- 编排引擎：`NewGraph()`, `NewChain()`, `START`, `END`
+- 多 Agent：`NewTeam()`, `TransferTo()`, `WithAgents()`, `WithMode()`, `TeamMode*` 常量
+- 可观测性：`NewTracer()`, `NewMetrics()`, `StartSpan()`, `ContextWithTracer()`
+- 安全防护：`NewPromptInjectionGuard()`, `NewPIIGuard()`, `NewCostController()`
+- RAG 系统：`NewRAGEngine()`, `NewRAGPipeline()`, 加载器/分割器/检索器/索引器/嵌入器工厂函数
+- 向量存储：`NewMemoryVectorStore()`, `NewQdrantStore()`, `Qdrant*` 选项和常量
+- LLM 相关：`NewOpenAI()`, `OpenAIWith*` 选项, `NewLLMRouter()`, 角色常量
+- 状态管理：`NewStateManager()`, `NewGlobalState()`
+- MCP 协议：`ConnectMCPServer()`, `ConnectMCPStdio()`, `ConnectMCPSSE()`, `NewMCPServer()`
+- 记忆存储：`NewInMemoryStore()`, `NewFileStore()`, `NewRedisStore()`, `NewPersistentMemory()`
+- 事件流：`NewEventStream()`, `Event*` 常量
+- Skill 系统：`NewSkillRegistry()`, `NewHMACSigner()`
+- 所有已弃用的类型别名（`Graph`, `Chain`, `State`, `MapState`, `Tracer`, `Span`, `Metrics`, `Guard` 等）
+
+**迁移方式：** 直接 import 对应子包。例如：
+
+```go
+// 旧方式（已弃用）
+team := hexagon.NewTeam("my-team", hexagon.WithAgents(a1, a2))
+
+// 新方式（推荐）
+import "github.com/hexagon-codes/hexagon/agent"
+team := agent.NewTeam("my-team", agent.WithAgents(a1, a2))
+```
 
 ## 兼容性策略
 

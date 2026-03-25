@@ -97,6 +97,9 @@ func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32
 		if err != nil {
 			return nil, fmt.Errorf("failed to embed batch %d-%d: %w", i, end, err)
 		}
+		if len(embeddings) != len(batch) {
+			return nil, fmt.Errorf("embedding count mismatch: got %d, expected %d (batch %d-%d)", len(embeddings), len(batch), i, end)
+		}
 
 		allEmbeddings = append(allEmbeddings, embeddings...)
 	}

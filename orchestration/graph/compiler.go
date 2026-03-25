@@ -252,27 +252,40 @@ func (cg *CompiledGraph[S]) RunWithStats(ctx context.Context, initialState S, op
 		NodeTiming: make(map[string]time.Duration),
 	}
 
-	// 包装节点处理函数以收集统计
-	originalNodes := make(map[string]NodeHandler[S])
+	// 创建节点映射的本地副本，包装处理函数以收集统计（不修改共享的 cg.Nodes）
+	localNodes := make(map[string]*Node[S], len(cg.Nodes))
 	for name, node := range cg.Nodes {
-		originalNodes[name] = node.Handler
 		nodeName := name
-		node.Handler = func(ctx context.Context, state S) (S, error) {
-			nodeStart := time.Now()
-			defer func() {
-				result.NodeTiming[nodeName] = time.Since(nodeStart)
-			}()
-			return originalNodes[nodeName](ctx, state)
+		originalHandler := node.Handler
+		localNodes[name] = &Node[S]{
+			Name:     node.Name,
+			Type:     node.Type,
+			Metadata: node.Metadata,
+			Handler: func(ctx context.Context, state S) (S, error) {
+				nodeStart := time.Now()
+				defer func() {
+					result.NodeTiming[nodeName] = time.Since(nodeStart)
+				}()
+				return originalHandler(ctx, state)
+			},
 		}
 	}
 
-	// 执行
-	finalState, err := cg.Graph.Run(ctx, initialState, opts...)
-
-	// 恢复原始处理函数
-	for name, handler := range originalNodes {
-		cg.Nodes[name].Handler = handler
+	// 创建一个使用本地节点映射的浅拷贝图来执行
+	localGraph := &Graph[S]{
+		Name:             cg.Graph.Name,
+		Nodes:            localNodes,
+		Edges:            cg.Graph.Edges,
+		EntryPoint:       cg.Graph.EntryPoint,
+		Checkpointer:     cg.Graph.Checkpointer,
+		Metadata:         cg.Graph.Metadata,
+		compiled:         cg.Graph.compiled,
+		adjacency:        cg.Graph.adjacency,
+		conditionalEdges: cg.Graph.conditionalEdges,
 	}
+
+	// 执行本地副本
+	finalState, err := localGraph.Run(ctx, initialState, opts...)
 
 	result.EndTime = time.Now()
 	result.Duration = result.EndTime.Sub(result.StartTime)

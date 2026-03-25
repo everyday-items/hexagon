@@ -324,7 +324,12 @@ func (s *RecursiveSplitter) splitBySize(text string) []string {
 	runes := []rune(text)
 	var chunks []string
 
-	for i := 0; i < len(runes); i += s.chunkSize - s.chunkOverlap {
+	step := s.chunkSize - s.chunkOverlap
+	if step <= 0 {
+		step = s.chunkSize
+	}
+
+	for i := 0; i < len(runes); i += step {
 		end := i + s.chunkSize
 		if end > len(runes) {
 			end = len(runes)

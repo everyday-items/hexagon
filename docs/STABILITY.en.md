@@ -34,9 +34,9 @@ The following APIs are backward-compatible within v1.x:
 
 **Top-level API** (`github.com/hexagon-codes/hexagon`)
 - `Chat()`, `ChatWithTools()`, `Run()`
-- `QuickStart()` and its option functions
-- `NewTool()`
-- Exported types (`Input`, `Output`, `Tool`, `Memory`, `Message`, `Schema`)
+- `QuickStart()` and its option functions (`WithProvider`, `WithTools`, `WithSystemPrompt`, `WithMemory`)
+- `NewTool()`, `SetDefaultProvider()`
+- Exported types (`Input`, `Output`, `Tool`, `Memory`, `Message`, `Agent`, `Provider`)
 
 **Core interfaces** (`github.com/hexagon-codes/hexagon/core`)
 - `Component[I, O]` interface
@@ -128,7 +128,34 @@ The following APIs are experimental and subject to significant changes:
 
 ### Deprecated
 
-No deprecated APIs at this time.
+**Top-level re-exports** (`github.com/hexagon-codes/hexagon` — `deprecated.go`)
+
+Starting from v0.3.2-beta, the exported symbols in `hexagon.go` have been trimmed from 98 to 18 essential symbols. All convenience aliases previously exposed through the top-level package have been moved to `deprecated.go` and will be removed in the next major version. Affected symbols include but are not limited to:
+
+- Orchestration: `NewGraph()`, `NewChain()`, `START`, `END`
+- Multi-Agent: `NewTeam()`, `TransferTo()`, `WithAgents()`, `WithMode()`, `TeamMode*` constants
+- Observability: `NewTracer()`, `NewMetrics()`, `StartSpan()`, `ContextWithTracer()`
+- Security: `NewPromptInjectionGuard()`, `NewPIIGuard()`, `NewCostController()`
+- RAG: `NewRAGEngine()`, `NewRAGPipeline()`, loader/splitter/retriever/indexer/embedder factory functions
+- Vector stores: `NewMemoryVectorStore()`, `NewQdrantStore()`, `Qdrant*` options and constants
+- LLM: `NewOpenAI()`, `OpenAIWith*` options, `NewLLMRouter()`, role constants
+- State management: `NewStateManager()`, `NewGlobalState()`
+- MCP protocol: `ConnectMCPServer()`, `ConnectMCPStdio()`, `ConnectMCPSSE()`, `NewMCPServer()`
+- Memory stores: `NewInMemoryStore()`, `NewFileStore()`, `NewRedisStore()`, `NewPersistentMemory()`
+- Event stream: `NewEventStream()`, `Event*` constants
+- Skill system: `NewSkillRegistry()`, `NewHMACSigner()`
+- All deprecated type aliases (`Graph`, `Chain`, `State`, `MapState`, `Tracer`, `Span`, `Metrics`, `Guard`, etc.)
+
+**Migration:** Import the corresponding sub-packages directly. For example:
+
+```go
+// Old way (deprecated)
+team := hexagon.NewTeam("my-team", hexagon.WithAgents(a1, a2))
+
+// New way (recommended)
+import "github.com/hexagon-codes/hexagon/agent"
+team := agent.NewTeam("my-team", agent.WithAgents(a1, a2))
+```
 
 ## Compatibility Policy
 

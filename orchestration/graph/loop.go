@@ -627,10 +627,22 @@ func ParallelForEachLoopNode[S State, T any](
 			}()
 		}
 
-		// 收集所有结果
-		for i := 0; i < len(items); i++ {
-			result := <-resultCh
-			results[result.index] = result.err
+		// 收集所有结果（使用 select 避免 context 取消时死锁）
+		collected := 0
+		for collected < len(items) {
+			select {
+			case result := <-resultCh:
+				results[result.index] = result.err
+				collected++
+			case <-ctx.Done():
+				// context 已取消，填充剩余未收集的结果
+				for i := range results {
+					if results[i] == nil {
+						results[i] = ctx.Err()
+					}
+				}
+				return merger(state, results)
+			}
 		}
 
 		// 合并结果

@@ -461,8 +461,46 @@ hexagon/
 ├── testing/            # Testing utilities (Mock/Record)
 ├── deploy/             # Deployment configs (Docker Compose/Helm Chart/CI)
 ├── examples/           # Example code
-└── hexagon.go          # Entry point (v0.3.2-beta)
+├── hexagon.go          # Top-level API (18 essential symbols)
+└── deprecated.go       # Transitional re-exports (removed in next major version)
 ```
+
+## ⚠️ Recent Important Changes
+
+### Top-Level API Slimmed Down (v0.3.2-beta)
+
+The exported symbols in `hexagon.go` have been trimmed from 98 down to **18 essential symbols**, keeping only the most commonly used entry points:
+
+- `Chat()`, `ChatWithTools()`, `Run()` — convenience functions
+- `QuickStart()` and option functions (`WithProvider`, `WithTools`, `WithSystemPrompt`, `WithMemory`)
+- `NewTool()` — tool creation
+- `SetDefaultProvider()` — set the default LLM provider
+- Core type re-exports (`Input`, `Output`, `Tool`, `Memory`, `Message`, `Agent`, `Provider`)
+- `Version` constants
+
+All other exports have been moved to `deprecated.go` with deprecation comments and **will be removed in the next major version**.
+
+**Migration:** Import the corresponding sub-packages directly instead of accessing them through the top-level package. For example:
+
+```go
+// Old way (deprecated)
+team := hexagon.NewTeam("my-team", hexagon.WithAgents(a1, a2))
+engine := hexagon.NewRAGEngine(hexagon.WithRAGStore(store))
+
+// New way (recommended)
+import "github.com/hexagon-codes/hexagon/agent"
+import "github.com/hexagon-codes/hexagon/rag"
+
+team := agent.NewTeam("my-team", agent.WithAgents(a1, a2))
+engine := rag.NewEngine(rag.WithStore(store))
+```
+
+### Bug Fixes & Improvements
+
+- **`RunWithStats` is now concurrency-safe** — uses local node copies, eliminating data races across goroutines
+- **`ParallelForEachLoopNode` no longer deadlocks** — fixed deadlock on context cancellation
+- **`RecursiveSplitter` guards against infinite loops** — automatic protection when overlap >= chunkSize
+- **`SetDefaultProvider` timing fix** — now respected even if called before `Chat()`/`QuickStart()`
 
 ## 📚 Documentation
 

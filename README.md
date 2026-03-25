@@ -461,8 +461,46 @@ hexagon/
 ├── testing/            # 测试工具 (Mock/Record)
 ├── deploy/             # 部署配置 (Docker Compose/Helm Chart/CI)
 ├── examples/           # 示例代码
-└── hexagon.go          # 入口 (v0.3.2-beta)
+├── hexagon.go          # 顶层 API（18 个核心符号）
+└── deprecated.go       # 过渡性重导出（下一大版本移除）
 ```
+
+## ⚠️ 近期重要变更
+
+### 顶层 API 瘦身（v0.3.2-beta）
+
+`hexagon.go` 的导出符号从 98 个精简至 **18 个核心符号**，仅保留最常用的入口：
+
+- `Chat()`, `ChatWithTools()`, `Run()` — 便捷函数
+- `QuickStart()` 及选项函数 (`WithProvider`, `WithTools`, `WithSystemPrompt`, `WithMemory`)
+- `NewTool()` — 工具创建
+- `SetDefaultProvider()` — 设置默认 LLM Provider
+- 核心类型重导出 (`Input`, `Output`, `Tool`, `Memory`, `Message`, `Agent`, `Provider`)
+- `Version` 常量
+
+其余所有导出均已移至 `deprecated.go`，附带弃用注释，**将在下一个大版本中移除**。
+
+**迁移方式：** 直接 import 对应子包，而非通过顶层包访问。例如：
+
+```go
+// 旧方式（已弃用）
+team := hexagon.NewTeam("my-team", hexagon.WithAgents(a1, a2))
+engine := hexagon.NewRAGEngine(hexagon.WithRAGStore(store))
+
+// 新方式（推荐）
+import "github.com/hexagon-codes/hexagon/agent"
+import "github.com/hexagon-codes/hexagon/rag"
+
+team := agent.NewTeam("my-team", agent.WithAgents(a1, a2))
+engine := rag.NewEngine(rag.WithStore(store))
+```
+
+### Bug 修复与改进
+
+- **`RunWithStats` 并发安全** — 使用本地节点副本，消除多 goroutine 间的数据竞争
+- **`ParallelForEachLoopNode` 不再死锁** — 修复 context 取消时的死锁问题
+- **`RecursiveSplitter` 防无限循环** — 当 overlap >= chunkSize 时自动保护
+- **`SetDefaultProvider` 时序修复** — 即使在 `Chat()`/`QuickStart()` 之前调用也会被正确使用
 
 ## 📚 文档
 
