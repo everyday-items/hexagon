@@ -179,6 +179,19 @@ func ConnectSSEServerV2(ctx context.Context, endpoint string) ([]tool.Tool, io.C
 	return ConnectMCPServerV2(ctx, transport)
 }
 
+// ConnectStreamableServerV2 uses Streamable HTTP transport (MCP 2025-03-26 standard).
+//
+// Single-endpoint bidirectional communication via HTTP POST + optional SSE response.
+//
+// Example:
+//
+//	tools, closer, err := mcp.ConnectStreamableServerV2(ctx, "http://localhost:8080/mcp")
+//	defer closer.Close()
+func ConnectStreamableServerV2(ctx context.Context, endpoint string) ([]tool.Tool, io.Closer, error) {
+	transport := &sdkmcp.StreamableClientTransport{Endpoint: endpoint}
+	return ConnectMCPServerV2(ctx, transport)
+}
+
 // ============== MCP Server V2 (暴露 Hexagon Tool) ==============
 
 // ServerV2 基于官方 SDK 的 MCP 服务器

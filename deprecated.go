@@ -458,6 +458,36 @@ var (
 
 	// NewMockEmbedder 创建模拟 Embedder（用于测试）
 	NewMockEmbedder = embedder.NewMockEmbedder
+
+	// Embedder 选项
+	WithEmbedderModel     = embedder.WithModel
+	WithEmbedderDimension = embedder.WithDimension
+)
+
+// 分割器选项
+var (
+	WithRecursiveChunkSize    = splitter.WithRecursiveChunkSize
+	WithRecursiveChunkOverlap = splitter.WithRecursiveChunkOverlap
+)
+
+// 向量存储类型 (ai-core/store/vector 层, 不同于 rag.VectorStore)
+type (
+	// VectorDocument 向量存储文档
+	VectorDocument = vector.Document
+
+	// VectorEmbedder 向量生成器接口 (store 层)
+	VectorEmbedder = vector.Embedder
+
+	// VectorSearchOption 向量搜索选项
+	VectorSearchOption = vector.SearchOption
+
+	// VectorMemoryStore 内存向量存储 (store 层的具体 Store 接口)
+	VectorMemoryStoreInterface = vector.Store
+)
+
+// 向量搜索选项
+var (
+	WithVectorMinScore = vector.WithMinScore
 )
 
 // 向量存储
@@ -510,6 +540,14 @@ var ConnectMCPStdio = mcp.ConnectStdioServerV2
 //	tools, closer, err := hexagon.ConnectMCPSSE(ctx, "http://localhost:8080/sse")
 //	defer closer.Close()
 var ConnectMCPSSE = mcp.ConnectSSEServerV2
+
+// ConnectMCPStreamable 通过 Streamable HTTP 连接 MCP Server (2025-03-26 标准)
+//
+// 示例：
+//
+//	tools, closer, err := hexagon.ConnectMCPStreamable(ctx, "http://localhost:8080/mcp")
+//	defer closer.Close()
+var ConnectMCPStreamable = mcp.ConnectStreamableServerV2
 
 // NewMCPServer 创建基于官方 SDK 的 MCP 服务器
 //
@@ -624,6 +662,9 @@ type (
 
 	// VectorStore 是向量存储接口
 	VectorStore = rag.VectorStore
+
+	// OpenAIEmbedder OpenAI 向量生成器
+	OpenAIEmbedder = embedder.OpenAIEmbedder
 
 	// RAGEngine 是 RAG 引擎
 	RAGEngine = rag.Engine

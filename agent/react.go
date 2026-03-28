@@ -381,23 +381,42 @@ func (a *ReActAgent) buildToolDefinitions() []llm.ToolDefinition {
 
 
 // formatToolResult 格式化工具结果
+// maxToolResultChars 工具结果最大字符数，超过则截断
+// 防止单个工具返回（如网页抓取）撑爆 LLM 上下文窗口
+const maxToolResultChars = 8000
+
 func formatToolResult(result tool.Result) string {
 	if !result.Success {
 		return fmt.Sprintf("Error: %s", result.Error)
 	}
 
+	var s string
 	switch v := result.Output.(type) {
 	case string:
-		return v
+		s = v
 	case []byte:
-		return string(v)
+		s = string(v)
 	default:
 		b, err := json.Marshal(v)
 		if err != nil {
-			return fmt.Sprintf("%v", v)
+			s = fmt.Sprintf("%v", v)
+		} else {
+			s = string(b)
 		}
-		return string(b)
 	}
+
+	return truncateToolResult(s, maxToolResultChars)
+}
+
+// truncateToolResult 截断过长的工具结果，保留开头和结尾
+func truncateToolResult(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	// 保留前 70% + 后 20%，中间用省略标记
+	headLen := maxLen * 7 / 10
+	tailLen := maxLen * 2 / 10
+	return s[:headLen] + fmt.Sprintf("\n\n...[结果已截断，原始 %d 字符，保留前 %d + 后 %d 字符]...\n\n", len(s), headLen, tailLen) + s[len(s)-tailLen:]
 }
 
 // saveToMemory 保存到记忆
