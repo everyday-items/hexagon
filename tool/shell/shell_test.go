@@ -83,9 +83,9 @@ func TestExecute_SimpleCommands(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name       string
-		input      ExecuteInput
-		wantErr    bool
+		name        string
+		input       ExecuteInput
+		wantErr     bool
 		checkStdout func(string) bool
 	}{
 		{

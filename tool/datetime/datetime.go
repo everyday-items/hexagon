@@ -386,18 +386,18 @@ func Tools() []tool.Tool {
 
 // DateTimeOutput 日期时间输出
 type DateTimeOutput struct {
-	ISO8601   string `json:"iso8601"`
-	Unix      int64  `json:"unix"`
-	Year      int    `json:"year"`
-	Month     int    `json:"month"`
-	Day       int    `json:"day"`
-	Hour      int    `json:"hour"`
-	Minute    int    `json:"minute"`
-	Second    int    `json:"second"`
-	Weekday   string `json:"weekday"`
-	DayOfYear int    `json:"day_of_year"`
-	WeekOfYear int   `json:"week_of_year"`
-	Timezone  string `json:"timezone"`
+	ISO8601    string `json:"iso8601"`
+	Unix       int64  `json:"unix"`
+	Year       int    `json:"year"`
+	Month      int    `json:"month"`
+	Day        int    `json:"day"`
+	Hour       int    `json:"hour"`
+	Minute     int    `json:"minute"`
+	Second     int    `json:"second"`
+	Weekday    string `json:"weekday"`
+	DayOfYear  int    `json:"day_of_year"`
+	WeekOfYear int    `json:"week_of_year"`
+	Timezone   string `json:"timezone"`
 }
 
 // DateTimeDiff 日期差值
@@ -417,19 +417,19 @@ type DateTimeDiff struct {
 
 // DateTimeComponents 日期时间组件
 type DateTimeComponents struct {
-	Year       int    `json:"year"`
-	Month      int    `json:"month"`
-	MonthName  string `json:"month_name"`
-	Day        int    `json:"day"`
-	Hour       int    `json:"hour"`
-	Minute     int    `json:"minute"`
-	Second     int    `json:"second"`
-	Weekday    int    `json:"weekday"`
+	Year        int    `json:"year"`
+	Month       int    `json:"month"`
+	MonthName   string `json:"month_name"`
+	Day         int    `json:"day"`
+	Hour        int    `json:"hour"`
+	Minute      int    `json:"minute"`
+	Second      int    `json:"second"`
+	Weekday     int    `json:"weekday"`
 	WeekdayName string `json:"weekday_name"`
-	YearDay    int    `json:"year_day"`
-	ISOWeek    int    `json:"iso_week"`
-	Quarter    int    `json:"quarter"`
-	IsLeapYear bool   `json:"is_leap_year"`
+	YearDay     int    `json:"year_day"`
+	ISOWeek     int    `json:"iso_week"`
+	Quarter     int    `json:"quarter"`
+	IsLeapYear  bool   `json:"is_leap_year"`
 }
 
 // formatDateTime 格式化时间

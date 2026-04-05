@@ -35,15 +35,15 @@ import (
 // Client Langfuse 客户端
 // 负责收集和上报追踪数据到 Langfuse 平台
 type Client struct {
-	publicKey  string
-	secretKey  string
-	host       string
-	httpClient *http.Client
-	events     []Event
-	mu         sync.Mutex
-	flushSize  int           // 批量上报大小
+	publicKey     string
+	secretKey     string
+	host          string
+	httpClient    *http.Client
+	events        []Event
+	mu            sync.Mutex
+	flushSize     int           // 批量上报大小
 	flushInterval time.Duration // 上报间隔
-	done       chan struct{}
+	done          chan struct{}
 }
 
 // ClientOption 客户端配置选项
@@ -166,20 +166,20 @@ type SpanBody struct {
 
 // GenerationBody LLM 调用数据
 type GenerationBody struct {
-	ID               string         `json:"id"`
-	TraceID          string         `json:"traceId"`
-	ParentID         string         `json:"parentObservationId,omitempty"`
-	Name             string         `json:"name"`
-	StartTime        time.Time      `json:"startTime"`
-	EndTime          *time.Time     `json:"endTime,omitempty"`
-	Model            string         `json:"model,omitempty"`
-	ModelParameters  map[string]any `json:"modelParameters,omitempty"`
-	Input            any            `json:"input,omitempty"`
-	Output           any            `json:"output,omitempty"`
-	Usage            *UsageBody     `json:"usage,omitempty"`
-	Metadata         map[string]any `json:"metadata,omitempty"`
-	CompletionStart  *time.Time     `json:"completionStartTime,omitempty"`
-	Level            string         `json:"level,omitempty"`
+	ID              string         `json:"id"`
+	TraceID         string         `json:"traceId"`
+	ParentID        string         `json:"parentObservationId,omitempty"`
+	Name            string         `json:"name"`
+	StartTime       time.Time      `json:"startTime"`
+	EndTime         *time.Time     `json:"endTime,omitempty"`
+	Model           string         `json:"model,omitempty"`
+	ModelParameters map[string]any `json:"modelParameters,omitempty"`
+	Input           any            `json:"input,omitempty"`
+	Output          any            `json:"output,omitempty"`
+	Usage           *UsageBody     `json:"usage,omitempty"`
+	Metadata        map[string]any `json:"metadata,omitempty"`
+	CompletionStart *time.Time     `json:"completionStartTime,omitempty"`
+	Level           string         `json:"level,omitempty"`
 }
 
 // UsageBody Token 使用数据

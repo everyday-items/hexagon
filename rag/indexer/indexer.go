@@ -268,11 +268,11 @@ var _ rag.Indexer = (*ConcurrentIndexer)(nil)
 // IncrementalIndexer 增量索引器
 // 只索引新增或变更的文档
 type IncrementalIndexer struct {
-	store        vector.Store
-	embedder     vector.Embedder
-	checksums    map[string]string // ID -> checksum
-	mu           sync.RWMutex
-	batchSize    int
+	store     vector.Store
+	embedder  vector.Embedder
+	checksums map[string]string // ID -> checksum
+	mu        sync.RWMutex
+	batchSize int
 }
 
 // IncrementalIndexerOption IncrementalIndexer 选项

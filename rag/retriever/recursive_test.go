@@ -194,7 +194,7 @@ func TestNewRecursiveRetriever_InvalidOptions(t *testing.T) {
 	idx := NewNodeIndex()
 
 	r := NewRecursiveRetriever(store, embedder, idx,
-		WithMaxDepth(0),   // 无效，不应更改默认值
+		WithMaxDepth(0),       // 无效，不应更改默认值
 		WithRecursiveTopK(-1), // 无效
 	)
 	if r.maxDepth != 3 {

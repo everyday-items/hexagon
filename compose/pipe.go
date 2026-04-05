@@ -412,4 +412,3 @@ func ThenFuncWithError[I, M, O any](c *ChainBuilder[I, M], fn func(M) (O, error)
 func (c *ChainBuilder[I, O]) Build() core.Runnable[I, O] {
 	return c.runnable
 }
-

@@ -497,8 +497,8 @@ func TestHTMLLoader_StripTags(t *testing.T) {
 	testCases := []struct {
 		name     string
 		html     string
-		expected string    // 期望内容中包含的文本
-		absent   []string  // 期望内容中不包含的文本
+		expected string   // 期望内容中包含的文本
+		absent   []string // 期望内容中不包含的文本
 	}{
 		{
 			name:     "嵌套标签",

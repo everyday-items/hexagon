@@ -12,7 +12,7 @@ import (
 
 // LatencyEvaluator 评估系统延迟
 type LatencyEvaluator struct {
-	maxLatencyMs float64 // 最大可接受延迟（毫秒）
+	maxLatencyMs    float64 // 最大可接受延迟（毫秒）
 	targetLatencyMs float64 // 目标延迟（毫秒）
 }
 
@@ -36,8 +36,8 @@ func WithTargetLatency(ms float64) LatencyOption {
 // NewLatencyEvaluator 创建延迟评估器
 func NewLatencyEvaluator(opts ...LatencyOption) *LatencyEvaluator {
 	e := &LatencyEvaluator{
-		maxLatencyMs:    5000,  // 5秒
-		targetLatencyMs: 1000,  // 1秒
+		maxLatencyMs:    5000, // 5秒
+		targetLatencyMs: 1000, // 1秒
 	}
 	for _, opt := range opts {
 		opt(e)
@@ -101,10 +101,10 @@ func (e *LatencyEvaluator) Evaluate(ctx context.Context, input evaluate.EvalInpu
 		Passed: &passed,
 		Reason: reason,
 		Details: map[string]any{
-			"latency_ms":     latencyMs,
-			"target_ms":      e.targetLatencyMs,
-			"max_ms":         e.maxLatencyMs,
-			"ttfb_ms":        float64(input.Timing.TTFBDuration.Milliseconds()),
+			"latency_ms": latencyMs,
+			"target_ms":  e.targetLatencyMs,
+			"max_ms":     e.maxLatencyMs,
+			"ttfb_ms":    float64(input.Timing.TTFBDuration.Milliseconds()),
 		},
 		Duration: time.Since(start),
 	}, nil
@@ -140,8 +140,8 @@ func WithTargetCost(cost float64) CostOption {
 // NewCostEvaluator 创建成本评估器
 func NewCostEvaluator(opts ...CostOption) *CostEvaluator {
 	e := &CostEvaluator{
-		maxCost:    0.1,   // 10 美分
-		targetCost: 0.01,  // 1 美分
+		maxCost:    0.1,  // 10 美分
+		targetCost: 0.01, // 1 美分
 	}
 	for _, opt := range opts {
 		opt(e)
@@ -202,12 +202,12 @@ func (e *CostEvaluator) Evaluate(ctx context.Context, input evaluate.EvalInput) 
 		Passed: &passed,
 		Reason: reason,
 		Details: map[string]any{
-			"cost_usd":        cost,
-			"target_cost":     e.targetCost,
-			"max_cost":        e.maxCost,
-			"input_tokens":    input.Cost.InputTokens,
-			"output_tokens":   input.Cost.OutputTokens,
-			"total_tokens":    input.Cost.TotalTokens,
+			"cost_usd":      cost,
+			"target_cost":   e.targetCost,
+			"max_cost":      e.maxCost,
+			"input_tokens":  input.Cost.InputTokens,
+			"output_tokens": input.Cost.OutputTokens,
+			"total_tokens":  input.Cost.TotalTokens,
 		},
 		Duration: time.Since(start),
 	}, nil
@@ -243,8 +243,8 @@ func WithTargetThroughput(tps float64) ThroughputOption {
 // NewThroughputEvaluator 创建吞吐量评估器
 func NewThroughputEvaluator(opts ...ThroughputOption) *ThroughputEvaluator {
 	e := &ThroughputEvaluator{
-		minThroughput:    10,   // 10 tokens/秒
-		targetThroughput: 50,   // 50 tokens/秒
+		minThroughput:    10, // 10 tokens/秒
+		targetThroughput: 50, // 50 tokens/秒
 	}
 	for _, opt := range opts {
 		opt(e)
@@ -312,11 +312,11 @@ func (e *ThroughputEvaluator) Evaluate(ctx context.Context, input evaluate.EvalI
 		Passed: &passed,
 		Reason: reason,
 		Details: map[string]any{
-			"throughput_tps":    throughput,
-			"target_tps":        e.targetThroughput,
-			"min_tps":           e.minThroughput,
-			"output_tokens":     input.Cost.OutputTokens,
-			"duration_sec":      durationSec,
+			"throughput_tps": throughput,
+			"target_tps":     e.targetThroughput,
+			"min_tps":        e.minThroughput,
+			"output_tokens":  input.Cost.OutputTokens,
+			"duration_sec":   durationSec,
 		},
 		Duration: time.Since(start),
 	}, nil

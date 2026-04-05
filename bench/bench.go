@@ -167,10 +167,10 @@ func (r *Runner) Run(ctx context.Context) (*BenchmarkReport, error) {
 		Results:   make([]BenchmarkResult, 0, len(r.benchmarks)),
 		StartTime: time.Now(),
 		Environment: map[string]string{
-			"go_version":   runtime.Version(),
-			"go_os":        runtime.GOOS,
-			"go_arch":      runtime.GOARCH,
-			"num_cpu":      fmt.Sprintf("%d", runtime.NumCPU()),
+			"go_version":    runtime.Version(),
+			"go_os":         runtime.GOOS,
+			"go_arch":       runtime.GOARCH,
+			"num_cpu":       fmt.Sprintf("%d", runtime.NumCPU()),
 			"num_goroutine": fmt.Sprintf("%d", runtime.NumGoroutine()),
 		},
 	}

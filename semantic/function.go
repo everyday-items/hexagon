@@ -22,7 +22,6 @@ import (
 	"text/template"
 
 	"github.com/hexagon-codes/ai-core/llm"
-	"github.com/hexagon-codes/ai-core/schema"
 )
 
 // ============== 核心类型 ==============
@@ -36,10 +35,10 @@ type Function interface {
 	Description() string
 
 	// InputSchema 输入 Schema
-	InputSchema() *schema.Schema
+	InputSchema() *llm.Schema
 
 	// OutputSchema 输出 Schema
-	OutputSchema() *schema.Schema
+	OutputSchema() *llm.Schema
 
 	// Invoke 调用函数
 	Invoke(ctx context.Context, input map[string]any) (any, error)
@@ -77,10 +76,10 @@ type SemanticFunction struct {
 	promptText string
 
 	// inputSchema 输入 Schema
-	inputSchema *schema.Schema
+	inputSchema *llm.Schema
 
 	// outputSchema 输出 Schema
-	outputSchema *schema.Schema
+	outputSchema *llm.Schema
 
 	// llm LLM 提供者
 	llm llm.Provider
@@ -128,10 +127,10 @@ type SemanticFunctionConfig struct {
 	MaxTokens int
 
 	// InputSchema 输入 Schema
-	InputSchema *schema.Schema
+	InputSchema *llm.Schema
 
 	// OutputSchema 输出 Schema
-	OutputSchema *schema.Schema
+	OutputSchema *llm.Schema
 
 	// OutputParser 输出解析器
 	OutputParser OutputParser
@@ -187,12 +186,12 @@ func (f *SemanticFunction) Description() string {
 }
 
 // InputSchema 返回输入 Schema
-func (f *SemanticFunction) InputSchema() *schema.Schema {
+func (f *SemanticFunction) InputSchema() *llm.Schema {
 	return f.inputSchema
 }
 
 // OutputSchema 返回输出 Schema
-func (f *SemanticFunction) OutputSchema() *schema.Schema {
+func (f *SemanticFunction) OutputSchema() *llm.Schema {
 	return f.outputSchema
 }
 
@@ -256,10 +255,10 @@ type NativeFunction struct {
 	fn any
 
 	// inputSchema 输入 Schema
-	inputSchema *schema.Schema
+	inputSchema *llm.Schema
 
 	// outputSchema 输出 Schema
-	outputSchema *schema.Schema
+	outputSchema *llm.Schema
 }
 
 // NativeFunctionConfig Native 函数配置
@@ -267,8 +266,8 @@ type NativeFunctionConfig struct {
 	Name         string
 	Description  string
 	Fn           any
-	InputSchema  *schema.Schema
-	OutputSchema *schema.Schema
+	InputSchema  *llm.Schema
+	OutputSchema *llm.Schema
 }
 
 // NewNativeFunction 创建 Native 函数
@@ -306,12 +305,12 @@ func (f *NativeFunction) Description() string {
 }
 
 // InputSchema 返回输入 Schema
-func (f *NativeFunction) InputSchema() *schema.Schema {
+func (f *NativeFunction) InputSchema() *llm.Schema {
 	return f.inputSchema
 }
 
 // OutputSchema 返回输出 Schema
-func (f *NativeFunction) OutputSchema() *schema.Schema {
+func (f *NativeFunction) OutputSchema() *llm.Schema {
 	return f.outputSchema
 }
 
@@ -389,15 +388,15 @@ type CompositeFunction struct {
 	functions []Function
 
 	// inputSchema 输入 Schema
-	inputSchema *schema.Schema
+	inputSchema *llm.Schema
 
 	// outputSchema 输出 Schema
-	outputSchema *schema.Schema
+	outputSchema *llm.Schema
 }
 
 // NewCompositeFunction 创建组合函数
 func NewCompositeFunction(name, description string, functions ...Function) *CompositeFunction {
-	var inputSchema, outputSchema *schema.Schema
+	var inputSchema, outputSchema *llm.Schema
 	if len(functions) > 0 {
 		inputSchema = functions[0].InputSchema()
 		outputSchema = functions[len(functions)-1].OutputSchema()
@@ -423,12 +422,12 @@ func (f *CompositeFunction) Description() string {
 }
 
 // InputSchema 返回输入 Schema
-func (f *CompositeFunction) InputSchema() *schema.Schema {
+func (f *CompositeFunction) InputSchema() *llm.Schema {
 	return f.inputSchema
 }
 
 // OutputSchema 返回输出 Schema
-func (f *CompositeFunction) OutputSchema() *schema.Schema {
+func (f *CompositeFunction) OutputSchema() *llm.Schema {
 	return f.outputSchema
 }
 
@@ -628,8 +627,8 @@ func NewFunc[I, O any](name, description string, fn func(ctx context.Context, in
 		Name:         name,
 		Description:  description,
 		Fn:           fn,
-		InputSchema:  schema.Of[I](),
-		OutputSchema: schema.Of[O](),
+		InputSchema:  llm.SchemaOf[I](),
+		OutputSchema: llm.SchemaOf[O](),
 	})
 	return nf
 }

@@ -21,12 +21,12 @@ type Embedder interface {
 // SemanticSplitter 语义分割器
 // 基于 embedding 相似度进行智能分割，在语义边界处分割文档
 type SemanticSplitter struct {
-	embedder           Embedder
-	bufferSize         int     // 句子缓冲区大小（用于计算相似度）
+	embedder            Embedder
+	bufferSize          int     // 句子缓冲区大小（用于计算相似度）
 	breakpointThreshold float64 // 断点阈值（低于此值视为语义边界）
-	minChunkSize       int     // 最小块大小
-	maxChunkSize       int     // 最大块大小
-	sentenceEnds       []string
+	minChunkSize        int     // 最小块大小
+	maxChunkSize        int     // 最大块大小
+	sentenceEnds        []string
 }
 
 // SemanticOption SemanticSplitter 选项
@@ -70,12 +70,12 @@ func WithSemanticSentenceEnds(ends []string) SemanticOption {
 // NewSemanticSplitter 创建语义分割器
 func NewSemanticSplitter(embedder Embedder, opts ...SemanticOption) *SemanticSplitter {
 	s := &SemanticSplitter{
-		embedder:           embedder,
-		bufferSize:         3,   // 前后各考虑 3 个句子
+		embedder:            embedder,
+		bufferSize:          3,   // 前后各考虑 3 个句子
 		breakpointThreshold: 0.3, // 相似度低于 0.3 视为边界
-		minChunkSize:       100,
-		maxChunkSize:       2000,
-		sentenceEnds:       []string{"。", "！", "？", ".", "!", "?"},
+		minChunkSize:        100,
+		maxChunkSize:        2000,
+		sentenceEnds:        []string{"。", "！", "？", ".", "!", "?"},
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -135,11 +135,11 @@ func (s *SemanticSplitter) splitDocument(ctx context.Context, doc rag.Document) 
 			Content: chunk,
 			Source:  doc.Source,
 			Metadata: copyMetadata(doc.Metadata, map[string]any{
-				"chunk_index":     i,
-				"chunk_total":     len(chunks),
-				"parent_id":       doc.ID,
-				"splitter":        "semantic",
-				"sentence_count":  countSentences(chunk, s.sentenceEnds),
+				"chunk_index":    i,
+				"chunk_total":    len(chunks),
+				"parent_id":      doc.ID,
+				"splitter":       "semantic",
+				"sentence_count": countSentences(chunk, s.sentenceEnds),
 			}),
 			CreatedAt: time.Now(),
 		}

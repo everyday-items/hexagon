@@ -36,15 +36,15 @@ func newMockAgent(name string, runFunc func(context.Context, Input) (Output, err
 	}
 }
 
-func (m *mockAgent) ID() string                    { return m.id }
-func (m *mockAgent) Name() string                  { return m.name }
-func (m *mockAgent) Description() string           { return m.description }
-func (m *mockAgent) Role() Role                    { return m.role }
-func (m *mockAgent) Tools() []tool.Tool            { return nil }
-func (m *mockAgent) Memory() memory.Memory         { return nil }
-func (m *mockAgent) LLM() llm.Provider             { return nil }
-func (m *mockAgent) InputSchema() *core.Schema     { return core.SchemaOf[Input]() }
-func (m *mockAgent) OutputSchema() *core.Schema    { return core.SchemaOf[Output]() }
+func (m *mockAgent) ID() string                 { return m.id }
+func (m *mockAgent) Name() string               { return m.name }
+func (m *mockAgent) Description() string        { return m.description }
+func (m *mockAgent) Role() Role                 { return m.role }
+func (m *mockAgent) Tools() []tool.Tool         { return nil }
+func (m *mockAgent) Memory() memory.Memory      { return nil }
+func (m *mockAgent) LLM() llm.Provider          { return nil }
+func (m *mockAgent) InputSchema() *core.Schema  { return core.SchemaOf[Input]() }
+func (m *mockAgent) OutputSchema() *core.Schema { return core.SchemaOf[Output]() }
 
 func (m *mockAgent) Run(ctx context.Context, input Input) (Output, error) {
 	if m.runFunc != nil {

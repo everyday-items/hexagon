@@ -510,11 +510,11 @@ func (m *PluginManager) Stats() map[string]any {
 	}
 
 	return map[string]any{
-		"total":    len(plugins),
-		"running":  running,
-		"stopped":  stopped,
-		"errored":  errored,
-		"by_type":  typeCount,
+		"total":     len(plugins),
+		"running":   running,
+		"stopped":   stopped,
+		"errored":   errored,
+		"by_type":   typeCount,
 		"factories": len(m.Registry.ListFactories()),
 	}
 }

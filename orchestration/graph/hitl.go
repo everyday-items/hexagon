@@ -511,14 +511,14 @@ type HITLRecord struct {
 
 // HITLStats HITL 统计
 type HITLStats struct {
-	TotalRequests    int64         `json:"total_requests"`
-	CompletedCount   int64         `json:"completed_count"`
-	TimeoutCount     int64         `json:"timeout_count"`
-	CancelledCount   int64         `json:"cancelled_count"`
-	AverageWaitTime  time.Duration `json:"average_wait_time"`
-	ApprovalRate     float64       `json:"approval_rate"`
-	ByType           map[HITLType]int64 `json:"by_type"`
-	ByPriority       map[HITLPriority]int64 `json:"by_priority"`
+	TotalRequests   int64                  `json:"total_requests"`
+	CompletedCount  int64                  `json:"completed_count"`
+	TimeoutCount    int64                  `json:"timeout_count"`
+	CancelledCount  int64                  `json:"cancelled_count"`
+	AverageWaitTime time.Duration          `json:"average_wait_time"`
+	ApprovalRate    float64                `json:"approval_rate"`
+	ByType          map[HITLType]int64     `json:"by_type"`
+	ByPriority      map[HITLPriority]int64 `json:"by_priority"`
 }
 
 // HITLManagerConfig 管理器配置

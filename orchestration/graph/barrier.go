@@ -175,8 +175,8 @@ func MapReduceNode[S State](name string, split SplitFunc[S], mapFn MapFunc[S], r
 			return reduce(state, results), nil
 		},
 		Metadata: map[string]any{
-			"__map_reduce":     true,
-			"max_concurrency":  maxConcurrency,
+			"__map_reduce":    true,
+			"max_concurrency": maxConcurrency,
 		},
 	}
 }
@@ -245,7 +245,7 @@ func FanOutFanInNode[S State](name string, branches map[string]NodeHandler[S], m
 		},
 		Metadata: map[string]any{
 			"__fan_out_fan_in": true,
-			"branch_count":    len(branches),
+			"branch_count":     len(branches),
 		},
 	}
 }

@@ -67,8 +67,8 @@ type IncrementalSynthesizer struct {
 	name      string
 	llm       llm.Provider
 	model     string
-	batchSize int    // 每批文档数量
-	maxDocs   int    // 最大使用文档数
+	batchSize int // 每批文档数量
+	maxDocs   int // 最大使用文档数
 }
 
 // IncrementalOption 增量合成器选项

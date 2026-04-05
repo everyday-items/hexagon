@@ -128,7 +128,7 @@ func NewStore(ctx context.Context, opts ...Option) (*Store, error) {
 		table:     "vector_store",
 		dimension: 1536,
 		distance:  DistanceCosine,
-		indexType:  IndexHNSW,
+		indexType: IndexHNSW,
 	}
 
 	for _, opt := range opts {

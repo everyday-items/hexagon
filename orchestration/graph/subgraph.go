@@ -583,9 +583,9 @@ func BranchNode[S State](name string, branches map[string]*Graph[S], selector fu
 			return subgraph.Run(ctx, state)
 		},
 		Metadata: map[string]any{
-			"branch_node":    true,
-			"branch_count":   len(branches),
-			"branch_labels":  getBranchLabels(branches),
+			"branch_node":   true,
+			"branch_count":  len(branches),
+			"branch_labels": getBranchLabels(branches),
 		},
 	}
 }

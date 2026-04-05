@@ -25,10 +25,10 @@ func newMockPlugin(name string, pluginType plugin.PluginType) *mockPlugin {
 	}
 }
 
-func (p *mockPlugin) Info() plugin.PluginInfo                           { return p.info }
-func (p *mockPlugin) Init(_ context.Context, _ map[string]any) error    { return nil }
-func (p *mockPlugin) Start(_ context.Context) error                     { return nil }
-func (p *mockPlugin) Stop(_ context.Context) error                      { return nil }
+func (p *mockPlugin) Info() plugin.PluginInfo                        { return p.info }
+func (p *mockPlugin) Init(_ context.Context, _ map[string]any) error { return nil }
+func (p *mockPlugin) Start(_ context.Context) error                  { return nil }
+func (p *mockPlugin) Stop(_ context.Context) error                   { return nil }
 func (p *mockPlugin) Health() plugin.HealthStatus {
 	return plugin.HealthStatus{
 		Status:    plugin.HealthStateHealthy,

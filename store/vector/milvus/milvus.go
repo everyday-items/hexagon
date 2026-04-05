@@ -207,13 +207,13 @@ func (s *Store) createCollection(ctx context.Context) error {
 	req := createCollectionRequest{
 		CollectionName: s.collection,
 		Schema: collectionSchema{
-			AutoID:              false,
-			EnableDynamicField:  true,
+			AutoID:             false,
+			EnableDynamicField: true,
 			Fields: []fieldSchema{
 				{
-					FieldName:  "id",
-					DataType:   "VarChar",
-					IsPrimary:  true,
+					FieldName:         "id",
+					DataType:          "VarChar",
+					IsPrimary:         true,
 					ElementTypeParams: map[string]string{"max_length": "256"},
 				},
 				{
@@ -224,13 +224,13 @@ func (s *Store) createCollection(ctx context.Context) error {
 					},
 				},
 				{
-					FieldName: "content",
-					DataType:  "VarChar",
+					FieldName:         "content",
+					DataType:          "VarChar",
 					ElementTypeParams: map[string]string{"max_length": "65535"},
 				},
 				{
-					FieldName: "metadata_json",
-					DataType:  "VarChar",
+					FieldName:         "metadata_json",
+					DataType:          "VarChar",
 					ElementTypeParams: map[string]string{"max_length": "65535"},
 				},
 			},

@@ -218,16 +218,16 @@ func (t *Tool) execute(ctx context.Context, input ExecuteInput) (*ExecuteOutput,
 //
 // 安全说明：
 //   - 检查命令链接符（&&, ||, ;, |）防止命令注入
-//   - 检查命令替换符（$(), ``）防止注入
+//   - 检查命令替换符（$(), “）防止注入
 //   - 白名单模式下只允许指定的命令
 func (t *Tool) validateCommand(cmd string) error {
 	// 检查危险的命令链接符和命令替换符
 	dangerousPatterns := []string{
 		"&&", "||", ";", // 命令链接
-		"|",             // 管道（可能被滥用）
-		"$(", "`",       // 命令替换
-		"\n", "\r",      // 换行符注入
-		"\x00",          // 空字节注入
+		"|",       // 管道（可能被滥用）
+		"$(", "`", // 命令替换
+		"\n", "\r", // 换行符注入
+		"\x00", // 空字节注入
 	}
 	cmdLower := strings.ToLower(cmd)
 	for _, pattern := range dangerousPatterns {
@@ -444,10 +444,10 @@ func GrepTool() tool.Tool {
 
 	t := &Tool{config: config}
 	return tool.NewFunc("grep", "搜索文本内容", func(ctx context.Context, input struct {
-		Pattern   string `json:"pattern" desc:"搜索模式" required:"true"`
-		Path      string `json:"path" desc:"搜索路径"`
-		Recursive bool   `json:"recursive" desc:"递归搜索"`
-		IgnoreCase bool  `json:"ignore_case" desc:"忽略大小写"`
+		Pattern    string `json:"pattern" desc:"搜索模式" required:"true"`
+		Path       string `json:"path" desc:"搜索路径"`
+		Recursive  bool   `json:"recursive" desc:"递归搜索"`
+		IgnoreCase bool   `json:"ignore_case" desc:"忽略大小写"`
 	}) (*ExecuteOutput, error) {
 		args := []string{}
 		if input.Recursive {

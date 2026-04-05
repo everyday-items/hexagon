@@ -43,9 +43,9 @@ func WithMetricsInstance(m metrics.Metrics) MetricsHooksOption {
 
 // metricsState 指标收集的运行时状态
 type metricsState struct {
-	runStartTimes      sync.Map // runID -> time.Time
-	toolStartTimes     sync.Map // toolID -> time.Time
-	llmStartTimes      sync.Map // requestID -> time.Time
+	runStartTimes       sync.Map // runID -> time.Time
+	toolStartTimes      sync.Map // toolID -> time.Time
+	llmStartTimes       sync.Map // requestID -> time.Time
 	retrieverStartTimes sync.Map // queryID -> time.Time
 }
 

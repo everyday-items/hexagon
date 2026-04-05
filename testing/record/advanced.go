@@ -291,18 +291,18 @@ func (m *FixtureManager) Set(name, key string, value any) error {
 
 // TestScenario 测试场景
 type TestScenario struct {
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
-	Steps       []TestStep          `json:"steps"`
-	Fixtures    []string            `json:"fixtures"`
-	Metadata    map[string]any      `json:"metadata,omitempty"`
-	CreatedAt   time.Time           `json:"created_at"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Steps       []TestStep     `json:"steps"`
+	Fixtures    []string       `json:"fixtures"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
 }
 
 // TestStep 测试步骤
 type TestStep struct {
 	Name        string         `json:"name"`
-	Action      string         `json:"action"`      // call_llm, call_tool, assert, etc
+	Action      string         `json:"action"` // call_llm, call_tool, assert, etc
 	Input       map[string]any `json:"input,omitempty"`
 	Expected    map[string]any `json:"expected,omitempty"`
 	Cassette    string         `json:"cassette,omitempty"`
@@ -380,18 +380,18 @@ func (m *ScenarioManager) Save(scenario *TestScenario) error {
 //
 // 录制完整的测试会话，包括所有类型的交互
 type SessionRecorder struct {
-	name            string
-	llmCassette     *Cassette
-	toolCassette    *ToolCassette
-	ragCassette     *RAGCassette
-	events          []SessionEvent
-	startTime       time.Time
-	mu              sync.Mutex
+	name         string
+	llmCassette  *Cassette
+	toolCassette *ToolCassette
+	ragCassette  *RAGCassette
+	events       []SessionEvent
+	startTime    time.Time
+	mu           sync.Mutex
 }
 
 // SessionEvent 会话事件
 type SessionEvent struct {
-	Type      string         `json:"type"`      // llm, tool, rag, custom
+	Type      string         `json:"type"` // llm, tool, rag, custom
 	Timestamp time.Time      `json:"timestamp"`
 	Data      map[string]any `json:"data"`
 }

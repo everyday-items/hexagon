@@ -261,12 +261,13 @@ func (m *EnvironmentManager) ListEnvironments() ([]Environment, error) {
 // InitializeEnvironments 初始化环境目录结构
 //
 // 创建标准的环境目录结构：
-//   config/
-//     base/          # 基础配置
-//     development/   # 开发环境
-//     test/          # 测试环境
-//     staging/       # 预发布环境
-//     production/    # 生产环境
+//
+//	config/
+//	  base/          # 基础配置
+//	  development/   # 开发环境
+//	  test/          # 测试环境
+//	  staging/       # 预发布环境
+//	  production/    # 生产环境
 func (m *EnvironmentManager) InitializeEnvironments() error {
 	envs := []string{
 		"base",

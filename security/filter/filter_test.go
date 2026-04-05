@@ -433,9 +433,9 @@ func TestNormalizeChars(t *testing.T) {
 		input    string
 		contains string
 	}{
-		{"h@cker", "hacker"},  // @ -> a
-		{"l33t", "leet"},      // 3 -> e
-		{"h4x0r", "haxor"},    // 4 -> a, 0 -> o
+		{"h@cker", "hacker"}, // @ -> a
+		{"l33t", "leet"},     // 3 -> e
+		{"h4x0r", "haxor"},   // 4 -> a, 0 -> o
 	}
 
 	for _, tt := range tests {
@@ -477,14 +477,14 @@ func TestRedactWord(t *testing.T) {
 
 func TestFilterResult(t *testing.T) {
 	result := &FilterResult{
-		Original:  "test",
-		Filtered:  "test",
-		Passed:    true,
-		Score:     0.1,
-		Category:  CategorySafe,
-		Findings:  []Finding{},
-		Action:    ActionAllow,
-		Metadata:  map[string]any{"key": "value"},
+		Original: "test",
+		Filtered: "test",
+		Passed:   true,
+		Score:    0.1,
+		Category: CategorySafe,
+		Findings: []Finding{},
+		Action:   ActionAllow,
+		Metadata: map[string]any{"key": "value"},
 	}
 
 	if result.Original != "test" {

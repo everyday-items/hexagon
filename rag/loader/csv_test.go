@@ -499,7 +499,7 @@ func TestExcelLoader_SharedStrings(t *testing.T) {
 	rows := [][]string{
 		{"类别", "值"},
 		{"水果", "苹果"},
-		{"水果", "香蕉"},    // "水果" 重复，应共享同一字符串索引
+		{"水果", "香蕉"}, // "水果" 重复，应共享同一字符串索引
 		{"蔬菜", "西红柿"},
 	}
 	path := createTestXLSX(t, rows)

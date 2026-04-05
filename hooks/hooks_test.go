@@ -16,8 +16,8 @@ type mockRunHook struct {
 	errorCount int32
 }
 
-func (h *mockRunHook) Name() string    { return h.name }
-func (h *mockRunHook) Enabled() bool   { return h.enabled }
+func (h *mockRunHook) Name() string  { return h.name }
+func (h *mockRunHook) Enabled() bool { return h.enabled }
 func (h *mockRunHook) OnStart(ctx context.Context, event *RunStartEvent) error {
 	atomic.AddInt32(&h.startCount, 1)
 	return nil
@@ -39,8 +39,8 @@ type mockToolHook struct {
 	endCount   int32
 }
 
-func (h *mockToolHook) Name() string    { return h.name }
-func (h *mockToolHook) Enabled() bool   { return h.enabled }
+func (h *mockToolHook) Name() string  { return h.name }
+func (h *mockToolHook) Enabled() bool { return h.enabled }
 func (h *mockToolHook) OnToolStart(ctx context.Context, event *ToolStartEvent) error {
 	atomic.AddInt32(&h.startCount, 1)
 	return nil
@@ -234,8 +234,8 @@ type timingAwareHook struct {
 	errorCount int32
 }
 
-func (h *timingAwareHook) Name() string  { return h.name }
-func (h *timingAwareHook) Enabled() bool { return h.enabled }
+func (h *timingAwareHook) Name() string    { return h.name }
+func (h *timingAwareHook) Enabled() bool   { return h.enabled }
 func (h *timingAwareHook) Timings() Timing { return h.timings }
 
 func (h *timingAwareHook) OnStart(ctx context.Context, event *RunStartEvent) error {

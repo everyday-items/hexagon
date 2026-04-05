@@ -31,10 +31,10 @@ import (
 //   - 相似度缓存仅在单次 Rerank 调用期间有效
 //   - 每次调用 Rerank 时会清空缓存，避免内存无限增长
 type MMRReranker struct {
-	lambda    float32  // 相关性权重 (0-1)，越大越注重相关性，越小越注重多样性
-	topK      int      // 返回数量
-	embedder  Embedder // 向量嵌入器，用于计算文档相似度
-	useCache  bool     // 是否在单次 Rerank 调用中缓存相似度计算
+	lambda   float32  // 相关性权重 (0-1)，越大越注重相关性，越小越注重多样性
+	topK     int      // 返回数量
+	embedder Embedder // 向量嵌入器，用于计算文档相似度
+	useCache bool     // 是否在单次 Rerank 调用中缓存相似度计算
 }
 
 // Embedder 向量嵌入器接口
@@ -367,7 +367,8 @@ var _ Reranker = (*ContextualCompressionReranker)(nil)
 // 而中间部分的信息容易被忽略（Lost in the Middle）。
 //
 // 该重排序器将最重要的文档放在开头和结尾，次重要的放在中间：
-//   位置分布: [最重要, 次重要, ..., 最不重要, ..., 次重要, 重要]
+//
+//	位置分布: [最重要, 次重要, ..., 最不重要, ..., 次重要, 重要]
 //
 // 例如，输入 [1, 2, 3, 4, 5, 6] (按相关性降序)
 // 输出: [1, 3, 5, 6, 4, 2]
@@ -511,8 +512,8 @@ var _ Reranker = (*LostInTheMiddleReranker)(nil)
 //
 // 确保结果集具有多样性，避免返回过于相似的文档。
 // 使用贪心算法选择：
-//   1. 与查询相关
-//   2. 与已选文档不太相似
+//  1. 与查询相关
+//  2. 与已选文档不太相似
 type DiversityReranker struct {
 	topK          int
 	embedder      Embedder

@@ -5,9 +5,10 @@
 //   - VectorMergeStrategy: 多个假设文档向量的合并策略
 //
 // HyDE 核心思想：
-//   用户查询和相关文档之间存在"语义鸿沟"。HyDE 先让 LLM 生成一个
-//   假设的理想答案文档，然后用该文档的向量去检索真实文档。
-//   因为假设文档与真实文档在语义空间中更接近，检索效果通常更好。
+//
+//	用户查询和相关文档之间存在"语义鸿沟"。HyDE 先让 LLM 生成一个
+//	假设的理想答案文档，然后用该文档的向量去检索真实文档。
+//	因为假设文档与真实文档在语义空间中更接近，检索效果通常更好。
 //
 // 对标 LangChain HypotheticalDocumentEmbedder / LlamaIndex HyDEQueryTransform。
 //

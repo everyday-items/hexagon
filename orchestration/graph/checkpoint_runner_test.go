@@ -113,11 +113,11 @@ func TestCheckpointRunner_Run_WithError(t *testing.T) {
 
 	saver := NewMemoryEnhancedCheckpointSaver()
 	cfg := &CheckpointRunnerConfig{
-		AutoSave:    true,
+		AutoSave:     true,
 		SaveInterval: 1,
-		SaveOnError: true,
-		MaxRetries:  0, // 不重试
-		RetryDelay:  time.Millisecond,
+		SaveOnError:  true,
+		MaxRetries:   0, // 不重试
+		RetryDelay:   time.Millisecond,
 	}
 	runner := NewCheckpointRunner[TestState](g, saver, cfg)
 

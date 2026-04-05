@@ -74,9 +74,9 @@ type Checker interface {
 // Guardrail 输出护栏
 // 组合多个 Checker 对 Agent 输出进行质量检查
 type Guardrail struct {
-	checkers   []Checker
-	threshold  float64 // 通过阈值（加权平均分需要达到的最低分数）
-	failFast   bool    // 首个失败即停止
+	checkers  []Checker
+	threshold float64 // 通过阈值（加权平均分需要达到的最低分数）
+	failFast  bool    // 首个失败即停止
 }
 
 // GuardrailOption 护栏配置选项

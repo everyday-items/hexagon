@@ -76,15 +76,15 @@ type Finding struct {
 type ContentCategory string
 
 const (
-	CategorySafe       ContentCategory = "safe"
-	CategorySensitive  ContentCategory = "sensitive"
-	CategoryHarmful    ContentCategory = "harmful"
-	CategoryAdult      ContentCategory = "adult"
-	CategoryViolence   ContentCategory = "violence"
-	CategoryHate       ContentCategory = "hate"
-	CategorySpam       ContentCategory = "spam"
-	CategoryScam       ContentCategory = "scam"
-	CategoryIllegal    ContentCategory = "illegal"
+	CategorySafe      ContentCategory = "safe"
+	CategorySensitive ContentCategory = "sensitive"
+	CategoryHarmful   ContentCategory = "harmful"
+	CategoryAdult     ContentCategory = "adult"
+	CategoryViolence  ContentCategory = "violence"
+	CategoryHate      ContentCategory = "hate"
+	CategorySpam      ContentCategory = "spam"
+	CategoryScam      ContentCategory = "scam"
+	CategoryIllegal   ContentCategory = "illegal"
 )
 
 // FindingType 发现类型
@@ -116,11 +116,11 @@ const (
 type FilterAction string
 
 const (
-	ActionAllow   FilterAction = "allow"
-	ActionWarn    FilterAction = "warn"
-	ActionRedact  FilterAction = "redact"
-	ActionBlock   FilterAction = "block"
-	ActionReview  FilterAction = "review"
+	ActionAllow  FilterAction = "allow"
+	ActionWarn   FilterAction = "warn"
+	ActionRedact FilterAction = "redact"
+	ActionBlock  FilterAction = "block"
+	ActionReview FilterAction = "review"
 )
 
 // FilterConfig 过滤器配置
@@ -175,9 +175,9 @@ type SensitiveWordFilter struct {
 
 // SensitiveWord 敏感词
 type SensitiveWord struct {
-	Word     string   `json:"word"`
-	Category string   `json:"category"`
-	Severity Severity `json:"severity"`
+	Word     string       `json:"word"`
+	Category string       `json:"category"`
+	Severity Severity     `json:"severity"`
 	Action   FilterAction `json:"action"`
 }
 
@@ -595,13 +595,13 @@ type ToxicityClassifier interface {
 
 // ToxicityScore 有害分数
 type ToxicityScore struct {
-	Overall      float64 `json:"overall"`
-	Hate         float64 `json:"hate"`
-	Violence     float64 `json:"violence"`
-	Sexual       float64 `json:"sexual"`
-	SelfHarm     float64 `json:"self_harm"`
-	Harassment   float64 `json:"harassment"`
-	Threatening  float64 `json:"threatening"`
+	Overall     float64 `json:"overall"`
+	Hate        float64 `json:"hate"`
+	Violence    float64 `json:"violence"`
+	Sexual      float64 `json:"sexual"`
+	SelfHarm    float64 `json:"self_harm"`
+	Harassment  float64 `json:"harassment"`
+	Threatening float64 `json:"threatening"`
 }
 
 // NewToxicityFilter 创建有害内容过滤器

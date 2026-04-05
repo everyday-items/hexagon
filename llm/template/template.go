@@ -279,20 +279,20 @@ func convertToGoTemplate(tmpl string) string {
 func defaultFuncMap() template.FuncMap {
 	return template.FuncMap{
 		// 字符串处理
-		"upper":      strings.ToUpper,
-		"lower":      strings.ToLower,
-		"title":      strings.Title,
-		"trim":       strings.TrimSpace,
-		"replace":    strings.ReplaceAll,
-		"split":      strings.Split,
-		"join":       strings.Join,
-		"contains":   strings.Contains,
-		"hasPrefix":  strings.HasPrefix,
-		"hasSuffix":  strings.HasSuffix,
-		"repeat":     strings.Repeat,
-		"truncate":   truncate,
-		"default":    defaultValue,
-		"quote":      strconv.Quote,
+		"upper":     strings.ToUpper,
+		"lower":     strings.ToLower,
+		"title":     strings.Title,
+		"trim":      strings.TrimSpace,
+		"replace":   strings.ReplaceAll,
+		"split":     strings.Split,
+		"join":      strings.Join,
+		"contains":  strings.Contains,
+		"hasPrefix": strings.HasPrefix,
+		"hasSuffix": strings.HasSuffix,
+		"repeat":    strings.Repeat,
+		"truncate":  truncate,
+		"default":   defaultValue,
+		"quote":     strconv.Quote,
 
 		// 数字处理
 		"add": func(a, b int) int { return a + b },
@@ -323,8 +323,8 @@ func defaultFuncMap() template.FuncMap {
 		"slice": sliceList,
 
 		// 条件
-		"ternary": ternary,
-		"empty":   empty,
+		"ternary":  ternary,
+		"empty":    empty,
 		"coalesce": coalesce,
 	}
 }

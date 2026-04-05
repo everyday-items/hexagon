@@ -343,10 +343,10 @@ func (a *ParallelAgent) Run(ctx context.Context, input Input) (Output, error) {
 
 	merged := a.mergeFunc(outputs)
 	merged.Metadata = map[string]any{
-		"agent_type":  "parallel",
-		"total":       len(a.agents),
-		"failed":      len(errors),
-		"errors":      errors,
+		"agent_type": "parallel",
+		"total":      len(a.agents),
+		"failed":     len(errors),
+		"errors":     errors,
 	}
 
 	return merged, nil
@@ -466,7 +466,7 @@ type LoopAgent struct {
 	config    Config
 	agent     Agent
 	condition func(Output, int) bool // 终止条件：返回 true 则停止循环
-	maxLoops  int                     // 最大循环次数
+	maxLoops  int                    // 最大循环次数
 }
 
 // LoopOption LoopAgent 专用选项
@@ -542,7 +542,7 @@ func (a *LoopAgent) Run(ctx context.Context, input Input) (Output, error) {
 		currentInput = Input{
 			Query: output.Content,
 			Context: map[string]any{
-				"loop_iteration": i + 1,
+				"loop_iteration":  i + 1,
 				"previous_output": output.Content,
 			},
 		}

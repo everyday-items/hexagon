@@ -408,8 +408,8 @@ func CircuitBreakerNode[S State](name string, handler NodeHandler[S], config *Ci
 	}
 
 	return &Node[S]{
-		Name: name,
-		Type: NodeTypeNormal,
+		Name:    name,
+		Type:    NodeTypeNormal,
 		Handler: handler,
 		Metadata: map[string]any{
 			"circuit_breaker": config,

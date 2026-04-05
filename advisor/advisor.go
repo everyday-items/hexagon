@@ -48,8 +48,8 @@ type Timing int
 const (
 	// === 基础切面 ===
 	OnStart Timing = iota // 执行前
-	OnEnd                  // 执行后
-	OnError                // 出错时
+	OnEnd                 // 执行后
+	OnError               // 出错时
 
 	// === 流式切面 ===
 	OnStreamStart // 流开始
@@ -91,8 +91,8 @@ type Scope int
 
 const (
 	ScopeGlobal Scope = iota // 全局：影响所有组件
-	ScopeType                 // 类型：影响特定类型组件
-	ScopeNode                 // 节点：只影响特定节点
+	ScopeType                // 类型：影响特定类型组件
+	ScopeNode                // 节点：只影响特定节点
 )
 
 func (s Scope) String() string {
@@ -112,16 +112,16 @@ func (s Scope) String() string {
 
 // CallRequest 调用请求
 type CallRequest struct {
-	RunID       string         // 运行ID
-	Component   string         // 组件名称
-	ComponentType string       // 组件类型
-	NodeID      string         // 节点ID（图中）
-	Input       any            // 输入数据
-	Options     []any          // 执行选项
-	Metadata    map[string]any // 元数据
-	IsRetry     bool           // 是否为重试
-	RetryCount  int            // 重试次数
-	StartTime   time.Time      // 开始时间
+	RunID         string         // 运行ID
+	Component     string         // 组件名称
+	ComponentType string         // 组件类型
+	NodeID        string         // 节点ID（图中）
+	Input         any            // 输入数据
+	Options       []any          // 执行选项
+	Metadata      map[string]any // 元数据
+	IsRetry       bool           // 是否为重试
+	RetryCount    int            // 重试次数
+	StartTime     time.Time      // 开始时间
 }
 
 // CallResponse 调用响应
@@ -149,13 +149,13 @@ type StreamResponse struct {
 
 // ChunkContext 流块上下文
 type ChunkContext struct {
-	RunID     string        // 运行ID
-	ChunkIdx  int           // 块索引
-	Chunk     any           // 块数据
-	IsFirst   bool          // 是否第一块
-	IsLast    bool          // 是否最后一块
-	Elapsed   time.Duration // 已耗时
-	Metadata  map[string]any
+	RunID    string        // 运行ID
+	ChunkIdx int           // 块索引
+	Chunk    any           // 块数据
+	IsFirst  bool          // 是否第一块
+	IsLast   bool          // 是否最后一块
+	Elapsed  time.Duration // 已耗时
+	Metadata map[string]any
 }
 
 // RetryContext 重试上下文
@@ -777,7 +777,7 @@ func Cache(ttl time.Duration) Advisor {
 // RateLimitAdvisorImpl 限流切面
 type rateLimitAdvisorImpl struct {
 	*BaseAdvisor
-	rate   int           // 每秒请求数
+	rate   int // 每秒请求数
 	tokens chan struct{}
 }
 
@@ -826,9 +826,9 @@ func RateLimit(ratePerSecond int) Advisor {
 // TokenBudgetAdvisorImpl Token 预算切面
 type tokenBudgetAdvisorImpl struct {
 	*BaseAdvisor
-	budget    int64
-	used      int64
-	onExceed  func(ctx context.Context, used, budget int64)
+	budget   int64
+	used     int64
+	onExceed func(ctx context.Context, used, budget int64)
 }
 
 // NewTokenBudgetAdvisor 创建 Token 预算切面

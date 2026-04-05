@@ -143,13 +143,13 @@ var _ coremem.Memory = (*WindowMemory)(nil)
 // SummaryMemory 摘要记忆
 // 当记忆条目超过阈值时，使用 LLM 将旧记忆压缩为摘要
 type SummaryMemory struct {
-	mu            sync.RWMutex
-	entries       []coremem.Entry
-	summary       string // 当前摘要
-	maxEntries    int    // 触发摘要的最大条目数
-	provider      llm.Provider
-	model         string
-	summarizing   bool // 防止并发摘要
+	mu          sync.RWMutex
+	entries     []coremem.Entry
+	summary     string // 当前摘要
+	maxEntries  int    // 触发摘要的最大条目数
+	provider    llm.Provider
+	model       string
+	summarizing bool // 防止并发摘要
 }
 
 // NewSummaryMemory 创建摘要记忆

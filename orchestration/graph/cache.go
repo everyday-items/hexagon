@@ -67,13 +67,13 @@ type CacheStats struct {
 // MemoryNodeCache 内存节点缓存
 // 使用 LRU 策略，支持 TTL 过期
 type MemoryNodeCache struct {
-	mu       sync.RWMutex
-	entries  map[string]*cacheEntry
-	order    []string // LRU 顺序
-	capacity int
-	ttl      time.Duration
-	hits     int64
-	misses   int64
+	mu        sync.RWMutex
+	entries   map[string]*cacheEntry
+	order     []string // LRU 顺序
+	capacity  int
+	ttl       time.Duration
+	hits      int64
+	misses    int64
 	evictions int64
 }
 

@@ -228,10 +228,10 @@ func (s *Store) Add(ctx context.Context, docs []vector.Document) error {
 
 	// 准备请求数据
 	type addRequest struct {
-		IDs        []string              `json:"ids"`
-		Embeddings [][]float32           `json:"embeddings"`
-		Metadatas  []map[string]any      `json:"metadatas"`
-		Documents  []string              `json:"documents"`
+		IDs        []string         `json:"ids"`
+		Embeddings [][]float32      `json:"embeddings"`
+		Metadatas  []map[string]any `json:"metadatas"`
+		Documents  []string         `json:"documents"`
 	}
 
 	req := addRequest{
@@ -297,8 +297,8 @@ func (s *Store) Search(ctx context.Context, embedding []float32, limit int, opts
 
 	// 准备请求
 	type queryRequest struct {
-		QueryEmbeddings [][]float32 `json:"query_embeddings"`
-		NResults        int         `json:"n_results"`
+		QueryEmbeddings [][]float32    `json:"query_embeddings"`
+		NResults        int            `json:"n_results"`
 		Where           map[string]any `json:"where,omitempty"`
 	}
 
@@ -342,11 +342,11 @@ func (s *Store) Search(ctx context.Context, embedding []float32, limit int, opts
 
 	// 解析响应
 	type queryResponse struct {
-		IDs        [][]string              `json:"ids"`
-		Embeddings [][][]float32           `json:"embeddings"`
-		Documents  [][]string              `json:"documents"`
-		Metadatas  [][]map[string]any      `json:"metadatas"`
-		Distances  [][]float32             `json:"distances"`
+		IDs        [][]string         `json:"ids"`
+		Embeddings [][][]float32      `json:"embeddings"`
+		Documents  [][]string         `json:"documents"`
+		Metadatas  [][]map[string]any `json:"metadatas"`
+		Distances  [][]float32        `json:"distances"`
 	}
 
 	var result queryResponse
@@ -433,10 +433,10 @@ func (s *Store) Get(ctx context.Context, id string) (*vector.Document, error) {
 
 	// 解析响应
 	type getResponse struct {
-		IDs        []string              `json:"ids"`
-		Embeddings [][]float32           `json:"embeddings"`
-		Documents  []string              `json:"documents"`
-		Metadatas  []map[string]any      `json:"metadatas"`
+		IDs        []string         `json:"ids"`
+		Embeddings [][]float32      `json:"embeddings"`
+		Documents  []string         `json:"documents"`
+		Metadatas  []map[string]any `json:"metadatas"`
 	}
 
 	var result getResponse
@@ -526,10 +526,10 @@ func (s *Store) Update(ctx context.Context, docs []vector.Document) error {
 
 	// ChromaDB 的 update 需要完整的文档信息
 	type updateRequest struct {
-		IDs        []string              `json:"ids"`
-		Embeddings [][]float32           `json:"embeddings"`
-		Metadatas  []map[string]any      `json:"metadatas"`
-		Documents  []string              `json:"documents"`
+		IDs        []string         `json:"ids"`
+		Embeddings [][]float32      `json:"embeddings"`
+		Metadatas  []map[string]any `json:"metadatas"`
+		Documents  []string         `json:"documents"`
 	}
 
 	req := updateRequest{

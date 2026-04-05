@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"github.com/hexagon-codes/ai-core/llm"
-	"github.com/hexagon-codes/ai-core/template"
 	"github.com/hexagon-codes/hexagon/internal/util"
 	"github.com/hexagon-codes/hexagon/rag"
 )
@@ -188,8 +187,8 @@ func (e *TesseractEngine) SupportedFormats() []string {
 // VisionLLMEngine 基于多模态 LLM 的 OCR 引擎
 // 使用 GPT-4V、Gemini Vision 等多模态模型提取文字
 type VisionLLMEngine struct {
-	provider    llm.Provider
-	model       string
+	provider     llm.Provider
+	model        string
 	systemPrompt string
 }
 
@@ -246,9 +245,9 @@ func (e *VisionLLMEngine) ExtractText(ctx context.Context, filePath string) (*OC
 			{Role: llm.RoleSystem, Content: e.systemPrompt},
 			{
 				Role: llm.RoleUser,
-				MultiContent: []template.ContentPart{
-					template.NewTextPart(fmt.Sprintf("请识别以下图片中的所有文字内容（文件名: %s）", filepath.Base(filePath))),
-					template.NewImageURLPart(dataURI, "high"),
+				MultiContent: []llm.ContentPart{
+					llm.NewTextPart(fmt.Sprintf("请识别以下图片中的所有文字内容（文件名: %s）", filepath.Base(filePath))),
+					llm.NewImageURLPart(dataURI, "high"),
 				},
 			},
 		},
@@ -366,10 +365,10 @@ func (l *OCRLoader) Load(ctx context.Context) ([]rag.Document, error) {
 
 	// 构建文档元数据
 	metadata := map[string]any{
-		"source":      l.filePath,
-		"ocr_engine":  l.engine.Name(),
-		"confidence":  result.Confidence,
-		"file_size":   info.Size(),
+		"source":     l.filePath,
+		"ocr_engine": l.engine.Name(),
+		"confidence": result.Confidence,
+		"file_size":  info.Size(),
 	}
 	if result.Language != "" {
 		metadata["language"] = result.Language

@@ -175,8 +175,8 @@ const (
 type PlanOption func(*planConfig)
 
 type planConfig struct {
-	maxSteps      int
-	timeout       time.Duration
+	maxSteps       int
+	timeout        time.Duration
 	availableTools []string
 	context        map[string]any
 }

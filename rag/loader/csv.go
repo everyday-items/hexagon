@@ -368,8 +368,8 @@ var _ rag.Loader = (*ExcelLoader)(nil)
 // xlsxSharedStrings 共享字符串表
 // xlsx 中相同的字符串只存储一次，单元格通过索引引用
 type xlsxSharedStrings struct {
-	XMLName xml.Name    `xml:"sst"`
-	SI      []xlsxSI    `xml:"si"`
+	XMLName xml.Name `xml:"sst"`
+	SI      []xlsxSI `xml:"si"`
 }
 
 // xlsxSI 共享字符串条目
@@ -385,8 +385,8 @@ type xlsxR struct {
 
 // xlsxWorksheet 工作表
 type xlsxWorksheet struct {
-	XMLName   xml.Name       `xml:"worksheet"`
-	SheetData xlsxSheetData  `xml:"sheetData"`
+	XMLName   xml.Name      `xml:"worksheet"`
+	SheetData xlsxSheetData `xml:"sheetData"`
 }
 
 // xlsxSheetData 工作表数据
@@ -657,8 +657,8 @@ var _ rag.Loader = (*PPTXLoader)(nil)
 
 // pptxSlide 幻灯片
 type pptxSlide struct {
-	XMLName xml.Name  `xml:"sld"`
-	CSld    pptxCSld  `xml:"cSld"`
+	XMLName xml.Name `xml:"sld"`
+	CSld    pptxCSld `xml:"cSld"`
 }
 
 // pptxCSld 幻灯片内容

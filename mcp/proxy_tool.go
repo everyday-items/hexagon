@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/ai-core/tool"
 )
 
@@ -34,7 +34,7 @@ type MCPProxyTool struct {
 	client *TransportClient
 
 	// 缓存的 ai-core Schema
-	cachedSchema *schema.Schema
+	cachedSchema *llm.Schema
 }
 
 // NewMCPProxyTool 创建 MCP 代理工具
@@ -60,7 +60,7 @@ func (t *MCPProxyTool) Description() string {
 }
 
 // Schema 返回工具参数的 JSON Schema
-func (t *MCPProxyTool) Schema() *schema.Schema {
+func (t *MCPProxyTool) Schema() *llm.Schema {
 	return t.cachedSchema
 }
 

@@ -139,7 +139,7 @@ type GraphStore interface {
 // 适用于测试和小规模数据
 type MemoryGraphStore struct {
 	mu        sync.RWMutex
-	entities  map[string]*Entity  // name -> entity
+	entities  map[string]*Entity   // name -> entity
 	relations map[string]*Relation // id -> relation
 	// 邻接表
 	outEdges map[string][]string // entityName -> []relationID
@@ -562,9 +562,9 @@ func (t *Text2Cypher) getSchemaDescription(ctx context.Context) (string, error) 
 // 结合知识图谱和传统向量检索
 type GraphRetriever struct {
 	graph       *PropertyGraph
-	hops        int    // 子图深度
-	maxEntities int    // 最大返回实体数
-	includeRels bool   // 是否在结果中包含关系信息
+	hops        int  // 子图深度
+	maxEntities int  // 最大返回实体数
+	includeRels bool // 是否在结果中包含关系信息
 }
 
 // GraphRetrieverOption 选项

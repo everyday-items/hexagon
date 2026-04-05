@@ -36,38 +36,38 @@ type HexagonMetrics struct {
 
 // AgentStats Agent 统计信息
 type AgentStats struct {
-	TotalRuns      int64
-	TotalErrors    int64
-	TotalDuration  time.Duration
-	LastRunTime    time.Time
+	TotalRuns       int64
+	TotalErrors     int64
+	TotalDuration   time.Duration
+	LastRunTime     time.Time
 	AverageDuration time.Duration
 }
 
 // LLMStats LLM 统计信息
 type LLMStats struct {
-	TotalCalls        int64
-	TotalErrors       int64
-	TotalPromptTokens int64
+	TotalCalls            int64
+	TotalErrors           int64
+	TotalPromptTokens     int64
 	TotalCompletionTokens int64
-	TotalDuration     time.Duration
-	LastCallTime      time.Time
-	AverageDuration   time.Duration
+	TotalDuration         time.Duration
+	LastCallTime          time.Time
+	AverageDuration       time.Duration
 }
 
 // ToolStats Tool 统计信息
 type ToolStats struct {
-	TotalCalls    int64
-	TotalErrors   int64
-	TotalDuration time.Duration
-	LastCallTime  time.Time
+	TotalCalls      int64
+	TotalErrors     int64
+	TotalDuration   time.Duration
+	LastCallTime    time.Time
 	AverageDuration time.Duration
 }
 
 // RetrievalStats 检索统计信息
 type RetrievalStats struct {
-	TotalRetrievals int64
-	TotalDocuments  int64
-	TotalDuration   time.Duration
+	TotalRetrievals   int64
+	TotalDocuments    int64
+	TotalDuration     time.Duration
 	LastRetrievalTime time.Time
 	AverageDuration   time.Duration
 	AverageDocCount   float64
@@ -379,17 +379,17 @@ func (h *HexagonMetrics) GetRetrievalStats() *RetrievalStats {
 
 // Summary Hexagon 指标汇总
 type Summary struct {
-	Timestamp       time.Time                `json:"timestamp"`
-	AgentStats      map[string]*AgentStats   `json:"agent_stats"`
-	LLMStats        map[string]*LLMStats     `json:"llm_stats"`
-	ToolStats       map[string]*ToolStats    `json:"tool_stats"`
-	RetrievalStats  *RetrievalStats          `json:"retrieval_stats"`
-	TotalAgentRuns  int64                    `json:"total_agent_runs"`
-	TotalLLMCalls   int64                    `json:"total_llm_calls"`
-	TotalToolCalls  int64                    `json:"total_tool_calls"`
-	TotalRetrievals int64                    `json:"total_retrievals"`
-	TotalErrors     int64                    `json:"total_errors"`
-	TotalTokens     int64                    `json:"total_tokens"`
+	Timestamp       time.Time              `json:"timestamp"`
+	AgentStats      map[string]*AgentStats `json:"agent_stats"`
+	LLMStats        map[string]*LLMStats   `json:"llm_stats"`
+	ToolStats       map[string]*ToolStats  `json:"tool_stats"`
+	RetrievalStats  *RetrievalStats        `json:"retrieval_stats"`
+	TotalAgentRuns  int64                  `json:"total_agent_runs"`
+	TotalLLMCalls   int64                  `json:"total_llm_calls"`
+	TotalToolCalls  int64                  `json:"total_tool_calls"`
+	TotalRetrievals int64                  `json:"total_retrievals"`
+	TotalErrors     int64                  `json:"total_errors"`
+	TotalTokens     int64                  `json:"total_tokens"`
 }
 
 // GetSummary 获取指标汇总

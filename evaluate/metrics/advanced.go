@@ -106,7 +106,7 @@ Reason: [Brief explanation]`, truncateText(input.Response, 2000))
 		Passed: &passed,
 		Reason: reason,
 		Details: map[string]any{
-			"threshold": e.threshold,
+			"threshold":     e.threshold,
 			"full_analysis": result,
 		},
 		Duration: time.Since(start),
@@ -458,7 +458,7 @@ Reason: [Brief explanation]`, input.Query, truncateText(input.Response, 2000))
 		Passed: &passed,
 		Reason: reason,
 		Details: map[string]any{
-			"threshold": e.threshold,
+			"threshold":     e.threshold,
 			"full_analysis": result,
 		},
 		Duration: time.Since(start),
@@ -566,9 +566,9 @@ Reason: [Brief explanation]`, truncateText(input.Response, 2000))
 		Passed: &passed,
 		Reason: reason,
 		Details: map[string]any{
-			"threshold": e.threshold,
+			"threshold":      e.threshold,
 			"toxicity_level": score,
-			"full_analysis": result,
+			"full_analysis":  result,
 		},
 		Duration: time.Since(start),
 	}, nil

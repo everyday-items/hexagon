@@ -47,7 +47,6 @@ import (
 	"strings"
 
 	"github.com/hexagon-codes/ai-core/llm"
-	"github.com/hexagon-codes/ai-core/schema"
 	"github.com/hexagon-codes/hexagon/llm/parser"
 )
 
@@ -407,7 +406,7 @@ func generateInternal[T any](ctx context.Context, provider llm.Provider, message
 // 支持 json tag 和 desc tag
 func buildFormatInstructions[T any]() string {
 	// 从 Go 类型生成 JSON Schema
-	s := schema.Of[T]()
+	s := llm.SchemaOf[T]()
 
 	// 将 Schema 序列化为 JSON 字符串
 	schemaJSON, err := json.MarshalIndent(s, "", "  ")

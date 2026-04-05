@@ -102,8 +102,8 @@ type svMockLLM struct {
 	completeFn func(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error)
 }
 
-func (m *svMockLLM) Name() string                { return "sv-mock" }
-func (m *svMockLLM) Models() []llm.ModelInfo      { return nil }
+func (m *svMockLLM) Name() string            { return "sv-mock" }
+func (m *svMockLLM) Models() []llm.ModelInfo { return nil }
 func (m *svMockLLM) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
 	if m.completeFn != nil {
 		return m.completeFn(ctx, req)

@@ -321,16 +321,16 @@ func (t *Tool) validateCode(code string) error {
 	// 检查字符串拼接构建危险函数名的尝试
 	// 例如: 'e'+'val', "ev"+"al", chr(101)+chr(118)+chr(97)+chr(108)
 	concatBypassPatterns := []string{
-		"chr(",      // 通过 chr() 拼接
-		"getattr(",  // 通过 getattr 动态获取属性
-		"__import__", // 动态导入
-		"importlib",  // 动态导入库
-		"globals()",  // 访问全局变量
-		"locals()",   // 访问局部变量
-		"vars(",      // 访问变量字典
-		"type(",      // 动态创建类型
-		"__class__",  // 访问类
-		"__bases__",  // 访问基类
+		"chr(",           // 通过 chr() 拼接
+		"getattr(",       // 通过 getattr 动态获取属性
+		"__import__",     // 动态导入
+		"importlib",      // 动态导入库
+		"globals()",      // 访问全局变量
+		"locals()",       // 访问局部变量
+		"vars(",          // 访问变量字典
+		"type(",          // 动态创建类型
+		"__class__",      // 访问类
+		"__bases__",      // 访问基类
 		"__subclasses__", // 访问子类（沙箱逃逸经典手法）
 		"__builtins__",   // 访问内建函数
 	}

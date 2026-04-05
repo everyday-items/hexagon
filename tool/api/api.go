@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/ai-core/tool"
 )
 
@@ -119,8 +119,8 @@ func (t *WeatherTool) Description() string {
 }
 
 // Schema 输入 Schema
-func (t *WeatherTool) Schema() *schema.Schema {
-	return schema.Of[WeatherInput]()
+func (t *WeatherTool) Schema() *llm.Schema {
+	return llm.SchemaOf[WeatherInput]()
 }
 
 // Execute 执行查询
@@ -197,8 +197,8 @@ func (t *WeatherTool) fetchOpenWeather(ctx context.Context, input *WeatherInput)
 	}
 
 	var data struct {
-		Name    string `json:"name"`
-		Main    struct {
+		Name string `json:"name"`
+		Main struct {
 			Temp      float64 `json:"temp"`
 			FeelsLike float64 `json:"feels_like"`
 			Humidity  int     `json:"humidity"`
@@ -451,8 +451,8 @@ func (t *StockTool) Description() string {
 }
 
 // Schema 输入 Schema
-func (t *StockTool) Schema() *schema.Schema {
-	return schema.Of[StockInput]()
+func (t *StockTool) Schema() *llm.Schema {
+	return llm.SchemaOf[StockInput]()
 }
 
 // Execute 执行查询
@@ -597,8 +597,8 @@ type NewsArticle struct {
 
 // NewsOutput 新闻输出
 type NewsOutput struct {
-	TotalResults int            `json:"total_results"`
-	Articles     []NewsArticle  `json:"articles"`
+	TotalResults int           `json:"total_results"`
+	Articles     []NewsArticle `json:"articles"`
 }
 
 // NewNewsTool 创建新闻工具
@@ -621,8 +621,8 @@ func (t *NewsTool) Description() string {
 }
 
 // Schema 输入 Schema
-func (t *NewsTool) Schema() *schema.Schema {
-	return schema.Of[NewsInput]()
+func (t *NewsTool) Schema() *llm.Schema {
+	return llm.SchemaOf[NewsInput]()
 }
 
 // Execute 执行查询
@@ -753,12 +753,12 @@ type CurrencyInput struct {
 
 // CurrencyOutput 汇率输出
 type CurrencyOutput struct {
-	From       string    `json:"from"`
-	To         string    `json:"to"`
-	Rate       float64   `json:"rate"`
-	Amount     float64   `json:"amount"`
-	Converted  float64   `json:"converted"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	From      string    `json:"from"`
+	To        string    `json:"to"`
+	Rate      float64   `json:"rate"`
+	Amount    float64   `json:"amount"`
+	Converted float64   `json:"converted"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // NewCurrencyTool 创建货币工具
@@ -780,8 +780,8 @@ func (t *CurrencyTool) Description() string {
 }
 
 // Schema 输入 Schema
-func (t *CurrencyTool) Schema() *schema.Schema {
-	return schema.Of[CurrencyInput]()
+func (t *CurrencyTool) Schema() *llm.Schema {
+	return llm.SchemaOf[CurrencyInput]()
 }
 
 // Execute 执行查询
@@ -899,10 +899,10 @@ type TranslationInput struct {
 
 // TranslationOutput 翻译输出
 type TranslationOutput struct {
-	OriginalText   string `json:"original_text"`
-	TranslatedText string `json:"translated_text"`
-	SourceLang     string `json:"source_lang"`
-	TargetLang     string `json:"target_lang"`
+	OriginalText   string  `json:"original_text"`
+	TranslatedText string  `json:"translated_text"`
+	SourceLang     string  `json:"source_lang"`
+	TargetLang     string  `json:"target_lang"`
 	Confidence     float64 `json:"confidence,omitempty"`
 }
 
@@ -926,8 +926,8 @@ func (t *TranslationTool) Description() string {
 }
 
 // Schema 输入 Schema
-func (t *TranslationTool) Schema() *schema.Schema {
-	return schema.Of[TranslationInput]()
+func (t *TranslationTool) Schema() *llm.Schema {
+	return llm.SchemaOf[TranslationInput]()
 }
 
 // Execute 执行翻译

@@ -129,7 +129,7 @@ func (c *RuleClassifier) Classify(_ context.Context, query string) (*QueryClassi
 	}
 
 	// 问号数量
-	if strings.Count(query, "?") + strings.Count(query, "？") > 1 {
+	if strings.Count(query, "?")+strings.Count(query, "？") > 1 {
 		complexScore += 0.2
 	}
 

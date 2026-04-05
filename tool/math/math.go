@@ -184,10 +184,10 @@ func Tools() []tool.Tool {
 			"solve_equation",
 			"求解简单方程 (一元一次、一元二次)",
 			func(ctx context.Context, input struct {
-				Type string    `json:"type" description:"方程类型: linear (一元一次 ax+b=0), quadratic (一元二次 ax²+bx+c=0)"`
-				A    float64   `json:"a" description:"系数 a"`
-				B    float64   `json:"b" description:"系数 b"`
-				C    float64   `json:"c,omitempty" description:"系数 c (仅用于二次方程)"`
+				Type string  `json:"type" description:"方程类型: linear (一元一次 ax+b=0), quadratic (一元二次 ax²+bx+c=0)"`
+				A    float64 `json:"a" description:"系数 a"`
+				B    float64 `json:"b" description:"系数 b"`
+				C    float64 `json:"c,omitempty" description:"系数 c (仅用于二次方程)"`
 			}) (struct {
 				Solutions []float64 `json:"solutions"`
 				HasReal   bool      `json:"has_real"`
@@ -535,17 +535,17 @@ func convertData(value float64, from, to string) (float64, error) {
 
 // 时间转换表（基准：秒）
 var timeFactors = map[string]float64{
-	"ms":     0.001,
-	"s":      1,
-	"sec":    1,
-	"min":    60,
-	"h":      3600,
-	"hour":   3600,
-	"d":      86400,
-	"day":    86400,
-	"week":   604800,
-	"month":  2592000,
-	"year":   31536000,
+	"ms":    0.001,
+	"s":     1,
+	"sec":   1,
+	"min":   60,
+	"h":     3600,
+	"hour":  3600,
+	"d":     86400,
+	"day":   86400,
+	"week":  604800,
+	"month": 2592000,
+	"year":  31536000,
 }
 
 func convertTime(value float64, from, to string) (float64, error) {

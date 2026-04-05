@@ -316,16 +316,16 @@ const (
 type EventCategory string
 
 const (
-	CategoryAuth      EventCategory = "auth"
-	CategoryAgent     EventCategory = "agent"
-	CategoryTool      EventCategory = "tool"
-	CategoryLLM       EventCategory = "llm"
-	CategoryMemory    EventCategory = "memory"
-	CategoryWorkflow  EventCategory = "workflow"
-	CategoryNetwork   EventCategory = "network"
-	CategorySecurity  EventCategory = "security"
-	CategoryConfig    EventCategory = "config"
-	CategoryAdmin     EventCategory = "admin"
+	CategoryAuth     EventCategory = "auth"
+	CategoryAgent    EventCategory = "agent"
+	CategoryTool     EventCategory = "tool"
+	CategoryLLM      EventCategory = "llm"
+	CategoryMemory   EventCategory = "memory"
+	CategoryWorkflow EventCategory = "workflow"
+	CategoryNetwork  EventCategory = "network"
+	CategorySecurity EventCategory = "security"
+	CategoryConfig   EventCategory = "config"
+	CategoryAdmin    EventCategory = "admin"
 )
 
 // EventResult 事件结果

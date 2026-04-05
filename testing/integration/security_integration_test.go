@@ -225,9 +225,9 @@ type MockInputGuard struct {
 	threshold float64
 }
 
-func (g *MockInputGuard) Name() string    { return g.name }
-func (g *MockInputGuard) Enabled() bool   { return g.enabled }
-func (g *MockInputGuard) IsInputGuard()   {}
+func (g *MockInputGuard) Name() string  { return g.name }
+func (g *MockInputGuard) Enabled() bool { return g.enabled }
+func (g *MockInputGuard) IsInputGuard() {}
 
 func (g *MockInputGuard) Check(ctx context.Context, input string) (*guard.CheckResult, error) {
 	// Simulate injection detection

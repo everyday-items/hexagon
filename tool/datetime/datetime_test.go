@@ -403,8 +403,8 @@ func TestDateTimeConvertTimezone(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := map[string]any{
-				"datetime":      tt.datetime,
-				"to_timezone":   tt.toTimezone,
+				"datetime":    tt.datetime,
+				"to_timezone": tt.toTimezone,
 			}
 			if tt.fromTimezone != "" {
 				args["from_timezone"] = tt.fromTimezone

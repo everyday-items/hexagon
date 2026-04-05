@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/ai-core/tool"
 )
 
@@ -532,9 +532,9 @@ func ListDir(path string) tool.Tool {
 }
 
 // 为工具定义 Schema
-var _ = schema.Of[ReadInput]()
-var _ = schema.Of[WriteInput]()
-var _ = schema.Of[ListInput]()
-var _ = schema.Of[ExistsInput]()
-var _ = schema.Of[DeleteInput]()
-var _ = schema.Of[InfoInput]()
+var _ = llm.SchemaOf[ReadInput]()
+var _ = llm.SchemaOf[WriteInput]()
+var _ = llm.SchemaOf[ListInput]()
+var _ = llm.SchemaOf[ExistsInput]()
+var _ = llm.SchemaOf[DeleteInput]()
+var _ = llm.SchemaOf[InfoInput]()

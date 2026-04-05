@@ -60,9 +60,9 @@ func (m *MockEvaluator) RequiresLLM() bool {
 func TestEvalInput(t *testing.T) {
 	t.Run("Basic", func(t *testing.T) {
 		input := evaluate.EvalInput{
-			Query:    "What is AI?",
-			Response: "AI stands for Artificial Intelligence",
-			Context:  []string{"context1", "context2"},
+			Query:     "What is AI?",
+			Response:  "AI stands for Artificial Intelligence",
+			Context:   []string{"context1", "context2"},
 			Reference: "Reference answer",
 			Metadata: map[string]any{
 				"key": "value",
@@ -394,13 +394,13 @@ func TestSystemUnderTest(t *testing.T) {
 func TestMetricSummary(t *testing.T) {
 	passRate := 0.90
 	summary := &evaluate.MetricSummary{
-		Name:         "test-metric",
-		Mean:         0.85,
-		Median:       0.87,
-		StdDev:       0.05,
-		Min:          0.70,
-		Max:          0.95,
-		PassRate:     &passRate,
+		Name:     "test-metric",
+		Mean:     0.85,
+		Median:   0.87,
+		StdDev:   0.05,
+		Min:      0.70,
+		Max:      0.95,
+		PassRate: &passRate,
 		Distribution: map[string]int{
 			"0.7-0.8": 2,
 			"0.8-0.9": 5,

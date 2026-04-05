@@ -14,8 +14,8 @@ type MockGuard struct {
 	err     error
 }
 
-func (g *MockGuard) Name() string                                              { return g.name }
-func (g *MockGuard) Enabled() bool                                             { return g.enabled }
+func (g *MockGuard) Name() string  { return g.name }
+func (g *MockGuard) Enabled() bool { return g.enabled }
 func (g *MockGuard) Check(ctx context.Context, input string) (*CheckResult, error) {
 	return g.result, g.err
 }

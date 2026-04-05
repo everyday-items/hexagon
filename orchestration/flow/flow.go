@@ -62,8 +62,8 @@ type Step[S any] struct {
 type Flow[S any] struct {
 	name    string
 	steps   map[string]*Step[S]
-	starts  []string        // 启动步骤列表
-	timeout time.Duration   // 执行超时时间（默认 5 分钟）
+	starts  []string      // 启动步骤列表
+	timeout time.Duration // 执行超时时间（默认 5 分钟）
 }
 
 // FlowBuilder 流构建器

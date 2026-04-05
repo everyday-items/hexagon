@@ -69,10 +69,10 @@ type StateMachine[S any] struct {
 
 // StateNode 状态节点定义
 type StateNode[S any] struct {
-	Name     string
-	OnEnter  func(ctx context.Context, state S) error
-	OnExit   func(ctx context.Context, state S) error
-	Handler  func(ctx context.Context, state S) (string, error) // 返回下一状态名或空字符串使用转换
+	Name    string
+	OnEnter func(ctx context.Context, state S) error
+	OnExit  func(ctx context.Context, state S) error
+	Handler func(ctx context.Context, state S) (string, error) // 返回下一状态名或空字符串使用转换
 }
 
 // Transition 状态转换

@@ -114,10 +114,10 @@ func DefaultDockerConfig() *Config {
 
 // Sandbox 沙箱
 type Sandbox struct {
-	config    *Config
-	mu        sync.Mutex
-	running   map[string]*exec.Cmd
-	tempDirs  []string
+	config   *Config
+	mu       sync.Mutex
+	running  map[string]*exec.Cmd
+	tempDirs []string
 }
 
 // New 创建沙箱
@@ -138,9 +138,9 @@ func (s *Sandbox) ExecuteTool() tool.Tool {
 
 // ExecuteInput 执行输入
 type ExecuteInput struct {
-	Language string `json:"language" desc:"编程语言（python, javascript, go, bash）" required:"true"`
-	Code     string `json:"code" desc:"要执行的代码" required:"true"`
-	Timeout  int    `json:"timeout" desc:"超时时间（秒）"`
+	Language string            `json:"language" desc:"编程语言（python, javascript, go, bash）" required:"true"`
+	Code     string            `json:"code" desc:"要执行的代码" required:"true"`
+	Timeout  int               `json:"timeout" desc:"超时时间（秒）"`
 	Files    map[string]string `json:"files" desc:"要创建的文件（路径 -> 内容）"`
 }
 

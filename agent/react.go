@@ -379,7 +379,6 @@ func (a *ReActAgent) buildToolDefinitions() []llm.ToolDefinition {
 	return defs
 }
 
-
 // formatToolResult 格式化工具结果
 // maxToolResultChars 工具结果最大字符数，超过则截断
 // 防止单个工具返回（如网页抓取）撑爆 LLM 上下文窗口

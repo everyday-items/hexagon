@@ -645,12 +645,12 @@ func (t *TavilySearch) Search(ctx context.Context, query string, config *SearchC
 
 	// 构建请求体
 	requestBody := map[string]any{
-		"api_key":            t.apiKey,
-		"query":              query,
-		"search_depth":       "basic",
-		"include_answer":     true,
+		"api_key":             t.apiKey,
+		"query":               query,
+		"search_depth":        "basic",
+		"include_answer":      true,
 		"include_raw_content": false,
-		"max_results":        config.MaxResults,
+		"max_results":         config.MaxResults,
 	}
 
 	jsonBody, err := json.Marshal(requestBody)

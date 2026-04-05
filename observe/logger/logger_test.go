@@ -234,17 +234,17 @@ func TestSetDefault(t *testing.T) {
 // mockLoggerImpl 模拟 Logger 实现
 type mockLoggerImpl struct{}
 
-func (m *mockLoggerImpl) Debug(msg string, args ...any)                               {}
-func (m *mockLoggerImpl) Info(msg string, args ...any)                                {}
-func (m *mockLoggerImpl) Warn(msg string, args ...any)                                {}
-func (m *mockLoggerImpl) Error(msg string, args ...any)                               {}
-func (m *mockLoggerImpl) DebugContext(ctx context.Context, msg string, args ...any)   {}
-func (m *mockLoggerImpl) InfoContext(ctx context.Context, msg string, args ...any)    {}
-func (m *mockLoggerImpl) WarnContext(ctx context.Context, msg string, args ...any)    {}
-func (m *mockLoggerImpl) ErrorContext(ctx context.Context, msg string, args ...any)   {}
-func (m *mockLoggerImpl) With(args ...any) Logger                                     { return m }
-func (m *mockLoggerImpl) WithContext(ctx context.Context) Logger                      { return m }
-func (m *mockLoggerImpl) SetLevel(level string)                                       {}
+func (m *mockLoggerImpl) Debug(msg string, args ...any)                             {}
+func (m *mockLoggerImpl) Info(msg string, args ...any)                              {}
+func (m *mockLoggerImpl) Warn(msg string, args ...any)                              {}
+func (m *mockLoggerImpl) Error(msg string, args ...any)                             {}
+func (m *mockLoggerImpl) DebugContext(ctx context.Context, msg string, args ...any) {}
+func (m *mockLoggerImpl) InfoContext(ctx context.Context, msg string, args ...any)  {}
+func (m *mockLoggerImpl) WarnContext(ctx context.Context, msg string, args ...any)  {}
+func (m *mockLoggerImpl) ErrorContext(ctx context.Context, msg string, args ...any) {}
+func (m *mockLoggerImpl) With(args ...any) Logger                                   { return m }
+func (m *mockLoggerImpl) WithContext(ctx context.Context) Logger                    { return m }
+func (m *mockLoggerImpl) SetLevel(level string)                                     {}
 
 var _ Logger = (*mockLoggerImpl)(nil)
 

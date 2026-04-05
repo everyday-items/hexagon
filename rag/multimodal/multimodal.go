@@ -371,9 +371,9 @@ type ProcessResult struct {
 
 // ImageProcessor 图像处理器
 type ImageProcessor struct {
-	provider     llm.Provider
-	model        string
-	embedder     ImageEmbedder
+	provider      llm.Provider
+	model         string
+	embedder      ImageEmbedder
 	defaultPrompt string
 }
 
@@ -637,11 +637,11 @@ func (p *VideoProcessor) SupportedTypes() []ContentType {
 
 // MultimodalIndexer 多模态索引器
 type MultimodalIndexer struct {
-	store        vector.Store
-	embedder     vector.Embedder
-	processors   map[ContentType]ContentProcessor
-	batchSize    int
-	mu           sync.RWMutex
+	store      vector.Store
+	embedder   vector.Embedder
+	processors map[ContentType]ContentProcessor
+	batchSize  int
+	mu         sync.RWMutex
 }
 
 // MultimodalIndexerOption 选项

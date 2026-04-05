@@ -12,8 +12,8 @@ import (
 
 // Loader 插件加载器
 type Loader struct {
-	registry  *Registry
-	lifecycle *Lifecycle
+	registry    *Registry
+	lifecycle   *Lifecycle
 	searchPaths []string
 }
 

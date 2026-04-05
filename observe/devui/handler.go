@@ -325,7 +325,7 @@ func (h *handler) handleStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeSuccess(w, map[string]any{
-		"collector": stats,
+		"collector":   stats,
 		"event_types": typeCounts,
 		"server": map[string]any{
 			"addr":    h.devUI.Addr(),

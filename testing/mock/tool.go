@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/ai-core/tool"
 )
 
@@ -14,7 +14,7 @@ import (
 type Tool struct {
 	name        string
 	description string
-	toolSchema  *schema.Schema
+	toolSchema  *llm.Schema
 	results     []tool.Result
 	current     int
 	calls       []map[string]any
@@ -35,7 +35,7 @@ func WithToolDescription(desc string) ToolOption {
 }
 
 // WithToolSchema 设置 Schema
-func WithToolSchema(s *schema.Schema) ToolOption {
+func WithToolSchema(s *llm.Schema) ToolOption {
 	return func(t *Tool) {
 		t.toolSchema = s
 	}
@@ -73,13 +73,13 @@ func (t *Tool) Description() string {
 }
 
 // Schema 返回工具 Schema
-func (t *Tool) Schema() *schema.Schema {
+func (t *Tool) Schema() *llm.Schema {
 	if t.toolSchema != nil {
 		return t.toolSchema
 	}
-	return &schema.Schema{
+	return &llm.Schema{
 		Type: "object",
-		Properties: map[string]*schema.Schema{
+		Properties: map[string]*llm.Schema{
 			"input": {
 				Type:        "string",
 				Description: "Input parameter",
@@ -201,9 +201,9 @@ func ErrorTool(name string, err error) *Tool {
 func CalculatorTool() *Tool {
 	return NewTool("calculator",
 		WithToolDescription("A simple calculator"),
-		WithToolSchema(&schema.Schema{
+		WithToolSchema(&llm.Schema{
 			Type: "object",
-			Properties: map[string]*schema.Schema{
+			Properties: map[string]*llm.Schema{
 				"operation": {
 					Type:        "string",
 					Description: "The operation to perform (add, subtract, multiply, divide)",
@@ -250,9 +250,9 @@ func CalculatorTool() *Tool {
 func SearchTool(results []string) *Tool {
 	return NewTool("search",
 		WithToolDescription("Search for information"),
-		WithToolSchema(&schema.Schema{
+		WithToolSchema(&llm.Schema{
 			Type: "object",
-			Properties: map[string]*schema.Schema{
+			Properties: map[string]*llm.Schema{
 				"query": {
 					Type:        "string",
 					Description: "Search query",

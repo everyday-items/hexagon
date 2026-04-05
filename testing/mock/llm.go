@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/hexagon-codes/ai-core/llm"
-	"github.com/hexagon-codes/ai-core/streamx"
 )
 
 // LLMProvider Mock LLM Provider
@@ -124,7 +123,7 @@ func (p *LLMProvider) Stream(ctx context.Context, req llm.CompletionRequest) (*l
 	sseData := fmt.Sprintf("data: {\"content\":\"%s\"}\n\ndata: [DONE]\n\n", resp.Content)
 	reader := strings.NewReader(sseData)
 
-	return streamx.NewStream(reader, streamx.OpenAIFormat), nil
+	return llm.NewStream(reader, llm.StreamOpenAIFormat), nil
 }
 
 // Models 返回支持的模型列表

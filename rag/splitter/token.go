@@ -182,18 +182,18 @@ type tokenRatios struct {
 // cl100kRatios cl100k_base 编码的 token 比率（GPT-4, GPT-3.5-turbo 系列）
 // 基于实际 tiktoken 统计的近似值
 var cl100kRatios = tokenRatios{
-	asciiWord:   0.25,  // 平均 4 字符 = 1 token
-	cjk:         0.5,   // 平均 2 字符 = 1 token（CJK 通常 1-2 字符/token）
-	digit:       0.33,  // 平均 3 位数字 = 1 token
-	punctuation: 1.0,   // 每个标点约 1 token
-	whitespace:  0.25,  // 空白通常与前后词合并
+	asciiWord:   0.25, // 平均 4 字符 = 1 token
+	cjk:         0.5,  // 平均 2 字符 = 1 token（CJK 通常 1-2 字符/token）
+	digit:       0.33, // 平均 3 位数字 = 1 token
+	punctuation: 1.0,  // 每个标点约 1 token
+	whitespace:  0.25, // 空白通常与前后词合并
 }
 
 // o200kRatios o200k_base 编码的 token 比率（GPT-4o 系列）
 // 更大的词表带来更好的压缩率
 var o200kRatios = tokenRatios{
-	asciiWord:   0.22,  // 略优于 cl100k
-	cjk:         0.45,  // 略优于 cl100k
+	asciiWord:   0.22, // 略优于 cl100k
+	cjk:         0.45, // 略优于 cl100k
 	digit:       0.28,
 	punctuation: 0.9,
 	whitespace:  0.2,
@@ -202,13 +202,13 @@ var o200kRatios = tokenRatios{
 // modelToRatios 模型名到 token 比率的映射
 var modelToRatios = map[string]*tokenRatios{
 	// cl100k_base 模型
-	"gpt-4":              &cl100kRatios,
-	"gpt-4-turbo":        &cl100kRatios,
-	"gpt-3.5-turbo":      &cl100kRatios,
+	"gpt-4":                  &cl100kRatios,
+	"gpt-4-turbo":            &cl100kRatios,
+	"gpt-3.5-turbo":          &cl100kRatios,
 	"text-embedding-ada-002": &cl100kRatios,
 	// o200k_base 模型
-	"gpt-4o":             &o200kRatios,
-	"gpt-4o-mini":        &o200kRatios,
+	"gpt-4o":      &o200kRatios,
+	"gpt-4o-mini": &o200kRatios,
 }
 
 // TiktokenTokenizer 基于 tiktoken 的分词器

@@ -712,16 +712,16 @@ type PolicyCondition struct {
 type ConditionOperator string
 
 const (
-	OpEquals     ConditionOperator = "equals"
-	OpNotEquals  ConditionOperator = "not_equals"
-	OpContains   ConditionOperator = "contains"
-	OpStartsWith ConditionOperator = "starts_with"
-	OpEndsWith   ConditionOperator = "ends_with"
-	OpMatches    ConditionOperator = "matches" // 正则匹配
-	OpIn         ConditionOperator = "in"
-	OpNotIn      ConditionOperator = "not_in"
+	OpEquals      ConditionOperator = "equals"
+	OpNotEquals   ConditionOperator = "not_equals"
+	OpContains    ConditionOperator = "contains"
+	OpStartsWith  ConditionOperator = "starts_with"
+	OpEndsWith    ConditionOperator = "ends_with"
+	OpMatches     ConditionOperator = "matches" // 正则匹配
+	OpIn          ConditionOperator = "in"
+	OpNotIn       ConditionOperator = "not_in"
 	OpGreaterThan ConditionOperator = "greater_than"
-	OpLessThan   ConditionOperator = "less_than"
+	OpLessThan    ConditionOperator = "less_than"
 )
 
 // AddPolicy 添加策略

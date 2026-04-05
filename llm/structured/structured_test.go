@@ -22,10 +22,10 @@ type testUser struct {
 
 // testProduct 测试用的产品结构体
 type testProduct struct {
-	Name     string   `json:"name" desc:"产品名称"`
-	Price    float64  `json:"price" desc:"价格"`
-	Tags     []string `json:"tags" desc:"标签列表"`
-	InStock  bool     `json:"in_stock" desc:"是否有库存"`
+	Name    string   `json:"name" desc:"产品名称"`
+	Price   float64  `json:"price" desc:"价格"`
+	Tags    []string `json:"tags" desc:"标签列表"`
+	InStock bool     `json:"in_stock" desc:"是否有库存"`
 }
 
 // ============== Mock Provider ==============

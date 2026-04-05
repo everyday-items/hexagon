@@ -12,15 +12,15 @@ import (
 func TestPluginInfo(t *testing.T) {
 	t.Run("BasicInfo", func(t *testing.T) {
 		info := plugin.PluginInfo{
-			Name:        "test-plugin",
-			Version:     "1.0.0",
-			Type:        plugin.PluginTypeTool,
-			Description: "Test plugin",
-			Author:      "Test Author",
-			License:     "MIT",
-			Homepage:    "https://example.com",
+			Name:         "test-plugin",
+			Version:      "1.0.0",
+			Type:         plugin.PluginTypeTool,
+			Description:  "Test plugin",
+			Author:       "Test Author",
+			License:      "MIT",
+			Homepage:     "https://example.com",
 			Dependencies: []string{"dep1", "dep2"},
-			Tags:        []string{"tag1", "tag2"},
+			Tags:         []string{"tag1", "tag2"},
 			Metadata: map[string]any{
 				"key": "value",
 			},

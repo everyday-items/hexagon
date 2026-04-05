@@ -19,10 +19,10 @@ func (r *mockRetriever) Retrieve(ctx context.Context, query string, opts ...rag.
 
 // mockCritic 模拟批评器
 type mockCritic struct {
-	needRetrieval       bool
-	relevanceScore      float32
-	faithfulnessScore   float32
-	completenessScore   float32
+	needRetrieval     bool
+	relevanceScore    float32
+	faithfulnessScore float32
+	completenessScore float32
 }
 
 func (c *mockCritic) NeedsRetrieval(ctx context.Context, query string) (bool, float32, error) {

@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -489,29 +490,10 @@ func isRetryableError(err error) bool {
 }
 
 func containsAny(s string, substrs ...string) bool {
-	sLower := string([]byte(s))
+	lower := strings.ToLower(s)
 	for _, sub := range substrs {
-		if len(sub) > 0 && len(sLower) >= len(sub) {
-			for i := 0; i <= len(sLower)-len(sub); i++ {
-				match := true
-				for j := 0; j < len(sub); j++ {
-					c := sLower[i+j]
-					if c >= 'A' && c <= 'Z' {
-						c += 32
-					}
-					sc := sub[j]
-					if sc >= 'A' && sc <= 'Z' {
-						sc += 32
-					}
-					if c != sc {
-						match = false
-						break
-					}
-				}
-				if match {
-					return true
-				}
-			}
+		if strings.Contains(lower, strings.ToLower(sub)) {
+			return true
 		}
 	}
 	return false

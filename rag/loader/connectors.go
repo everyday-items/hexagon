@@ -59,13 +59,13 @@ type Connector interface {
 
 // GitHubConnector GitHub 数据连接器
 type GitHubConnector struct {
-	token     string
-	owner     string
-	repo      string
-	branch    string
-	path      string
-	loadType  GitHubLoadType
-	client    *http.Client
+	token    string
+	owner    string
+	repo     string
+	branch   string
+	path     string
+	loadType GitHubLoadType
+	client   *http.Client
 }
 
 // GitHubLoadType GitHub 加载类型
@@ -235,11 +235,11 @@ func (gc *GitHubConnector) loadIssues(ctx context.Context) ([]*Document, error) 
 	}
 
 	var issues []struct {
-		Number    int    `json:"number"`
-		Title     string `json:"title"`
-		Body      string `json:"body"`
-		State     string `json:"state"`
-		User      struct {
+		Number int    `json:"number"`
+		Title  string `json:"title"`
+		Body   string `json:"body"`
+		State  string `json:"state"`
+		User   struct {
 			Login string `json:"login"`
 		} `json:"user"`
 		CreatedAt string `json:"created_at"`
@@ -397,9 +397,9 @@ func (gc *GitHubConnector) fetchContent(ctx context.Context, url string) (string
 
 // NotionConnector Notion 数据连接器
 type NotionConnector struct {
-	token    string
-	pageID   string
-	client   *http.Client
+	token  string
+	pageID string
+	client *http.Client
 }
 
 // NotionConfig Notion 连接器配置
@@ -613,10 +613,10 @@ func (sc *SlackConnector) Load(ctx context.Context) ([]*Document, error) {
 	var result struct {
 		OK       bool `json:"ok"`
 		Messages []struct {
-			Type   string `json:"type"`
-			User   string `json:"user"`
-			Text   string `json:"text"`
-			TS     string `json:"ts"`
+			Type string `json:"type"`
+			User string `json:"user"`
+			Text string `json:"text"`
+			TS   string `json:"ts"`
 		} `json:"messages"`
 		Error string `json:"error"`
 	}

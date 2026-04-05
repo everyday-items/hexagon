@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/ai-core/tool"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -32,7 +32,7 @@ type MCPProxyToolV2 struct {
 	session *sdkmcp.ClientSession
 
 	// cachedSchema 缓存的 ai-core Schema（从 MCP InputSchema 转换）
-	cachedSchema *schema.Schema
+	cachedSchema *llm.Schema
 }
 
 func (t *MCPProxyToolV2) Name() string {
@@ -43,7 +43,7 @@ func (t *MCPProxyToolV2) Description() string {
 	return t.mcpTool.Description
 }
 
-func (t *MCPProxyToolV2) Schema() *schema.Schema {
+func (t *MCPProxyToolV2) Schema() *llm.Schema {
 	return t.cachedSchema
 }
 
@@ -70,7 +70,7 @@ func (t *MCPProxyToolV2) Execute(ctx context.Context, args map[string]any) (tool
 		return tool.Result{Output: output}, fmt.Errorf("MCP 工具 %s 返回错误: %s", t.mcpTool.Name, output)
 	}
 
-	return tool.Result{Output: output}, nil
+	return tool.NewResult(output), nil
 }
 
 // Validate 校验工具参数
@@ -305,7 +305,7 @@ func (s *ServerV2) Server() *sdkmcp.Server {
 //
 // 官方 SDK 的 Tool.InputSchema 是 any 类型，
 // 从服务端返回时通常是 map[string]any（JSON 解码的 schema）
-func sdkSchemaToAICore(inputSchema any) *schema.Schema {
+func sdkSchemaToAICore(inputSchema any) *llm.Schema {
 	if inputSchema == nil {
 		return nil
 	}
@@ -330,12 +330,12 @@ func sdkSchemaToAICore(inputSchema any) *schema.Schema {
 }
 
 // parseSchemaMap 递归解析 JSON Schema map 为 ai-core Schema
-func parseSchemaMap(m map[string]any) *schema.Schema {
+func parseSchemaMap(m map[string]any) *llm.Schema {
 	if m == nil {
 		return nil
 	}
 
-	s := &schema.Schema{}
+	s := &llm.Schema{}
 
 	if v, ok := m["type"].(string); ok {
 		s.Type = v
@@ -346,7 +346,7 @@ func parseSchemaMap(m map[string]any) *schema.Schema {
 
 	// 解析 properties
 	if props, ok := m["properties"].(map[string]any); ok {
-		s.Properties = make(map[string]*schema.Schema, len(props))
+		s.Properties = make(map[string]*llm.Schema, len(props))
 		for name, propValue := range props {
 			if propMap, ok := propValue.(map[string]any); ok {
 				s.Properties[name] = parseSchemaMap(propMap)
@@ -381,7 +381,7 @@ func parseSchemaMap(m map[string]any) *schema.Schema {
 // aicoreSchemaToSDK 将 ai-core Schema 转换为官方 SDK 接受的 InputSchema (map[string]any)
 //
 // 官方 SDK 的 server.AddTool 要求 InputSchema 的 type 必须为 "object"
-func aicoreSchemaToSDK(s *schema.Schema) map[string]any {
+func aicoreSchemaToSDK(s *llm.Schema) map[string]any {
 	if s == nil {
 		return map[string]any{
 			"type":       "object",

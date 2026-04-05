@@ -175,8 +175,8 @@ func (s *AgentStep) GetAgent() agent.Agent {
 // 按顺序执行多个 Agent，上一个 Agent 的输出作为下一个的输入
 type AgentChainStep struct {
 	BaseStep
-	agents        []agent.Agent
-	passThrough   bool // 是否将中间结果传递给下一个 Agent
+	agents      []agent.Agent
+	passThrough bool // 是否将中间结果传递给下一个 Agent
 }
 
 // AgentChainOption AgentChainStep 配置选项

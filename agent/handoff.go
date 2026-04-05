@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/ai-core/tool"
 )
 
@@ -58,8 +58,8 @@ func (t *transferTool) Description() string {
 	return fmt.Sprintf("Transfer the conversation to %s. %s", t.target.Name(), t.target.Description())
 }
 
-func (t *transferTool) Schema() *schema.Schema {
-	return schema.Of[TransferToInput]()
+func (t *transferTool) Schema() *llm.Schema {
+	return llm.SchemaOf[TransferToInput]()
 }
 
 func (t *transferTool) Validate(args map[string]any) error {
@@ -417,8 +417,8 @@ func (t *agentTool) Description() string {
 	return fmt.Sprintf("Agent %s: %s", t.agent.Name(), desc)
 }
 
-func (t *agentTool) Schema() *schema.Schema {
-	return schema.Of[AgentToolInput]()
+func (t *agentTool) Schema() *llm.Schema {
+	return llm.SchemaOf[AgentToolInput]()
 }
 
 func (t *agentTool) Validate(args map[string]any) error {

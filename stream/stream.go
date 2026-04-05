@@ -1042,9 +1042,9 @@ func Backpressure[T any](sr *StreamReader[T], config *BackpressureConfig) *Strea
 	go bp.fill()
 
 	return &StreamReader[T]{
-		typ:     readerTypeBackpressure,
+		typ:           readerTypeBackpressure,
 		backpressureR: bp,
-		source:  sr.source,
+		source:        sr.source,
 	}
 }
 

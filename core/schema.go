@@ -234,7 +234,7 @@ func (g *SchemaGenerator) doGenerateForType(t reflect.Type) *Schema {
 
 	case reflect.Map:
 		return &Schema{
-			Type: "object",
+			Type:                 "object",
 			AdditionalProperties: g.generateForType(t.Elem()),
 		}
 

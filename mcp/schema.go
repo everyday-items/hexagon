@@ -4,7 +4,7 @@
 package mcp
 
 import (
-	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
 )
 
 // SchemaToMCP 将 ai-core Schema 转换为 MCP JSONSchema
@@ -19,9 +19,9 @@ import (
 //
 // 示例：
 //
-//	aiSchema := schema.Of[MyInput]()
+//	aiSchema := llm.SchemaOf[MyInput]()
 //	mcpSchema := mcp.SchemaToMCP(aiSchema)
-func SchemaToMCP(s *schema.Schema) *JSONSchema {
+func SchemaToMCP(s *llm.Schema) *JSONSchema {
 	if s == nil {
 		return nil
 	}
@@ -75,19 +75,19 @@ func SchemaToMCP(s *schema.Schema) *JSONSchema {
 //	for _, t := range mcpTools {
 //	    aiSchema := mcp.SchemaFromMCP(t.InputSchema)
 //	}
-func SchemaFromMCP(js *JSONSchema) *schema.Schema {
+func SchemaFromMCP(js *JSONSchema) *llm.Schema {
 	if js == nil {
 		return nil
 	}
 
-	s := &schema.Schema{
+	s := &llm.Schema{
 		Type:        js.Type,
 		Description: js.Description,
 	}
 
 	// 转换 Properties
 	if len(js.Properties) > 0 {
-		s.Properties = make(map[string]*schema.Schema)
+		s.Properties = make(map[string]*llm.Schema)
 		for name, prop := range js.Properties {
 			s.Properties[name] = SchemaFromMCP(prop)
 		}
@@ -124,7 +124,7 @@ func SchemaFromMCP(js *JSONSchema) *schema.Schema {
 func ToolToMCPTool(t interface {
 	Name() string
 	Description() string
-	Schema() *schema.Schema
+	Schema() *llm.Schema
 }) Tool {
 	return Tool{
 		Name:        t.Name(),

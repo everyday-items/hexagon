@@ -45,8 +45,8 @@ const (
 
 	// Run 相关时机
 	TimingRunStart Timing = 1 << iota // Agent 开始执行
-	TimingRunEnd                       // Agent 执行完成
-	TimingRunError                     // 发生错误
+	TimingRunEnd                      // Agent 执行完成
+	TimingRunError                    // 发生错误
 
 	// Tool 相关时机
 	TimingToolStart // 工具调用开始
@@ -66,12 +66,12 @@ const (
 	TimingRunStreamEnd   // 流式执行结束
 
 	// 便捷组合
-	TimingRunAll          = TimingRunStart | TimingRunEnd | TimingRunError
-	TimingRunStreamAll    = TimingRunStreamStart | TimingRunStreamEnd
-	TimingToolAll         = TimingToolStart | TimingToolEnd
-	TimingLLMAll          = TimingLLMStart | TimingLLMEnd | TimingLLMStream
-	TimingRetrieverAll    = TimingRetrieverStart | TimingRetrieverEnd
-	TimingAll             = TimingRunAll | TimingRunStreamAll | TimingToolAll | TimingLLMAll | TimingRetrieverAll
+	TimingRunAll       = TimingRunStart | TimingRunEnd | TimingRunError
+	TimingRunStreamAll = TimingRunStreamStart | TimingRunStreamEnd
+	TimingToolAll      = TimingToolStart | TimingToolEnd
+	TimingLLMAll       = TimingLLMStart | TimingLLMEnd | TimingLLMStream
+	TimingRetrieverAll = TimingRetrieverStart | TimingRetrieverEnd
+	TimingAll          = TimingRunAll | TimingRunStreamAll | TimingToolAll | TimingLLMAll | TimingRetrieverAll
 )
 
 // Has 检查是否包含指定时机
@@ -202,11 +202,11 @@ type ErrorEvent struct {
 
 // ToolStartEvent 工具调用开始事件
 type ToolStartEvent struct {
-	RunID      string         `json:"run_id"`
-	ToolName   string         `json:"tool_name"`
-	ToolID     string         `json:"tool_id"`
-	Input      map[string]any `json:"input"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
+	RunID    string         `json:"run_id"`
+	ToolName string         `json:"tool_name"`
+	ToolID   string         `json:"tool_id"`
+	Input    map[string]any `json:"input"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 // ToolEndEvent 工具调用完成事件

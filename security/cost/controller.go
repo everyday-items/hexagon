@@ -32,8 +32,8 @@ type Controller struct {
 	usedTokens          int64 // 已使用 Token
 
 	// 速率限制 (使用 toolkit SlidingWindow)
-	requestsPerMinute int                  // 每分钟请求数
-	rateLimiter       *rate.SlidingWindow  // 滑动窗口限流器
+	requestsPerMinute int                 // 每分钟请求数
+	rateLimiter       *rate.SlidingWindow // 滑动窗口限流器
 
 	// 回调
 	onBudgetExceeded func(used, budget float64)
@@ -245,25 +245,25 @@ func (c *Controller) Stats() ControllerStats {
 	defer c.mu.RUnlock()
 
 	return ControllerStats{
-		Budget:           c.budget,
-		Used:             c.used,
-		Remaining:        c.remaining,
-		UsedTokens:       c.usedTokens,
-		MaxTokensTotal:   c.maxTokensTotal,
-		RequestsLastMin:  c.rateLimiter.Count(),
-		RequestsPerMin:   c.requestsPerMinute,
+		Budget:          c.budget,
+		Used:            c.used,
+		Remaining:       c.remaining,
+		UsedTokens:      c.usedTokens,
+		MaxTokensTotal:  c.maxTokensTotal,
+		RequestsLastMin: c.rateLimiter.Count(),
+		RequestsPerMin:  c.requestsPerMinute,
 	}
 }
 
 // ControllerStats 控制器统计
 type ControllerStats struct {
-	Budget           float64 `json:"budget"`
-	Used             float64 `json:"used"`
-	Remaining        float64 `json:"remaining"`
-	UsedTokens       int64   `json:"used_tokens"`
-	MaxTokensTotal   int64   `json:"max_tokens_total"`
-	RequestsLastMin  int     `json:"requests_last_min"`
-	RequestsPerMin   int     `json:"requests_per_min"`
+	Budget          float64 `json:"budget"`
+	Used            float64 `json:"used"`
+	Remaining       float64 `json:"remaining"`
+	UsedTokens      int64   `json:"used_tokens"`
+	MaxTokensTotal  int64   `json:"max_tokens_total"`
+	RequestsLastMin int     `json:"requests_last_min"`
+	RequestsPerMin  int     `json:"requests_per_min"`
 }
 
 // Reset 重置统计

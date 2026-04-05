@@ -431,20 +431,20 @@ func (s *OTelHexagonSpan) Attributes() map[string]any {
 // noopSpan 空操作 Span
 type noopSpan struct{}
 
-func (s *noopSpan) SpanID() string                                  { return "" }
-func (s *noopSpan) TraceID() string                                 { return "" }
-func (s *noopSpan) SetName(name string)                             {}
-func (s *noopSpan) SetInput(input any)                              {}
-func (s *noopSpan) SetOutput(output any)                            {}
-func (s *noopSpan) SetTokenUsage(usage tracer.TokenUsage)           {}
-func (s *noopSpan) SetAttribute(key string, value any)              {}
-func (s *noopSpan) SetAttributes(attrs map[string]any)              {}
-func (s *noopSpan) AddEvent(name string, attrs ...any)              {}
-func (s *noopSpan) RecordError(err error)                           {}
+func (s *noopSpan) SpanID() string                                   { return "" }
+func (s *noopSpan) TraceID() string                                  { return "" }
+func (s *noopSpan) SetName(name string)                              {}
+func (s *noopSpan) SetInput(input any)                               {}
+func (s *noopSpan) SetOutput(output any)                             {}
+func (s *noopSpan) SetTokenUsage(usage tracer.TokenUsage)            {}
+func (s *noopSpan) SetAttribute(key string, value any)               {}
+func (s *noopSpan) SetAttributes(attrs map[string]any)               {}
+func (s *noopSpan) AddEvent(name string, attrs ...any)               {}
+func (s *noopSpan) RecordError(err error)                            {}
 func (s *noopSpan) SetStatus(code tracer.StatusCode, message string) {}
-func (s *noopSpan) End()                                            {}
-func (s *noopSpan) EndWithError(err error)                          {}
-func (s *noopSpan) IsRecording() bool                               { return false }
+func (s *noopSpan) End()                                             {}
+func (s *noopSpan) EndWithError(err error)                           {}
+func (s *noopSpan) IsRecording() bool                                { return false }
 
 // spanKindString 返回 SpanKind 的字符串表示
 func spanKindString(kind tracer.SpanKind) string {

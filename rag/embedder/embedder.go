@@ -27,6 +27,12 @@ type EmbeddingProvider interface {
 	Embed(ctx context.Context, texts []string) ([][]float32, error)
 }
 
+// ModelEmbeddingProvider 支持指定模型的嵌入提供者（可选接口）
+type ModelEmbeddingProvider interface {
+	EmbeddingProvider
+	EmbedWithModel(ctx context.Context, model string, texts []string) ([][]float32, error)
+}
+
 // OpenAIEmbedder OpenAI Embedding 生成器
 type OpenAIEmbedder struct {
 	provider  EmbeddingProvider
@@ -93,7 +99,14 @@ func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32
 		}
 
 		batch := texts[i:end]
-		embeddings, err := e.provider.Embed(ctx, batch)
+		// 优先使用指定模型（支持 Ollama nomic-embed-text 等非默认模型）
+		var embeddings [][]float32
+		var err error
+		if mp, ok := e.provider.(ModelEmbeddingProvider); ok {
+			embeddings, err = mp.EmbedWithModel(ctx, e.model, batch)
+		} else {
+			embeddings, err = e.provider.Embed(ctx, batch)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to embed batch %d-%d: %w", i, end, err)
 		}

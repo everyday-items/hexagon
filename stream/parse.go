@@ -269,15 +269,15 @@ func ParseJSONArray[T any](sr *StreamReader[string], config ...*JSONParseConfig)
 
 // jsonArrayParser JSON 数组流式解析器
 type jsonArrayParser[T any] struct {
-	source   *StreamReader[string]
-	config   *JSONParseConfig
-	buffer   strings.Builder
-	results  chan T
-	done     chan struct{}
-	inArray  bool
-	depth    int
-	itemBuf  strings.Builder
-	mu       sync.Mutex
+	source  *StreamReader[string]
+	config  *JSONParseConfig
+	buffer  strings.Builder
+	results chan T
+	done    chan struct{}
+	inArray bool
+	depth   int
+	itemBuf strings.Builder
+	mu      sync.Mutex
 }
 
 func (p *jsonArrayParser[T]) parse() {

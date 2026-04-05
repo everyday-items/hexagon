@@ -36,15 +36,15 @@ import (
 	"errors"
 	"io"
 
-	"github.com/hexagon-codes/ai-core/schema"
+	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/hexagon/internal/pool"
 	"github.com/hexagon-codes/hexagon/stream"
 )
 
 // ============== 类型别名 ==============
 
-// Schema 是 ai-core/schema.Schema 的别名
-type Schema = schema.Schema
+// Schema 是 ai-core/llm.Schema 的别名
+type Schema = llm.Schema
 
 // StreamReader 是 stream.StreamReader 的别名
 type StreamReader[T any] = stream.StreamReader[T]
@@ -58,7 +58,7 @@ type Stream[T any] = stream.StreamReader[T]
 
 // SchemaOf 从 Go 类型生成 Schema
 func SchemaOf[T any]() *Schema {
-	return schema.Of[T]()
+	return llm.SchemaOf[T]()
 }
 
 // NewSliceStream 从切片创建流（向后兼容）
@@ -77,17 +77,17 @@ type Option interface {
 // Options 选项集合
 type Options struct {
 	// 基础选项
-	Timeout     int64          // 超时时间（毫秒）
-	MaxRetries  int            // 最大重试次数
-	Metadata    map[string]any // 元数据
+	Timeout    int64          // 超时时间（毫秒）
+	MaxRetries int            // 最大重试次数
+	Metadata   map[string]any // 元数据
 
 	// 流式选项
-	StreamBufferSize int  // 流缓冲区大小
+	StreamBufferSize int   // 流缓冲区大小
 	StreamTimeout    int64 // 流操作超时（毫秒）
 
 	// 节点选项（用于图编排）
-	NodeID     string // 目标节点ID
-	NodeType   string // 目标节点类型
+	NodeID   string // 目标节点ID
+	NodeType string // 目标节点类型
 
 	// 扩展选项
 	Extra map[string]any
@@ -254,12 +254,12 @@ func (r *BaseRunnable[I, O]) Description() string {
 
 // InputSchema 返回输入 Schema
 func (r *BaseRunnable[I, O]) InputSchema() *Schema {
-	return schema.Of[I]()
+	return llm.SchemaOf[I]()
 }
 
 // OutputSchema 返回输出 Schema
 func (r *BaseRunnable[I, O]) OutputSchema() *Schema {
-	return schema.Of[O]()
+	return llm.SchemaOf[O]()
 }
 
 // Invoke 执行组件

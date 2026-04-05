@@ -136,7 +136,7 @@ func TestExecutor_Conditional(t *testing.T) {
 
 func TestExecutor_Timeout(t *testing.T) {
 	wf, _ := New("timeout-workflow").
-		WithTimeout(50 * time.Millisecond).
+		WithTimeout(50*time.Millisecond).
 		AddFunc("slow", "Slow Step", func(ctx context.Context, input StepInput) (*StepOutput, error) {
 			select {
 			case <-ctx.Done():

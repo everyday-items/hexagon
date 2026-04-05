@@ -348,9 +348,9 @@ type mockToolForTest struct {
 	executeFunc func(ctx context.Context, args map[string]any) (tool.Result, error)
 }
 
-func (t *mockToolForTest) Name() string              { return t.name }
-func (t *mockToolForTest) Description() string       { return t.description }
-func (t *mockToolForTest) Schema() *schema.Schema    { return nil }
+func (t *mockToolForTest) Name() string           { return t.name }
+func (t *mockToolForTest) Description() string    { return t.description }
+func (t *mockToolForTest) Schema() *schema.Schema { return nil }
 func (t *mockToolForTest) Validate(args map[string]any) error {
 	return nil
 }

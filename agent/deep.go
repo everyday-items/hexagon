@@ -28,7 +28,6 @@ import (
 
 	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/ai-core/memory"
-	"github.com/hexagon-codes/ai-core/schema"
 	"github.com/hexagon-codes/ai-core/tool"
 	"github.com/hexagon-codes/hexagon/core"
 	"github.com/hexagon-codes/hexagon/internal/util"
@@ -291,7 +290,7 @@ func (d *DeepAgent) buildToolDefinitions(depth int) []llm.ToolDefinition {
 		defs = append(defs, llm.NewToolDefinition(
 			"create_subtask",
 			"Create a subtask for a sub-agent to handle. Use this when the task is complex and can be broken into smaller, independent parts.",
-			schema.Of[SubtaskInput](),
+			llm.SchemaOf[SubtaskInput](),
 		))
 	}
 

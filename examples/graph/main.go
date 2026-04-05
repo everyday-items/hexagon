@@ -20,11 +20,11 @@ import (
 
 // WorkflowState 定义工作流状态
 type WorkflowState struct {
-	Input      string            // 原始输入
-	Category   string            // 分类结果
-	Processed  string            // 处理结果
-	Final      string            // 最终输出
-	Metadata   map[string]string // 元数据
+	Input     string            // 原始输入
+	Category  string            // 分类结果
+	Processed string            // 处理结果
+	Final     string            // 最终输出
+	Metadata  map[string]string // 元数据
 }
 
 // Clone 实现 State 接口

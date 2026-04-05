@@ -179,8 +179,8 @@ func DefaultCacheConfig() *CacheConfig {
 type MemoryCache struct {
 	config  *CacheConfig
 	data    map[string]*CacheEntry
-	list    *list.List                 // LRU 双向链表，Front 为最近使用，Back 为最久未使用
-	listMap map[string]*list.Element   // key -> 链表节点的映射，用于 O(1) 查找
+	list    *list.List               // LRU 双向链表，Front 为最近使用，Back 为最久未使用
+	listMap map[string]*list.Element // key -> 链表节点的映射，用于 O(1) 查找
 	mu      sync.RWMutex
 
 	// 统计

@@ -8,9 +8,9 @@ import (
 
 // PromptInjectionGuard Prompt 注入检测守卫
 type PromptInjectionGuard struct {
-	config    *GuardConfig
-	patterns  []*injectionPattern
-	enabled   bool
+	config   *GuardConfig
+	patterns []*injectionPattern
+	enabled  bool
 }
 
 // injectionPattern 注入模式

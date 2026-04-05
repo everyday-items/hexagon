@@ -242,9 +242,9 @@ func (r *GraphRecorder) Save(path string) error {
 // 从录制的 GraphCassette 中按节点 ID 回放执行结果。
 // 支持同一节点多次执行的场景（使用访问计数器）。
 type GraphReplayer struct {
-	cassette    *GraphCassette
-	nodeVisits  map[string]int // 节点访问计数，支持同一节点多次执行
-	mu          sync.Mutex
+	cassette   *GraphCassette
+	nodeVisits map[string]int // 节点访问计数，支持同一节点多次执行
+	mu         sync.Mutex
 }
 
 // NewGraphReplayer 创建图执行回放器

@@ -37,7 +37,7 @@ func main() {
 func runSequentialWorkflow(ctx context.Context) {
 	wf, err := workflow.New("data-pipeline").
 		WithDescription("数据处理管道").
-		WithTimeout(30 * time.Second).
+		WithTimeout(30*time.Second).
 		AddFunc("extract", "提取数据", func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
 			fmt.Println("  [1/3] 提取数据...")
 			data := input.Data.(string)
@@ -138,17 +138,17 @@ func runConditionalWorkflow(ctx context.Context) {
 				}
 				return "false", nil
 			}).
-			Then(workflow.NewStep("manager-review", "经理审批",
-				func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
-					fmt.Println("  [审批] 经理审批中...")
-					return &workflow.StepOutput{Data: "经理已批准"}, nil
-				})).
-			Else(workflow.NewStep("auto-approve", "自动审批",
-				func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
-					fmt.Println("  [审批] 自动审批通过")
-					return &workflow.StepOutput{Data: "自动批准"}, nil
-				})).
-			End().
+		Then(workflow.NewStep("manager-review", "经理审批",
+			func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
+				fmt.Println("  [审批] 经理审批中...")
+				return &workflow.StepOutput{Data: "经理已批准"}, nil
+			})).
+		Else(workflow.NewStep("auto-approve", "自动审批",
+			func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
+				fmt.Println("  [审批] 自动审批通过")
+				return &workflow.StepOutput{Data: "自动批准"}, nil
+			})).
+		End().
 		AddFunc("notify", "通知", func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
 			fmt.Println("  [通知] 已发送通知")
 			return &workflow.StepOutput{Data: "通知已发送"}, nil

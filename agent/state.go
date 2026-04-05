@@ -172,14 +172,14 @@ type AgentStats struct {
 
 // StateSnapshot 状态快照
 type StateSnapshot struct {
-	Timestamp    time.Time      `json:"timestamp"`
-	SessionID    string         `json:"session_id"`
-	TurnData     map[string]any `json:"turn_data"`
-	SessionData  map[string]any `json:"session_data"`
-	AgentData    map[string]any `json:"agent_data"`
-	TurnCount    int            `json:"turn_count"`
-	Iteration    int            `json:"iteration"`
-	Messages     []Message      `json:"messages"`
+	Timestamp   time.Time      `json:"timestamp"`
+	SessionID   string         `json:"session_id"`
+	TurnData    map[string]any `json:"turn_data"`
+	SessionData map[string]any `json:"session_data"`
+	AgentData   map[string]any `json:"agent_data"`
+	TurnCount   int            `json:"turn_count"`
+	Iteration   int            `json:"iteration"`
+	Messages    []Message      `json:"messages"`
 }
 
 // ============== 默认实现 ==============

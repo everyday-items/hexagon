@@ -1882,4 +1882,3 @@ func TestRetrieverConcurrency(t *testing.T) {
 		t.Errorf("期望 %d 条调用记录，实际为 %d", goroutines, len(calls))
 	}
 }
-

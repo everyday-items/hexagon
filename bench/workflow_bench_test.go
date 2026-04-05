@@ -87,13 +87,13 @@ func BenchmarkWorkflowConditional(b *testing.B) {
 				}
 				return "false", nil
 			}).
-			ThenFunc("yes", "是", func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
-				return &workflow.StepOutput{Data: "yes"}, nil
-			}).
-			ElseFunc("no", "否", func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
-				return &workflow.StepOutput{Data: "no"}, nil
-			}).
-			End().
+		ThenFunc("yes", "是", func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
+			return &workflow.StepOutput{Data: "yes"}, nil
+		}).
+		ElseFunc("no", "否", func(ctx context.Context, input workflow.StepInput) (*workflow.StepOutput, error) {
+			return &workflow.StepOutput{Data: "no"}, nil
+		}).
+		End().
 		Build()
 	executor := workflow.NewExecutor()
 	ctx := context.Background()

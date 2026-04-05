@@ -139,8 +139,8 @@ func TestRegressionDetector_CheckWithRegression(t *testing.T) {
 			Name:        "test_slow",
 			Iterations:  100,
 			AvgDuration: 15000 * time.Nanosecond, // 50% 变慢
-			P99:         80000 * time.Nanosecond,  // 60% 变慢
-			MemAllocs:   1500,                     // 50% 增加
+			P99:         80000 * time.Nanosecond, // 60% 变慢
+			MemAllocs:   1500,                    // 50% 增加
 			MemBytes:    200000,
 		},
 	}

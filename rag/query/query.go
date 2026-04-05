@@ -130,11 +130,11 @@ func (e *QueryExpander) expandWithSynonym(query string) []string {
 
 	// 简单的术语替换示例
 	synonyms := map[string][]string{
-		"AI":              {"artificial intelligence", "machine learning", "人工智能"},
+		"AI":               {"artificial intelligence", "machine learning", "人工智能"},
 		"machine learning": {"ML", "AI", "机器学习"},
-		"database":        {"DB", "data store", "数据库"},
-		"search":          {"query", "find", "lookup", "搜索", "查询"},
-		"document":        {"doc", "file", "文档"},
+		"database":         {"DB", "data store", "数据库"},
+		"search":           {"query", "find", "lookup", "搜索", "查询"},
+		"document":         {"doc", "file", "文档"},
 	}
 
 	queryLower := strings.ToLower(query)
@@ -354,7 +354,7 @@ Alternative queries:`, g.numQueries, query)
 // 3. 因为文档-文档相似度通常高于查询-文档相似度，可以提高检索质量
 type HyDEGenerator struct {
 	llm         LLMProvider
-	docLength   int    // 生成文档长度
+	docLength   int     // 生成文档长度
 	temperature float32 // LLM 温度参数
 }
 
@@ -496,10 +496,10 @@ func NewQueryProcessor(opts ...ProcessorOption) *QueryProcessor {
 
 // ProcessResult 查询处理结果
 type ProcessResult struct {
-	Original       string   // 原始查询
-	Rewritten      string   // 重写后的查询
-	Expanded       []string // 扩展查询列表
-	MultiQueries   []string // 多角度查询列表
+	Original        string   // 原始查询
+	Rewritten       string   // 重写后的查询
+	Expanded        []string // 扩展查询列表
+	MultiQueries    []string // 多角度查询列表
 	HypotheticalDoc string   // 假设文档
 }
 

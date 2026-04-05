@@ -394,12 +394,12 @@ func (s *ParallelStep) maxParallelCount() int {
 
 // ConditionalStep 条件步骤
 type ConditionalStep struct {
-	id         string
-	name       string
-	condition  ConditionFunc
-	thenStep   Step
-	elseStep   Step
-	branches   map[string]Step
+	id        string
+	name      string
+	condition ConditionFunc
+	thenStep  Step
+	elseStep  Step
+	branches  map[string]Step
 }
 
 // ConditionFunc 条件函数

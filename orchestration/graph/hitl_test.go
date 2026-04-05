@@ -16,9 +16,9 @@ func TestHITLNode_Approval(t *testing.T) {
 				t.Errorf("期望请求类型为 approval，实际为 %s", req.Type)
 			}
 			return &HITLResponse{
-				RequestID:  req.ID,
-				Approved:   true,
-				Feedback:   "已审批通过",
+				RequestID:   req.ID,
+				Approved:    true,
+				Feedback:    "已审批通过",
 				RespondedBy: "admin",
 				RespondedAt: time.Now(),
 			}, nil
@@ -60,9 +60,9 @@ func TestHITLNode_Approval(t *testing.T) {
 		// 构造一个自动拒绝的回调处理器
 		handler := HITLCallback(func(ctx context.Context, req *HITLRequest) (*HITLResponse, error) {
 			return &HITLResponse{
-				RequestID:  req.ID,
-				Approved:   false,
-				Feedback:   "不符合要求",
+				RequestID:   req.ID,
+				Approved:    false,
+				Feedback:    "不符合要求",
 				RespondedAt: time.Now(),
 			}, nil
 		})
@@ -240,9 +240,9 @@ func TestChannelHITLHandler(t *testing.T) {
 
 	// 提交响应
 	err := ch.SubmitResponse(&HITLResponse{
-		RequestID:  "test-req-1",
-		Approved:   true,
-		Feedback:   "通过",
+		RequestID:   "test-req-1",
+		Approved:    true,
+		Feedback:    "通过",
 		RespondedBy: "tester",
 	})
 	if err != nil {
@@ -279,9 +279,9 @@ func TestHITLManager_Submit(t *testing.T) {
 	// 使用回调处理器自动批准
 	handler := HITLCallback(func(ctx context.Context, req *HITLRequest) (*HITLResponse, error) {
 		return &HITLResponse{
-			RequestID:  req.ID,
-			Approved:   true,
-			Feedback:   "自动批准",
+			RequestID:   req.ID,
+			Approved:    true,
+			Feedback:    "自动批准",
 			RespondedAt: time.Now(),
 		}, nil
 	})
@@ -332,8 +332,8 @@ func TestHITLManager_ActiveRequests(t *testing.T) {
 		// 阻塞直到接收到信号
 		<-blockCh
 		return &HITLResponse{
-			RequestID:  req.ID,
-			Approved:   true,
+			RequestID:   req.ID,
+			Approved:    true,
 			RespondedAt: time.Now(),
 		}, nil
 	})
@@ -377,8 +377,8 @@ func TestHITLManager_ActiveRequests(t *testing.T) {
 func TestHITLManager_History(t *testing.T) {
 	handler := HITLCallback(func(ctx context.Context, req *HITLRequest) (*HITLResponse, error) {
 		return &HITLResponse{
-			RequestID:  req.ID,
-			Approved:   req.Type == HITLApproval,
+			RequestID:   req.ID,
+			Approved:    req.Type == HITLApproval,
 			RespondedAt: time.Now(),
 		}, nil
 	})
@@ -457,8 +457,8 @@ func TestNewApprovalNode(t *testing.T) {
 			t.Errorf("期望 2 个选项，实际为 %d", len(req.Options))
 		}
 		return &HITLResponse{
-			RequestID:  req.ID,
-			Approved:   true,
+			RequestID:   req.ID,
+			Approved:    true,
 			RespondedAt: time.Now(),
 		}, nil
 	})
@@ -561,8 +561,8 @@ func TestHITLNode_Condition(t *testing.T) {
 	handler := HITLCallback(func(ctx context.Context, req *HITLRequest) (*HITLResponse, error) {
 		callCount++
 		return &HITLResponse{
-			RequestID:  req.ID,
-			Approved:   true,
+			RequestID:   req.ID,
+			Approved:    true,
 			RespondedAt: time.Now(),
 		}, nil
 	})

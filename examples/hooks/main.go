@@ -35,8 +35,8 @@ type LoggingRunHook struct {
 	start time.Time
 }
 
-func (h *LoggingRunHook) Name() string    { return "logging" }
-func (h *LoggingRunHook) Enabled() bool   { return true }
+func (h *LoggingRunHook) Name() string          { return "logging" }
+func (h *LoggingRunHook) Enabled() bool         { return true }
 func (h *LoggingRunHook) Timings() hooks.Timing { return hooks.TimingRunAll }
 
 func (h *LoggingRunHook) OnStart(ctx context.Context, event *hooks.RunStartEvent) error {
@@ -60,8 +60,8 @@ func (h *LoggingRunHook) OnError(ctx context.Context, event *hooks.ErrorEvent) e
 // AuditToolHook 工具审计钩子
 type AuditToolHook struct{}
 
-func (h *AuditToolHook) Name() string    { return "audit" }
-func (h *AuditToolHook) Enabled() bool   { return true }
+func (h *AuditToolHook) Name() string          { return "audit" }
+func (h *AuditToolHook) Enabled() bool         { return true }
 func (h *AuditToolHook) Timings() hooks.Timing { return hooks.TimingToolAll }
 
 func (h *AuditToolHook) OnToolStart(ctx context.Context, event *hooks.ToolStartEvent) error {

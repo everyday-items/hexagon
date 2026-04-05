@@ -226,10 +226,10 @@ func (s *ConditionStep) Execute(ctx context.Context, data *process.ProcessData) 
 		StepName: s.name,
 		Success:  stepResult.Success,
 		Output: map[string]any{
-			"condition":    result,
-			"executed":     true,
-			"step_id":      stepResult.StepID,
-			"step_output":  stepResult.Output,
+			"condition":   result,
+			"executed":    true,
+			"step_id":     stepResult.StepID,
+			"step_output": stepResult.Output,
 		},
 		Error:    err,
 		Duration: time.Since(start),
@@ -390,8 +390,8 @@ func (s *ParallelStep) Execute(ctx context.Context, data *process.ProcessData) (
 // 按顺序执行多个步骤
 type SequenceStep struct {
 	BaseStep
-	steps        []process.Step
-	stopOnError  bool // 是否在错误时停止
+	steps       []process.Step
+	stopOnError bool // 是否在错误时停止
 }
 
 // SequenceStepOption SequenceStep 配置选项
@@ -483,11 +483,11 @@ func (s *SequenceStep) Execute(ctx context.Context, data *process.ProcessData) (
 // 包装其他步骤，失败时自动重试
 type RetryStep struct {
 	BaseStep
-	step          process.Step
-	maxRetries    int
-	retryDelay    time.Duration
-	backoff       float64
-	shouldRetry   func(err error) bool
+	step        process.Step
+	maxRetries  int
+	retryDelay  time.Duration
+	backoff     float64
+	shouldRetry func(err error) bool
 }
 
 // RetryStepOption RetryStep 配置选项

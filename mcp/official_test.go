@@ -19,10 +19,10 @@ type mockTool struct {
 	executeFn   func(ctx context.Context, args map[string]any) (tool.Result, error)
 }
 
-func (t *mockTool) Name() string                                       { return t.name }
-func (t *mockTool) Description() string                                { return t.description }
-func (t *mockTool) Schema() *schema.Schema                             { return t.schema }
-func (t *mockTool) Validate(args map[string]any) error                 { return nil }
+func (t *mockTool) Name() string                       { return t.name }
+func (t *mockTool) Description() string                { return t.description }
+func (t *mockTool) Schema() *schema.Schema             { return t.schema }
+func (t *mockTool) Validate(args map[string]any) error { return nil }
 func (t *mockTool) Execute(ctx context.Context, args map[string]any) (tool.Result, error) {
 	if t.executeFn != nil {
 		return t.executeFn(ctx, args)

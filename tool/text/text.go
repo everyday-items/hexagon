@@ -259,15 +259,15 @@ func Tools() []tool.Tool {
 
 // TextAnalysis 文本分析结果
 type TextAnalysis struct {
-	CharCount       int            `json:"char_count"`
-	CharCountNoSpace int           `json:"char_count_no_space"`
-	WordCount       int            `json:"word_count"`
-	SentenceCount   int            `json:"sentence_count"`
-	ParagraphCount  int            `json:"paragraph_count"`
-	LineCount       int            `json:"line_count"`
-	AvgWordLength   float64        `json:"avg_word_length"`
-	UniqueWords     int            `json:"unique_words"`
-	TopWords        map[string]int `json:"top_words,omitempty"`
+	CharCount        int            `json:"char_count"`
+	CharCountNoSpace int            `json:"char_count_no_space"`
+	WordCount        int            `json:"word_count"`
+	SentenceCount    int            `json:"sentence_count"`
+	ParagraphCount   int            `json:"paragraph_count"`
+	LineCount        int            `json:"line_count"`
+	AvgWordLength    float64        `json:"avg_word_length"`
+	UniqueWords      int            `json:"unique_words"`
+	TopWords         map[string]int `json:"top_words,omitempty"`
 }
 
 // analyzeText 分析文本
@@ -531,9 +531,9 @@ func levenshteinDistance(s1, s2 string) int {
 				cost = 1
 			}
 			curr[j] = min(
-				prev[j]+1,       // 删除
-				curr[j-1]+1,     // 插入
-				prev[j-1]+cost,  // 替换
+				prev[j]+1,      // 删除
+				curr[j-1]+1,    // 插入
+				prev[j-1]+cost, // 替换
 			)
 		}
 		prev, curr = curr, prev

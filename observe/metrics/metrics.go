@@ -359,10 +359,10 @@ var (
 
 const (
 	// Agent 相关
-	MetricAgentRunsTotal     = "hexagon_agent_runs_total"
-	MetricAgentRunDuration   = "hexagon_agent_run_duration_seconds"
-	MetricAgentRunErrors     = "hexagon_agent_run_errors_total"
-	MetricAgentActiveCount   = "hexagon_agent_active_count"
+	MetricAgentRunsTotal   = "hexagon_agent_runs_total"
+	MetricAgentRunDuration = "hexagon_agent_run_duration_seconds"
+	MetricAgentRunErrors   = "hexagon_agent_run_errors_total"
+	MetricAgentActiveCount = "hexagon_agent_active_count"
 
 	// LLM 相关
 	MetricLLMCallsTotal       = "hexagon_llm_calls_total"

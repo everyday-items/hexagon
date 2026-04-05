@@ -16,6 +16,7 @@ import (
 	"github.com/hexagon-codes/hexagon/observe/tracer"
 	"github.com/hexagon-codes/hexagon/orchestration/chain"
 	"github.com/hexagon-codes/hexagon/orchestration/graph"
+	"github.com/hexagon-codes/hexagon/plugin"
 	"github.com/hexagon-codes/hexagon/rag"
 	"github.com/hexagon-codes/hexagon/rag/embedder"
 	"github.com/hexagon-codes/hexagon/rag/indexer"
@@ -50,6 +51,9 @@ var (
 
 	// OpenAIWithHTTPClient 设置自定义 HTTP 客户端
 	OpenAIWithHTTPClient = openai.WithHTTPClient
+
+	// OpenAIEmbeddingDimension 获取 OpenAI Embedding 模型的默认维度
+	OpenAIEmbeddingDimension = openai.EmbeddingDimension
 )
 
 // ============== 编排引擎 ==============
@@ -325,7 +329,22 @@ type (
 
 	// MapState 是通用 map 状态
 	MapState = graph.MapState
+
+	// NodeHandler 节点处理函数类型
+	NodeHandler[S graph.State] = graph.NodeHandler[S]
+
+	// StateMerger 状态合并函数类型
+	StateMerger[S graph.State] = graph.StateMerger[S]
 )
+
+// ParallelNodeWithMerger 创建带自定义状态合并器的并行执行节点
+//
+// 示例：
+//
+//	node := hexagon.ParallelNodeWithMerger[MyState]("parallel", merger, handler1, handler2)
+func ParallelNodeWithMerger[S graph.State](name string, merger graph.StateMerger[S], handlers ...graph.NodeHandler[S]) *graph.Node[S] {
+	return graph.ParallelNodeWithMerger(name, merger, handlers...)
+}
 
 // 可观测性相关类型
 type (
@@ -343,6 +362,27 @@ type (
 type (
 	// Guard 是守卫接口
 	Guard = guard.Guard
+
+	// CheckResult 是守卫检查结果
+	CheckResult = guard.CheckResult
+
+	// GuardFinding 是守卫发现的问题
+	GuardFinding = guard.Finding
+
+	// GuardPosition 是问题在文本中的位置
+	GuardPosition = guard.Position
+
+	// PromptInjectionGuard 是 Prompt 注入检测守卫
+	PromptInjectionGuard = guard.PromptInjectionGuard
+
+	// PIIGuard 是 PII 检测守卫
+	PIIGuard = guard.PIIGuard
+
+	// GuardChain 是守卫链
+	GuardChain = guard.GuardChain
+
+	// ChainMode 是守卫链模式
+	ChainMode = guard.ChainMode
 
 	// CostController 是成本控制器
 	CostController = cost.Controller
@@ -784,6 +824,32 @@ type (
 
 // Skill 签名验证
 var NewHMACSigner = skill.NewHMACSigner
+
+// ============== 插件系统 ==============
+
+// NewPluginRegistry 创建插件注册中心
+var NewPluginRegistry = plugin.NewRegistry
+
+// NewPluginBasePlugin 创建基础插件实例
+var NewPluginBasePlugin = plugin.NewBasePlugin
+
+// 插件相关类型
+type (
+	// PluginPlugin 是插件接口
+	PluginPlugin = plugin.Plugin
+
+	// PluginInfo 是插件信息
+	PluginInfo = plugin.PluginInfo
+
+	// PluginType 是插件类型枚举
+	PluginType = plugin.PluginType
+
+	// PluginRegistry 是插件注册中心
+	PluginRegistry = plugin.Registry
+
+	// PluginBasePlugin 是基础插件实现
+	PluginBasePlugin = plugin.BasePlugin
+)
 
 // ============== 事件流 ==============
 

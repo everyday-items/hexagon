@@ -358,12 +358,12 @@ var _ rag.Splitter = (*RecursiveSplitter)(nil)
 // MarkdownSplitter Markdown 专用分割器
 // 按标题层级分割，保持文档结构
 type MarkdownSplitter struct {
-	chunkSize       int
-	chunkOverlap    int
-	headersToSplit  []string // 要分割的标题级别，如 ["#", "##", "###"]
-	returnEachLine  bool     // 是否将每行作为单独的块
-	stripHeaders    bool     // 是否移除标题
-	codeBlockAware  bool     // 是否识别代码块
+	chunkSize      int
+	chunkOverlap   int
+	headersToSplit []string // 要分割的标题级别，如 ["#", "##", "###"]
+	returnEachLine bool     // 是否将每行作为单独的块
+	stripHeaders   bool     // 是否移除标题
+	codeBlockAware bool     // 是否识别代码块
 }
 
 // MarkdownSplitterOption MarkdownSplitter 选项
@@ -560,9 +560,9 @@ var _ rag.Splitter = (*MarkdownSplitter)(nil)
 
 // SentenceSplitter 按句子分割
 type SentenceSplitter struct {
-	chunkSize     int
-	chunkOverlap  int
-	sentenceEnds  []string
+	chunkSize    int
+	chunkOverlap int
+	sentenceEnds []string
 }
 
 // SentenceOption SentenceSplitter 选项

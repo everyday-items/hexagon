@@ -111,9 +111,9 @@ func ServeMCPToolsFromAICore(addr string, tools ...tool.Tool) (*Server, error) {
 //
 // Deprecated: 请使用 ai-core tool.Tool 接口
 type ToolDefinition struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Parameters  map[string]any         `json:"parameters,omitempty"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
 	Handler     func(ctx context.Context, args map[string]any) (string, error)
 }
 

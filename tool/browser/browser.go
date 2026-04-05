@@ -444,12 +444,12 @@ func (st *ScreenshotTool) Execute(ctx context.Context, args map[string]any) (any
 	</svg>`, st.config.ViewportWidth, st.config.ViewportHeight, urlStr)
 
 	return map[string]any{
-		"url":      urlStr,
-		"image":    base64.StdEncoding.EncodeToString([]byte(placeholder)),
-		"format":   "svg",
-		"width":    st.config.ViewportWidth,
-		"height":   st.config.ViewportHeight,
-		"note":     "This is a placeholder. Full screenshot functionality requires browser automation backend (e.g., Playwright, Puppeteer).",
+		"url":    urlStr,
+		"image":  base64.StdEncoding.EncodeToString([]byte(placeholder)),
+		"format": "svg",
+		"width":  st.config.ViewportWidth,
+		"height": st.config.ViewportHeight,
+		"note":   "This is a placeholder. Full screenshot functionality requires browser automation backend (e.g., Playwright, Puppeteer).",
 	}, nil
 }
 

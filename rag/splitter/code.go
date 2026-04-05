@@ -70,74 +70,74 @@ var languageSeparators = map[Language][]string{
 		"\nclass ",   // 类定义
 		"\ndef ",     // 函数定义
 		"\n\tdef ",   // 方法定义
-		"\n    def ",  // 方法定义（4 空格缩进）
+		"\n    def ", // 方法定义（4 空格缩进）
 		"\n\n",
 		"\n",
 	},
 	LangJavaScript: {
-		"\nfunction ",    // 函数声明
-		"\nconst ",       // 常量（箭头函数）
-		"\nlet ",         // 变量
-		"\nvar ",         // 变量
-		"\nclass ",       // 类
-		"\nexport ",      // 导出
+		"\nfunction ", // 函数声明
+		"\nconst ",    // 常量（箭头函数）
+		"\nlet ",      // 变量
+		"\nvar ",      // 变量
+		"\nclass ",    // 类
+		"\nexport ",   // 导出
 		"\n\n",
 		"\n",
 	},
 	LangTypeScript: {
-		"\ninterface ",   // 接口
-		"\ntype ",        // 类型
-		"\nfunction ",    // 函数
-		"\nconst ",       // 常量
-		"\nclass ",       // 类
-		"\nexport ",      // 导出
+		"\ninterface ", // 接口
+		"\ntype ",      // 类型
+		"\nfunction ",  // 函数
+		"\nconst ",     // 常量
+		"\nclass ",     // 类
+		"\nexport ",    // 导出
 		"\n\n",
 		"\n",
 	},
 	LangJava: {
-		"\npublic ",      // 公有成员
-		"\nprivate ",     // 私有成员
-		"\nprotected ",   // 保护成员
-		"\nclass ",       // 类
-		"\ninterface ",   // 接口
-		"\nenum ",        // 枚举
+		"\npublic ",    // 公有成员
+		"\nprivate ",   // 私有成员
+		"\nprotected ", // 保护成员
+		"\nclass ",     // 类
+		"\ninterface ", // 接口
+		"\nenum ",      // 枚举
 		"\n\n",
 		"\n",
 	},
 	LangRust: {
-		"\nfn ",          // 函数
-		"\npub fn ",      // 公有函数
-		"\nstruct ",      // 结构体
-		"\nimpl ",        // 实现块
-		"\nenum ",        // 枚举
-		"\ntrait ",       // 特征
-		"\nmod ",         // 模块
+		"\nfn ",     // 函数
+		"\npub fn ", // 公有函数
+		"\nstruct ", // 结构体
+		"\nimpl ",   // 实现块
+		"\nenum ",   // 枚举
+		"\ntrait ",  // 特征
+		"\nmod ",    // 模块
 		"\n\n",
 		"\n",
 	},
 	LangCPP: {
-		"\nclass ",       // 类
-		"\nvoid ",        // void 函数
-		"\nint ",         // int 函数
-		"\nnamespace ",   // 命名空间
-		"\ntemplate",     // 模板
-		"\n#",            // 预处理器
+		"\nclass ",     // 类
+		"\nvoid ",      // void 函数
+		"\nint ",       // int 函数
+		"\nnamespace ", // 命名空间
+		"\ntemplate",   // 模板
+		"\n#",          // 预处理器
 		"\n\n",
 		"\n",
 	},
 	LangRuby: {
-		"\nclass ",       // 类
-		"\ndef ",         // 方法
-		"\nmodule ",      // 模块
+		"\nclass ",  // 类
+		"\ndef ",    // 方法
+		"\nmodule ", // 模块
 		"\n\n",
 		"\n",
 	},
 	LangPHP: {
-		"\nfunction ",    // 函数
-		"\nclass ",       // 类
-		"\ninterface ",   // 接口
-		"\ntrait ",       // 特征
-		"\nnamespace ",   // 命名空间
+		"\nfunction ",  // 函数
+		"\nclass ",     // 类
+		"\ninterface ", // 接口
+		"\ntrait ",     // 特征
+		"\nnamespace ", // 命名空间
 		"\n\n",
 		"\n",
 	},
@@ -233,9 +233,9 @@ func (s *CodeSplitter) Split(ctx context.Context, docs []rag.Document) ([]rag.Do
 				Content: chunk,
 				Source:  doc.Source,
 				Metadata: mergeMetadata(doc.Metadata, map[string]any{
-					"splitter":    "code",
-					"language":    langName(lang),
-					"chunk_index": i,
+					"splitter":     "code",
+					"language":     langName(lang),
+					"chunk_index":  i,
 					"total_chunks": len(chunks),
 				}),
 				CreatedAt: time.Now(),
