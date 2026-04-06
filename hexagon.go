@@ -27,6 +27,8 @@ import (
 	"context"
 	"errors"
 	"os"
+	"runtime/debug"
+	"strings"
 	"sync"
 
 	"github.com/hexagon-codes/ai-core/llm"
@@ -36,24 +38,26 @@ import (
 	"github.com/hexagon-codes/hexagon/agent"
 )
 
-// Version information for the Hexagon framework.
-const (
-	// Version is the current version of the Hexagon framework.
-	// Format: MAJOR.MINOR.PATCH[-PRERELEASE]
-	Version = "0.3.2-beta"
+// Version is the current version of the Hexagon framework.
+// It is automatically resolved from Go module build info when available,
+// falling back to the hardcoded value for development builds.
+var Version = resolveVersion()
 
-	// VersionMajor is the major version number.
-	VersionMajor = 0
-
-	// VersionMinor is the minor version number.
-	VersionMinor = 3
-
-	// VersionPatch is the patch version number.
-	VersionPatch = 2
-
-	// VersionPrerelease is the pre-release identifier (empty for stable releases).
-	VersionPrerelease = "beta"
-)
+func resolveVersion() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		// When hexagon is imported as a dependency
+		for _, dep := range info.Deps {
+			if dep.Path == "github.com/hexagon-codes/hexagon" {
+				return strings.TrimPrefix(dep.Version, "v")
+			}
+		}
+		// When hexagon is the main module
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return strings.TrimPrefix(v, "v")
+		}
+	}
+	return "0.4.4" // fallback for development builds
+}
 
 // 核心类型重新导出
 type (
