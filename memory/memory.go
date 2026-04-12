@@ -69,12 +69,26 @@ func (m *WindowMemory) Save(_ context.Context, entry coremem.Entry) error {
 	return nil
 }
 
-func (m *WindowMemory) SaveBatch(ctx context.Context, entries []coremem.Entry) error {
-	for _, e := range entries {
-		if err := m.Save(ctx, e); err != nil {
-			return err
+func (m *WindowMemory) SaveBatch(_ context.Context, entries []coremem.Entry) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now()
+	for _, entry := range entries {
+		if entry.CreatedAt.IsZero() {
+			entry.CreatedAt = now
 		}
+		m.entries = append(m.entries, entry)
 	}
+
+	// 滑动窗口：批量添加后统一裁剪
+	if len(m.entries) > m.windowSize {
+		m.entries = m.entries[len(m.entries)-m.windowSize:]
+	}
+
+	// 重建索引（仅一次）
+	m.rebuildIndex()
+
 	return nil
 }
 
@@ -283,7 +297,13 @@ func (m *SummaryMemory) Search(_ context.Context, query coremem.SearchQuery) ([]
 	result = append(result, m.entries...)
 
 	if query.Limit > 0 && len(result) > query.Limit {
-		result = result[len(result)-query.Limit:]
+		if m.summary != "" && query.Limit > 1 {
+			// Always keep the summary (index 0) + the most recent (Limit-1) entries
+			tail := result[len(result)-(query.Limit-1):]
+			result = append(result[:1], tail...)
+		} else {
+			result = result[len(result)-query.Limit:]
+		}
 	}
 
 	return result, nil

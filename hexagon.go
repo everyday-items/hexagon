@@ -56,7 +56,7 @@ func resolveVersion() string {
 			return strings.TrimPrefix(v, "v")
 		}
 	}
-	return "0.4.4" // fallback for development builds
+	return "0.4.5" // fallback for development builds
 }
 
 // 核心类型重新导出
@@ -268,4 +268,3 @@ func Run(ctx context.Context, input Input, opts ...QuickStartOption) (Output, er
 func NewTool[I, O any](name, description string, fn func(context.Context, I) (O, error)) *tool.FuncTool[I, O] {
 	return tool.NewFunc(name, description, fn)
 }
-
