@@ -13,6 +13,7 @@ import (
 	"github.com/hexagon-codes/hexagon/core"
 	"github.com/hexagon-codes/hexagon/hooks"
 	"github.com/hexagon-codes/hexagon/internal/util"
+	agentruntime "github.com/hexagon-codes/hexagon/runtime"
 	"github.com/hexagon-codes/hexagon/stream"
 )
 
@@ -59,160 +60,38 @@ func (a *ReActAgent) Run(ctx context.Context, input Input) (Output, error) {
 		return Output{}, fmt.Errorf("LLM provider not configured")
 	}
 
-	// 生成运行 ID
 	runID := util.GenerateID("run")
 	startTime := time.Now()
-
-	// 获取钩子管理器
 	hookManager := hooks.ManagerFromContext(ctx)
 
-	// 触发运行开始钩子
-	if hookManager != nil {
-		if err := hookManager.TriggerRunStart(ctx, &hooks.RunStartEvent{
-			RunID:   runID,
-			AgentID: a.ID(),
-			Input:   input,
-		}); err != nil {
-			return Output{}, fmt.Errorf("run start hook failed: %w", err)
-		}
-	}
+	runner := agentruntime.NewRunner(agentruntime.Config{
+		ProviderSelector: agentruntime.StaticProviderSelector{
+			Provider: a.config.LLM,
+			Name:     a.config.LLM.Name(),
+		},
+		ToolExecutor:    &agentToolExecutor{tools: a.config.Tools, runID: runID, hookManager: hookManager},
+		DefaultMaxTurns: a.config.MaxIterations,
+	})
 
-	// 构建消息历史
-	messages := a.buildInitialMessages(ctx, input)
-
-	// 构建工具定义
-	toolDefs := a.buildToolDefinitions()
-
-	var output Output
-	var totalUsage llm.Usage
-	var runErr error
-
-	// ReAct 循环
-	reachedMaxIterations := false
-	for i := 0; i < a.config.MaxIterations; i++ {
-		// 调用 LLM
-		req := llm.CompletionRequest{
-			Messages: messages,
-			Tools:    toolDefs,
-		}
-
-		// 触发 LLM 开始钩子
+	result, err := runner.RunWithSink(ctx, agentruntime.Request{
+		ID:       runID,
+		Messages: a.buildInitialMessages(ctx, input),
+		Tools:    a.buildToolDefinitions(),
+		Limits: agentruntime.Limits{
+			MaxTurns: a.config.MaxIterations,
+		},
+	}, a.runtimeHookSink(runID, input, startTime, hookManager))
+	output := outputFromRuntime(result)
+	if err != nil {
 		if hookManager != nil {
-			hookManager.TriggerLLMStart(ctx, &hooks.LLMStartEvent{
-				RunID:    runID,
-				Provider: a.config.LLM.Name(),
-				Messages: convertMessagesToAny(messages),
-			})
-		}
-
-		llmStartTime := time.Now()
-		resp, err := a.config.LLM.Complete(ctx, req)
-		llmDuration := time.Since(llmStartTime).Milliseconds()
-
-		if err != nil {
-			runErr = fmt.Errorf("LLM call failed: %w", err)
-			// 触发错误钩子
-			if hookManager != nil {
-				hookManager.TriggerError(ctx, &hooks.ErrorEvent{
-					RunID:   runID,
-					AgentID: a.ID(),
-					Error:   runErr,
-					Phase:   "llm_call",
-				})
-			}
-			break
-		}
-
-		// 触发 LLM 结束钩子
-		if hookManager != nil {
-			hookManager.TriggerLLMEnd(ctx, &hooks.LLMEndEvent{
-				RunID:            runID,
-				Response:         resp.Content,
-				PromptTokens:     resp.Usage.PromptTokens,
-				CompletionTokens: resp.Usage.CompletionTokens,
-				Duration:         llmDuration,
-			})
-		}
-
-		// 累计 Token 使用
-		totalUsage.PromptTokens += resp.Usage.PromptTokens
-		totalUsage.CompletionTokens += resp.Usage.CompletionTokens
-		totalUsage.TotalTokens += resp.Usage.TotalTokens
-
-		// 检查是否需要调用工具
-		if len(resp.ToolCalls) == 0 {
-			// 没有工具调用，返回最终结果
-			output.Content = resp.Content
-			output.Usage = totalUsage
-			break
-		}
-
-		// 处理工具调用（带钩子）
-		toolResults, toolRecords, err := a.executeToolCallsWithHooks(ctx, runID, resp.ToolCalls, hookManager)
-		if err != nil {
-			runErr = fmt.Errorf("tool execution failed: %w", err)
-			if hookManager != nil {
-				hookManager.TriggerError(ctx, &hooks.ErrorEvent{
-					RunID:   runID,
-					AgentID: a.ID(),
-					Error:   runErr,
-					Phase:   "tool_execution",
-				})
-			}
-			break
-		}
-
-		output.ToolCalls = append(output.ToolCalls, toolRecords...)
-
-		// 将工具调用和结果添加到消息历史
-		messages = append(messages, llm.Message{
-			Role:    llm.RoleAssistant,
-			Content: resp.Content,
-		})
-
-		for _, result := range toolResults {
-			messages = append(messages, llm.Message{
-				Role:    llm.RoleTool,
-				Content: result,
-			})
-		}
-
-		// 检查是否是最后一次迭代且 LLM 仍在请求工具调用
-		if i == a.config.MaxIterations-1 {
-			reachedMaxIterations = true
-		}
-	}
-
-	// 如果因达到最大迭代次数退出且没有最终输出，设置警告
-	if reachedMaxIterations && output.Content == "" && runErr == nil {
-		runErr = fmt.Errorf("max iterations (%d) reached, task may be incomplete", a.config.MaxIterations)
-		output.Metadata = map[string]any{
-			"warning":        "max_iterations_reached",
-			"max_iterations": a.config.MaxIterations,
-		}
-	}
-
-	// 触发运行结束钩子
-	if hookManager != nil {
-		if runErr != nil {
 			hookManager.TriggerError(ctx, &hooks.ErrorEvent{
 				RunID:   runID,
 				AgentID: a.ID(),
-				Error:   runErr,
+				Error:   err,
 				Phase:   "run",
 			})
-		} else {
-			hookManager.TriggerRunEnd(ctx, &hooks.RunEndEvent{
-				RunID:    runID,
-				AgentID:  a.ID(),
-				Output:   output,
-				Duration: time.Since(startTime).Milliseconds(),
-			})
 		}
-	}
-
-	if runErr != nil {
-		return Output{}, runErr
+		return Output{}, err
 	}
 
 	// 保存到记忆（保存失败不影响主流程，但通过钩子报告错误）
@@ -232,6 +111,149 @@ func (a *ReActAgent) Run(ctx context.Context, input Input) (Output, error) {
 	}
 
 	return output, nil
+}
+
+func (a *ReActAgent) runtimeHookSink(runID string, input Input, start time.Time, hookManager *hooks.Manager) agentruntime.EventSink {
+	if hookManager == nil {
+		return nil
+	}
+	var llmStart time.Time
+	return agentruntime.EventSinkFunc(func(ctx context.Context, event agentruntime.Event) error {
+		switch event.Type {
+		case agentruntime.EventRunStarted:
+			return hookManager.TriggerRunStart(ctx, &hooks.RunStartEvent{
+				RunID:   runID,
+				AgentID: a.ID(),
+				Input:   input,
+			})
+		case agentruntime.EventLLMStarted:
+			llmStart = time.Now()
+			return hookManager.TriggerLLMStart(ctx, &hooks.LLMStartEvent{
+				RunID:    runID,
+				Provider: a.config.LLM.Name(),
+				Messages: convertMessagesToAny(event.State.Messages),
+			})
+		case agentruntime.EventLLMCompleted:
+			if event.Response == nil {
+				return nil
+			}
+			return hookManager.TriggerLLMEnd(ctx, &hooks.LLMEndEvent{
+				RunID:            runID,
+				Response:         event.Response.Content,
+				PromptTokens:     event.Response.Usage.PromptTokens,
+				CompletionTokens: event.Response.Usage.CompletionTokens,
+				Duration:         time.Since(llmStart).Milliseconds(),
+			})
+		case agentruntime.EventRunFinished:
+			return hookManager.TriggerRunEnd(ctx, &hooks.RunEndEvent{
+				RunID:    runID,
+				AgentID:  a.ID(),
+				Output:   outputFromRuntime(agentruntimeResultFromState(event.State)),
+				Duration: time.Since(start).Milliseconds(),
+			})
+		case agentruntime.EventRunFailed:
+			return hookManager.TriggerError(ctx, &hooks.ErrorEvent{
+				RunID:   runID,
+				AgentID: a.ID(),
+				Error:   event.Error,
+				Phase:   "run",
+			})
+		}
+		return nil
+	})
+}
+
+type agentToolExecutor struct {
+	tools       []tool.Tool
+	runID       string
+	hookManager *hooks.Manager
+}
+
+func (e *agentToolExecutor) Execute(ctx context.Context, call llm.ToolCall) (agentruntime.ToolResult, error) {
+	var targetTool tool.Tool
+	for _, t := range e.tools {
+		if t.Name() == call.Name {
+			targetTool = t
+			break
+		}
+	}
+	if targetTool == nil {
+		msg := fmt.Sprintf("Error: tool '%s' not found", call.Name)
+		return agentruntime.ToolResult{Content: msg, Error: msg}, nil
+	}
+	args, err := tool.ParseArgs(call.Arguments)
+	if err != nil {
+		msg := fmt.Sprintf("Error: failed to parse arguments: %v", err)
+		return agentruntime.ToolResult{Content: msg, Error: err.Error()}, nil
+	}
+
+	toolID := call.ID
+	if toolID == "" {
+		toolID = util.GenerateID("tool")
+	}
+	if e.hookManager != nil {
+		e.hookManager.TriggerToolStart(ctx, &hooks.ToolStartEvent{
+			RunID:    e.runID,
+			ToolName: call.Name,
+			ToolID:   toolID,
+			Input:    args,
+		})
+	}
+	start := time.Now()
+	toolResult, execErr := targetTool.Execute(ctx, args)
+	if e.hookManager != nil {
+		e.hookManager.TriggerToolEnd(ctx, &hooks.ToolEndEvent{
+			RunID:    e.runID,
+			ToolName: call.Name,
+			ToolID:   toolID,
+			Output:   toolResult,
+			Duration: time.Since(start).Milliseconds(),
+			Error:    execErr,
+		})
+	}
+	if execErr != nil {
+		msg := fmt.Sprintf("Error: tool execution failed: %v", execErr)
+		return agentruntime.ToolResult{Content: msg, Raw: toolResult, Error: execErr.Error()}, nil
+	}
+	return agentruntime.ToolResult{Content: formatToolResult(toolResult), Raw: toolResult}, nil
+}
+
+func outputFromRuntime(result *agentruntime.Result) Output {
+	if result == nil {
+		return Output{}
+	}
+	out := Output{
+		Content:  result.Content,
+		Usage:    result.Usage,
+		Metadata: result.Metadata,
+	}
+	for _, call := range result.ToolCalls {
+		rec := ToolCallRecord{Name: call.Name}
+		args, _ := tool.ParseArgs(call.Arguments)
+		rec.Arguments = args
+		if tr, ok := call.Result.Raw.(tool.Result); ok {
+			rec.Result = tr
+		} else if call.Result.Error != "" {
+			rec.Result = tool.Result{Success: false, Error: call.Result.Error}
+		} else {
+			rec.Result = tool.NewResult(call.Result.Content)
+		}
+		out.ToolCalls = append(out.ToolCalls, rec)
+	}
+	return out
+}
+
+func agentruntimeResultFromState(state *agentruntime.State) *agentruntime.Result {
+	if state == nil {
+		return nil
+	}
+	return &agentruntime.Result{
+		Content:   state.FinalText,
+		Reasoning: state.Reasoning,
+		ToolCalls: state.ToolCalls,
+		Usage:     state.Usage,
+		Metadata:  state.Attributes,
+	}
 }
 
 // executeToolCallsWithHooks 执行工具调用（带钩子）

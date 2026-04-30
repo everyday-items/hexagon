@@ -162,7 +162,7 @@ func (a *PlanExecuteAgent) Run(ctx context.Context, input Input) (Output, error)
 	var runErr error
 
 	// 1. 生成执行计划
-	plan, err := a.createPlan(ctx, input.Query)
+	plan, err := a.createPlan(ctx, runID, input.Query)
 	if err != nil {
 		runErr = fmt.Errorf("planning failed: %w", err)
 		a.triggerError(ctx, hookManager, runID, runErr, "planning")
@@ -255,7 +255,7 @@ func (a *PlanExecuteAgent) Run(ctx context.Context, input Input) (Output, error)
 
 	// 3. 汇总执行结果
 	if runErr == nil {
-		summary, err := a.summarizeResults(ctx, plan)
+		summary, err := a.summarizeResults(ctx, runID, plan)
 		if err != nil {
 			// 汇总失败不影响主流程，使用简单汇总
 			summary = a.buildSimpleSummary(plan)
@@ -294,18 +294,18 @@ func (a *PlanExecuteAgent) Run(ctx context.Context, input Input) (Output, error)
 }
 
 // createPlan 创建执行计划
-func (a *PlanExecuteAgent) createPlan(ctx context.Context, goal string) (*planner.Plan, error) {
+func (a *PlanExecuteAgent) createPlan(ctx context.Context, runID, goal string) (*planner.Plan, error) {
 	// 如果配置了规划器，使用它
 	if a.planner != nil {
 		return a.planner.Plan(ctx, goal)
 	}
 
 	// 没有规划器时，使用 LLM 直接生成计划
-	return a.planWithLLM(ctx, goal)
+	return a.planWithLLM(ctx, runID, goal)
 }
 
 // planWithLLM 使用 LLM 直接生成计划
-func (a *PlanExecuteAgent) planWithLLM(ctx context.Context, goal string) (*planner.Plan, error) {
+func (a *PlanExecuteAgent) planWithLLM(ctx context.Context, runID, goal string) (*planner.Plan, error) {
 	// 构建工具描述
 	toolsDesc := a.buildToolsDescription()
 
@@ -337,11 +337,9 @@ func (a *PlanExecuteAgent) planWithLLM(ctx context.Context, goal string) (*plann
 
 只返回 JSON，不要其他内容。`, goal, toolsDesc)
 
-	resp, err := a.config.LLM.Complete(ctx, llm.CompletionRequest{
-		Messages: []llm.Message{
-			{Role: llm.RoleUser, Content: prompt},
-		},
-	})
+	resp, err := runCompletionWithRuntime(ctx, a.config.LLM, runID, []llm.Message{
+		{Role: llm.RoleUser, Content: prompt},
+	}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("LLM planning failed: %w", err)
 	}
@@ -442,19 +440,19 @@ func extractJSONContent(content string) string {
 func (a *PlanExecuteAgent) executeStep(ctx context.Context, runID string, step *planner.Step, hookManager *hooks.Manager) (*planner.StepResult, error) {
 	// 如果没有动作，使用 LLM 执行
 	if step.Action == nil {
-		return a.executeWithLLM(ctx, step)
+		return a.executeWithLLM(ctx, runID, step, hookManager)
 	}
 
 	switch step.Action.Type {
 	case planner.ActionTypeTool:
 		return a.executeTool(ctx, runID, step, hookManager)
 	case planner.ActionTypeLLM:
-		return a.executeWithLLM(ctx, step)
+		return a.executeWithLLM(ctx, runID, step, hookManager)
 	case planner.ActionTypeAgent:
-		return a.executeAgent(ctx, step)
+		return a.executeAgent(ctx, runID, step, hookManager)
 	default:
 		// 默认使用 LLM 执行
-		return a.executeWithLLM(ctx, step)
+		return a.executeWithLLM(ctx, runID, step, hookManager)
 	}
 }
 
@@ -524,16 +522,14 @@ func (a *PlanExecuteAgent) executeTool(ctx context.Context, runID string, step *
 }
 
 // executeWithLLM 使用 LLM 执行步骤
-func (a *PlanExecuteAgent) executeWithLLM(ctx context.Context, step *planner.Step) (*planner.StepResult, error) {
+func (a *PlanExecuteAgent) executeWithLLM(ctx context.Context, runID string, step *planner.Step, hookManager *hooks.Manager) (*planner.StepResult, error) {
 	startTime := time.Now()
 
 	prompt := fmt.Sprintf("请执行以下任务并返回结果:\n\n%s", step.Description)
 
-	resp, err := a.config.LLM.Complete(ctx, llm.CompletionRequest{
-		Messages: []llm.Message{
-			{Role: llm.RoleUser, Content: prompt},
-		},
-	})
+	resp, err := runCompletionWithRuntime(ctx, a.config.LLM, runID, []llm.Message{
+		{Role: llm.RoleUser, Content: prompt},
+	}, runtimeLLMHookSink(runID, a.config.LLM.Name(), hookManager))
 
 	if err != nil {
 		return &planner.StepResult{
@@ -552,9 +548,9 @@ func (a *PlanExecuteAgent) executeWithLLM(ctx context.Context, step *planner.Ste
 }
 
 // executeAgent 执行 Agent 调用
-func (a *PlanExecuteAgent) executeAgent(ctx context.Context, step *planner.Step) (*planner.StepResult, error) {
+func (a *PlanExecuteAgent) executeAgent(ctx context.Context, runID string, step *planner.Step, hookManager *hooks.Manager) (*planner.StepResult, error) {
 	// Agent 调用暂时使用 LLM 代替
-	return a.executeWithLLM(ctx, step)
+	return a.executeWithLLM(ctx, runID, step, hookManager)
 }
 
 // checkDependencies 检查步骤依赖是否满足
@@ -604,18 +600,18 @@ func (a *PlanExecuteAgent) buildFailureFeedback(step *planner.Step) string {
 }
 
 // summarizeResults 汇总执行结果
-func (a *PlanExecuteAgent) summarizeResults(ctx context.Context, plan *planner.Plan) (string, error) {
+func (a *PlanExecuteAgent) summarizeResults(ctx context.Context, runID string, plan *planner.Plan) (string, error) {
 	// 如果配置了汇总器，使用它
 	if a.summarizer != nil {
 		return a.summarizer.Summarize(ctx, plan.Goal, plan.Steps)
 	}
 
 	// 使用 LLM 汇总
-	return a.summarizeWithLLM(ctx, plan)
+	return a.summarizeWithLLM(ctx, runID, plan)
 }
 
 // summarizeWithLLM 使用 LLM 汇总结果
-func (a *PlanExecuteAgent) summarizeWithLLM(ctx context.Context, plan *planner.Plan) (string, error) {
+func (a *PlanExecuteAgent) summarizeWithLLM(ctx context.Context, runID string, plan *planner.Plan) (string, error) {
 	// 构建步骤执行摘要
 	var stepsBuilder strings.Builder
 	for _, step := range plan.Steps {
@@ -651,11 +647,9 @@ func (a *PlanExecuteAgent) summarizeWithLLM(ctx context.Context, plan *planner.P
 3. 如果有失败的步骤，说明原因
 4. 用自然语言回复，不要使用 JSON`, plan.Goal, stepsBuilder.String())
 
-	resp, err := a.config.LLM.Complete(ctx, llm.CompletionRequest{
-		Messages: []llm.Message{
-			{Role: llm.RoleUser, Content: prompt},
-		},
-	})
+	resp, err := runCompletionWithRuntime(ctx, a.config.LLM, runID, []llm.Message{
+		{Role: llm.RoleUser, Content: prompt},
+	}, nil)
 	if err != nil {
 		return a.buildSimpleSummary(plan), nil
 	}

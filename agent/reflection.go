@@ -279,34 +279,9 @@ func (a *ReflectionAgent) executeTask(ctx context.Context, runID string, input I
 		Content: promptBuilder.String(),
 	})
 
-	// 触发 LLM 开始钩子
-	if hookManager != nil {
-		hookManager.TriggerLLMStart(ctx, &hooks.LLMStartEvent{
-			RunID:    runID,
-			Provider: a.config.LLM.Name(),
-			Messages: convertMessagesToAny(messages),
-		})
-	}
-
-	llmStartTime := time.Now()
-	resp, err := a.config.LLM.Complete(ctx, llm.CompletionRequest{
-		Messages: messages,
-	})
-	llmDuration := time.Since(llmStartTime).Milliseconds()
-
+	resp, err := runCompletionWithRuntime(ctx, a.config.LLM, runID, messages, runtimeLLMHookSink(runID, a.config.LLM.Name(), hookManager))
 	if err != nil {
 		return Output{}, fmt.Errorf("LLM completion failed: %w", err)
-	}
-
-	// 触发 LLM 结束钩子
-	if hookManager != nil {
-		hookManager.TriggerLLMEnd(ctx, &hooks.LLMEndEvent{
-			RunID:            runID,
-			Response:         resp.Content,
-			PromptTokens:     resp.Usage.PromptTokens,
-			CompletionTokens: resp.Usage.CompletionTokens,
-			Duration:         llmDuration,
-		})
 	}
 
 	return Output{
@@ -354,11 +329,9 @@ func (a *ReflectionAgent) reflectWithLLM(ctx context.Context, input Input, outpu
 
 只返回 JSON，不要其他内容。`, input.Query, output.Content)
 
-	resp, err := a.config.LLM.Complete(ctx, llm.CompletionRequest{
-		Messages: []llm.Message{
-			{Role: llm.RoleUser, Content: prompt},
-		},
-	})
+	resp, err := runCompletionWithRuntime(ctx, a.config.LLM, util.GenerateID("run"), []llm.Message{
+		{Role: llm.RoleUser, Content: prompt},
+	}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("reflection LLM call failed: %w", err)
 	}
@@ -538,11 +511,9 @@ func (r *LLMReflector) Reflect(ctx context.Context, input Input, output Output) 
 
 只返回 JSON，不要其他内容。`, input.Query, output.Content)
 
-	resp, err := r.llm.Complete(ctx, llm.CompletionRequest{
-		Messages: []llm.Message{
-			{Role: llm.RoleUser, Content: prompt},
-		},
-	})
+	resp, err := runCompletionWithRuntime(ctx, r.llm, util.GenerateID("run"), []llm.Message{
+		{Role: llm.RoleUser, Content: prompt},
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
