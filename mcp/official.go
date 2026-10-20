@@ -64,9 +64,12 @@ func (t *MCPProxyToolV2) Execute(ctx context.Context, args map[string]any) (tool
 
 	// 提取文本内容
 	var texts []string
+	hasNonText := false
 	for _, content := range result.Content {
 		if tc, ok := content.(*sdkmcp.TextContent); ok {
 			texts = append(texts, tc.Text)
+		} else {
+			hasNonText = true
 		}
 	}
 
@@ -76,10 +79,19 @@ func (t *MCPProxyToolV2) Execute(ctx context.Context, args map[string]any) (tool
 		// Success=false 且错误文本写入 Error 字段。直接放进 Output 会被
 		// Result.String() 在 Success=false 时丢弃（只输出 "Error: " 前缀）。
 		err := fmt.Errorf("MCP 工具 %s 返回错误: %s", t.mcpTool.Name, output)
-		return tool.NewErrorResult(err), err
+		failure := tool.NewErrorResult(err)
+		failure.Output = &PreservedToolResult{CallToolResult: result}
+		return failure, err
 	}
 	if len(texts) == 0 && result.StructuredContent != nil {
+		if hasNonText {
+			return tool.NewResult(&PreservedToolResult{CallToolResult: result}), nil
+		}
 		return tool.NewResult(result.StructuredContent), nil
+	}
+	// 混合结果保留原有内容顺序、类型及结构化事实，纯文本维持字符串合同。
+	if hasNonText || result.StructuredContent != nil {
+		return tool.NewResult(&PreservedToolResult{CallToolResult: result}), nil
 	}
 
 	return tool.NewResult(output), nil
