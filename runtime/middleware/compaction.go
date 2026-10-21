@@ -2,14 +2,17 @@ package middleware
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/hexagon-codes/ai-core/llm"
 	"github.com/hexagon-codes/ai-core/tokenizer"
 	hruntime "github.com/hexagon-codes/hexagon/runtime"
+	"github.com/hexagon-codes/toolkit/lang/stringx"
 )
 
 // TokenCounter 估算一段消息历史的 token 数。以依赖注入方式提供，使中间件不硬依赖
-// 具体 tokenizer；nil 时 Compaction 退化为内置粗估（按字符数 /4 + 每条固定开销）。
+// 具体 tokenizer；nil 时复用 ai-core 的中文感知估算。
 type TokenCounter func(messages []llm.Message) int
 
 // Compactor 把消息历史压缩为更短的等价历史。以依赖注入方式提供，使「摘要式压缩」
@@ -20,19 +23,22 @@ type Compactor func(ctx context.Context, messages []llm.Message) []llm.Message
 // state.Messages，并发 ContextCompacted{before,after} 事件。
 //
 // 设计要点：
-//   - 阈值 MaxTokens <= 0 时**完全关闭**（默认行为与无此中间件一致）。
-//   - token 估算（Count）与压缩策略（Compact）均可注入；默认估算为粗估、默认压缩为
+//   - 未提供 ShouldCompact 且 MaxTokens <= 0 时完全关闭。
+//   - token 估算（Count）与压缩策略（Compact）均可注入；默认估算为中文感知估算、默认压缩为
 //     「保留 system + 最近 KeepRecent 条」截断（不需 LLM）；摘要式压缩由调用方注入 Compact。
 //   - 压缩可能丢弃中间的 assistant/tool 配对，但 runner 在发送前会 sanitize 孤立 tool
 //     message（见 runner.sanitizeToolCallSequence），故协议序列仍合规。
 //
-// 线程安全：Compaction 自身无可变状态，可被多个并发 run 复用。
+// 线程安全：Compaction 自身无可变状态；注入回调的并发安全由调用方负责。
 type Compaction struct {
-	// MaxTokens 触发压缩的 token 阈值；<= 0 表示关闭。
+	// MaxTokens 触发压缩的 token 阈值；未提供 ShouldCompact 时，<= 0 表示关闭。
 	MaxTokens int
+	// ShouldCompact 可选的业务触发条件，优先于 MaxTokens；nil 时沿用 token 阈值。
+	// 可用于保留调用方既有的字节阈值。回调不得修改消息，token 统计仍用于事件观测。
+	ShouldCompact func(messages []llm.Message) bool
 	// KeepRecent 内置压缩保留的最近非 system 消息条数；<= 0 时默认 6。
 	KeepRecent int
-	// Count token 估算函数；nil 时用内置粗估。
+	// Count token 估算函数；nil 时用内置中文感知估算。
 	Count TokenCounter
 	// Compact 压缩函数；nil 时用内置「保留 system + 最近 KeepRecent」。
 	Compact Compactor
@@ -61,11 +67,18 @@ func (c Compaction) keepRecent() int {
 
 // BeforeLLM 估算当前历史 token，超阈值则压缩并发 ContextCompacted 事件。
 func (c Compaction) BeforeLLM(ctx context.Context, state *hruntime.State) error {
-	if c.MaxTokens <= 0 || state == nil {
+	if state == nil {
+		return nil
+	}
+	if c.ShouldCompact != nil {
+		if !c.ShouldCompact(state.Messages) {
+			return nil
+		}
+	} else if c.MaxTokens <= 0 {
 		return nil
 	}
 	before := c.count(state.Messages)
-	if before <= c.MaxTokens {
+	if c.ShouldCompact == nil && before <= c.MaxTokens {
 		return nil
 	}
 	compacted := c.compact(ctx, state.Messages)
@@ -143,4 +156,207 @@ func keepRecent(messages []llm.Message, keep int) []llm.Message {
 		out = append(out, m)
 	}
 	return out
+}
+
+// HeuristicCompressOptions 控制启发式压缩参数。零值时使用合理默认。
+type HeuristicCompressOptions struct {
+	// KeepRecentToolPairs 保留最近 N 组 assistant 工具调用及全部返回（默认 3）。
+	KeepRecentToolPairs int
+	// MaxAssistantChars assistant 回复超过该长度截断（默认 4000）
+	MaxAssistantChars int
+	// PreservedRoles 永不压缩的 role（如 "system"）
+	PreservedRoles map[string]bool
+}
+
+// HeuristicCompress 保留最近完整工具组并缩短超长 assistant 正文，返回压缩后的副本。
+// 用户各轮原文和多模态内容完整保留，不依据正文相同或文本长度推断重复消息和媒体。
+// cfg 为零值时使用默认参数。
+func HeuristicCompress(history []llm.Message, cfg HeuristicCompressOptions) []llm.Message {
+	if cfg.KeepRecentToolPairs <= 0 {
+		cfg.KeepRecentToolPairs = 3
+	}
+	if cfg.MaxAssistantChars <= 0 {
+		cfg.MaxAssistantChars = 4000
+	}
+	if cfg.PreservedRoles == nil {
+		cfg.PreservedRoles = map[string]bool{"system": true}
+	}
+
+	// 规则 1：以 assistant 调用组为边界，避免并列工具返回被按消息条数截断。
+	toolGroups := 0
+	toolKeepStart := len(history)
+	for i := len(history) - 1; i >= 0; i-- {
+		role := strings.ToLower(string(history[i].Role))
+		if role == "assistant" && len(history[i].ToolCalls) > 0 {
+			toolKeepStart = i
+			toolGroups++
+			if toolGroups == cfg.KeepRecentToolPairs {
+				break
+			}
+		}
+	}
+
+	out := make([]llm.Message, 0, len(history))
+	for i, m := range history {
+		role := strings.ToLower(string(m.Role))
+
+		// 永不压缩的 role
+		if cfg.PreservedRoles[role] {
+			out = append(out, m)
+			continue
+		}
+
+		// 规则 1: 老 tool_call/tool_result 跳过
+		if (role == "tool" || (role == "assistant" && len(m.ToolCalls) > 0)) && i < toolKeepStart {
+			continue
+		}
+
+		// assistant 超长截断按码点保留头尾，避免切裂中文或 emoji。
+		if role == "assistant" {
+			runes := []rune(m.Content)
+			if len(runes) > cfg.MaxAssistantChars {
+				head := cfg.MaxAssistantChars * 60 / 100
+				tail := cfg.MaxAssistantChars * 20 / 100
+				m.Content = string(runes[:head]) + "\n...[truncated]...\n" + string(runes[len(runes)-tail:])
+			}
+		}
+
+		out = append(out, m)
+	}
+
+	return out
+}
+
+// RecentMessageBounds 返回前置 system 段末尾及最近消息窗口起点。
+// 最近窗口内的 tool 返回按调用 ID 找回 assistant，保留夹在结果之间的多模态消息。
+// keepRecent 小于零时按零处理；函数不修改输入。
+func RecentMessageBounds(messages []llm.Message, keepRecent int) (systemEnd, keepStart int) {
+	// system 消息通常在开头
+	systemEnd = 0
+	for i, m := range messages {
+		if m.Role == "system" {
+			systemEnd = i + 1
+		} else {
+			break
+		}
+	}
+
+	// 保留最近 N 条
+	keepStart = len(messages) - max(keepRecent, 0)
+	if keepStart < systemEnd {
+		keepStart = systemEnd
+	}
+
+	if keepStart == len(messages) || keepStart == systemEnd {
+		return
+	}
+
+	// 记录每个结果实际对应的调用位置；同一 ID 在新轮次复用时只匹配前方最近一次调用。
+	callByID := make(map[string]int)
+	callForResult := make([]int, len(messages))
+	lastCall := -1
+	for i, message := range messages {
+		callForResult[i] = -1
+		if message.Role == llm.RoleAssistant && len(message.ToolCalls) > 0 {
+			lastCall = i
+			for _, call := range message.ToolCalls {
+				if call.ID != "" {
+					callByID[call.ID] = i
+				}
+			}
+		} else if message.Role == llm.RoleTool {
+			if message.ToolCallID == "" {
+				callForResult[i] = lastCall // 无 ID 的旧格式沿用最近调用组。
+			} else if start, ok := callByID[message.ToolCallID]; ok {
+				callForResult[i] = start
+			}
+		}
+	}
+
+	// 从后向前扩展窗口，新增保留区内的结果也参与检查，不受中间消息 role 影响。
+	for i := len(messages) - 1; i >= keepStart; i-- {
+		if start := callForResult[i]; start >= systemEnd && start < keepStart {
+			keepStart = start
+		}
+	}
+
+	return
+}
+
+// HeuristicToolSummary 提取用户约束、工具名称和简短结果，不调用模型。
+// 优先按 ToolCallID 配对；没有 ID 的旧返回按尚未消费的调用顺序回退。
+func HeuristicToolSummary(msgs []llm.Message) string {
+	var userConstraints strings.Builder
+	var toolSummary strings.Builder
+	toolCount := 0
+
+	// ID 索引与顺序游标共用消费状态，避免混合新旧返回重复匹配同一调用。
+	type pendingCall struct {
+		id, name string
+		used     bool
+	}
+	var pending []pendingCall
+	byID := make(map[string]int)
+	nextLegacy := 0
+
+	for _, m := range msgs {
+		if m.Role == "user" && m.Content != "" {
+			// 保留用户消息中的约束和指令
+			userConstraints.WriteString(fmt.Sprintf("User: %s\n", stringx.TruncateWithSuffix(m.Content, 200, "...")))
+		} else if m.Role == "assistant" && len(m.ToolCalls) > 0 {
+			for _, tc := range m.ToolCalls {
+				toolCount++
+				if tc.ID != "" {
+					byID[tc.ID] = len(pending)
+				}
+				pending = append(pending, pendingCall{id: tc.ID, name: tc.Name})
+			}
+		} else if m.Role == "tool" {
+			name := "(unknown)"
+			index := -1
+			if m.ToolCallID != "" {
+				if found, ok := byID[m.ToolCallID]; ok {
+					index = found
+				}
+			} else {
+				for nextLegacy < len(pending) && pending[nextLegacy].used {
+					nextLegacy++
+				}
+				if nextLegacy < len(pending) {
+					index = nextLegacy
+					nextLegacy++
+				}
+			}
+			if index >= 0 && !pending[index].used {
+				call := &pending[index]
+				name = call.name
+				call.used = true
+				if current, ok := byID[call.id]; ok && current == index {
+					delete(byID, call.id)
+				}
+			}
+			content := m.Content
+			if strings.HasPrefix(content, "Error") {
+				toolSummary.WriteString(fmt.Sprintf("- %s: %s\n", name, stringx.TruncateWithSuffix(content, 150, "...")))
+			} else {
+				toolSummary.WriteString(fmt.Sprintf("- %s: %s\n", name, stringx.TruncateWithSuffix(content, 100, "...")))
+			}
+		}
+	}
+
+	if toolCount == 0 && userConstraints.Len() == 0 {
+		return "(no interactions to summarize)"
+	}
+
+	var result strings.Builder
+	if userConstraints.Len() > 0 {
+		result.WriteString("User context:\n")
+		result.WriteString(userConstraints.String())
+		result.WriteByte('\n')
+	}
+	if toolCount > 0 {
+		result.WriteString(fmt.Sprintf("Executed %d tool calls:\n", toolCount))
+		result.WriteString(toolSummary.String())
+	}
+	return result.String()
 }

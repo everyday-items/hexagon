@@ -20,6 +20,9 @@ type Snapshot struct {
 	Step int `json:"step"`
 	// Messages 截至本步的消息历史。
 	Messages []llm.Message `json:"messages"`
+	// OutputMessages 保存本轮实际产出；nil 表示旧快照，空数组表示尚无产出。
+	// 它与可压缩的模型输入分离，恢复时不重放输入历史作为新回复。
+	OutputMessages *[]llm.Message `json:"output_messages,omitempty"`
 	// ToolCalls 截至本步已完成的工具调用记录。
 	ToolCalls []ToolCallRecord `json:"tool_calls,omitempty"`
 	// Usage 截至本步的累计 token 用量（计量维度）。
@@ -90,7 +93,7 @@ func SnapshotState(state *State, runID string) Snapshot {
 	if state == nil {
 		return Snapshot{RunID: runID}
 	}
-	return Snapshot{
+	snapshot := Snapshot{
 		RunID:     runID,
 		Step:      state.Turn,
 		Messages:  append([]llm.Message(nil), state.Messages...),
@@ -99,6 +102,11 @@ func SnapshotState(state *State, runID string) Snapshot {
 		Final:     state.Final,
 		FinalText: state.FinalText,
 	}
+	if state.outputMessages != nil {
+		messages := cloneOutputMessages(state.outputMessages)
+		snapshot.OutputMessages = &messages
+	}
+	return snapshot
 }
 
 // RestoreState 用 Snapshot 重建一个可继续执行的 State（resume 入口）。
@@ -106,7 +114,7 @@ func SnapshotState(state *State, runID string) Snapshot {
 // 返回的 State 从 Snapshot 的步号继续；Attributes 重新初始化为空（provider/model
 // 等运行期属性在恢复后的首次调用时重新填充）。
 func (s Snapshot) RestoreState() *State {
-	return &State{
+	state := &State{
 		Turn:       s.Step,
 		Messages:   append([]llm.Message(nil), s.Messages...),
 		ToolCalls:  append([]ToolCallRecord(nil), s.ToolCalls...),
@@ -115,6 +123,10 @@ func (s Snapshot) RestoreState() *State {
 		FinalText:  s.FinalText,
 		Attributes: map[string]any{},
 	}
+	if s.OutputMessages != nil {
+		state.outputMessages = cloneOutputMessages(*s.OutputMessages)
+	}
+	return state
 }
 
 // DurableExecution 把"让一次长时 Agent 执行可持久化、可恢复"收敛为一个最小接口：

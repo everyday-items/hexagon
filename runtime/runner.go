@@ -145,10 +145,11 @@ func (r *DefaultRunner) execute(ctx context.Context, req Request, sink EventSink
 		state.emit = emitter.emit
 	} else {
 		state = &State{
-			Request:    req,
-			Messages:   append([]llm.Message(nil), req.Messages...),
-			Attributes: map[string]any{},
-			emit:       emitter.emit,
+			Request:        req,
+			Messages:       append([]llm.Message(nil), req.Messages...),
+			outputMessages: []llm.Message{},
+			Attributes:     map[string]any{},
+			emit:           emitter.emit,
 		}
 		if prefix := strings.TrimSpace(strategy.BuildSystemPrefix(ctx, req)); prefix != "" {
 			state.Messages = prependSystemPrefix(state.Messages, prefix)
@@ -297,7 +298,7 @@ func (r *DefaultRunner) execute(ctx context.Context, req Request, sink EventSink
 			// 终态回答同样进消息序列：blocksFromRun 按 Messages 重建有序内容块流，
 			// 缺了这条，用过工具的运行 Blocks 恒无最终 text 块，blocks 优先渲染的
 			// 客户端正文蒸发（BUG-20260703 B5）。
-			state.Messages = append(state.Messages, llm.Message{
+			state.appendOutputMessage(llm.Message{
 				Role:    llm.RoleAssistant,
 				Content: resp.Content,
 			})
@@ -308,7 +309,7 @@ func (r *DefaultRunner) execute(ctx context.Context, req Request, sink EventSink
 			break
 		}
 
-		state.Messages = append(state.Messages, llm.Message{
+		state.appendOutputMessage(llm.Message{
 			Role:      llm.RoleAssistant,
 			Content:   resp.Content,
 			ToolCalls: toolCallRefs(resp.ToolCalls),
@@ -478,7 +479,7 @@ func (r *DefaultRunner) executeToolCalls(ctx context.Context, state *State, call
 			Result:    result,
 		}
 		state.ToolCalls = append(state.ToolCalls, record)
-		state.Messages = append(state.Messages, llm.Message{
+		state.appendOutputMessage(llm.Message{
 			Role:       llm.RoleTool,
 			Content:    result.Content,
 			ToolCallID: call.ID,
@@ -569,7 +570,8 @@ func stateResult(state *State) *Result {
 	}
 }
 
-// blocksFromRun 从本次运行新增的消息（Messages[runStart:]）重建**有序内容块流**。
+// blocksFromRun 从本次运行的产出重建有序内容块，模型输入压缩不影响产出。
+// 旧快照和直接构造的 State 仍沿用 Messages[runStart:]。
 // 按真实执行顺序产出 text → tool_use → tool_result → text …，保真多步 text↔tool 交错
 // （这是 Content 单串 + ToolCalls 扁平数组结构性做不到的）。tool_result 的状态/错误
 // 取自同 id 的 ToolCallRecord（含框架在执行点产出的 status）。
@@ -588,7 +590,11 @@ func blocksFromRun(state *State) template.Blocks {
 		results[r.ID] = r.Result
 	}
 	b := template.NewBlockBuilder()
-	for _, m := range state.Messages[start:] {
+	messages := state.outputMessages
+	if messages == nil {
+		messages = state.Messages[start:]
+	}
+	for _, m := range messages {
 		switch m.Role {
 		case llm.RoleAssistant:
 			b.Text(m.Content)
@@ -663,12 +669,16 @@ func snapshotResult(snap Snapshot) *Result {
 	if !snap.Final {
 		stop = StopReasonMaxTurns
 	}
-	return &Result{
+	result := &Result{
 		Content:    snap.FinalText,
 		ToolCalls:  append([]ToolCallRecord(nil), snap.ToolCalls...),
 		Usage:      snap.Usage,
 		StopReason: stop,
 	}
+	if snap.OutputMessages != nil {
+		result.Blocks = blocksFromRun(snap.RestoreState())
+	}
+	return result
 }
 
 func prependSystemPrefix(messages []llm.Message, prefix string) []llm.Message {

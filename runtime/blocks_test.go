@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hexagon-codes/ai-core/llm"
@@ -61,17 +62,28 @@ func TestBlocksFromRun_MultiStepInterleave(t *testing.T) {
 	}
 }
 
-// 单步无工具：仅一个 text 块。
+// 单步无工具只返回本轮 text 块，压缩输入不能重新输出旧回答。
 func TestBlocksFromRun_SingleTextOnly(t *testing.T) {
-	state := &State{
-		runStart: 1,
-		Messages: []llm.Message{
-			{Role: llm.RoleUser, Content: "你好"},
-			{Role: llm.RoleAssistant, Content: "你好！有什么可以帮你？"},
-		},
+	provider := &fakeProvider{name: "fake", responses: []*llm.CompletionResponse{{Content: "你好！有什么可以帮你？"}}}
+	runner := NewRunner(Config{
+		ProviderSelector: StaticProviderSelector{Provider: provider, Name: "fake", Model: "fake"},
+		Middleware: []Middleware{MiddlewareFuncSet{BeforeLLMFunc: func(_ context.Context, state *State) error {
+			state.Messages = append([]llm.Message{state.Messages[0]}, state.Messages[len(state.Messages)-2:]...)
+			return nil
+		}}},
+	})
+	result, err := runner.Run(t.Context(), Request{Messages: []llm.Message{
+		{Role: llm.RoleSystem, Content: "你是助手"},
+		{Role: llm.RoleUser, Content: "先前的问题"},
+		{Role: llm.RoleUser, Content: "重复的问题"},
+		{Role: llm.RoleAssistant, Content: "这是旧回答，不能作为本轮输出"},
+		{Role: llm.RoleUser, Content: "你好"},
+	}})
+	if err != nil {
+		t.Fatal(err)
 	}
-	blocks := blocksFromRun(state)
-	if len(blocks) != 1 || blocks[0].Type != template.BlockText {
+	blocks := result.Blocks
+	if len(blocks) != 1 || blocks[0].Type != template.BlockText || blocks[0].Text != "你好！有什么可以帮你？" {
 		t.Fatalf("单步应仅 1 个 text 块: %+v", blocks)
 	}
 }

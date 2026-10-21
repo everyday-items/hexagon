@@ -83,6 +83,9 @@ type State struct {
 	// 用于从 Messages 切出"本次运行新增的 assistant/tool 消息"重建有序块，
 	// 排除输入历史。
 	runStart int
+	// outputMessages 只记录本次运行的实际产出，不能随模型输入压缩而丢失或混入历史。
+	// nil 保留旧快照和直接构造 State 的兼容路径。
+	outputMessages []llm.Message
 
 	emit func(context.Context, Event) error
 }
@@ -117,15 +120,31 @@ func (s *State) Snapshot() *State {
 		}
 	}
 	return &State{
-		Request:    s.Request,
-		Messages:   append([]llm.Message(nil), s.Messages...),
-		ToolCalls:  append([]ToolCallRecord(nil), s.ToolCalls...),
-		Usage:      s.Usage,
-		Turn:       s.Turn,
-		Final:      s.Final,
-		FinalText:  s.FinalText,
-		Reasoning:  s.Reasoning,
-		Attributes: attrs,
+		Request:        s.Request,
+		Messages:       append([]llm.Message(nil), s.Messages...),
+		ToolCalls:      append([]ToolCallRecord(nil), s.ToolCalls...),
+		Usage:          s.Usage,
+		Turn:           s.Turn,
+		Final:          s.Final,
+		FinalText:      s.FinalText,
+		Reasoning:      s.Reasoning,
+		Attributes:     attrs,
+		runStart:       s.runStart,
+		outputMessages: cloneOutputMessages(s.outputMessages),
+	}
+}
+
+func cloneOutputMessages(messages []llm.Message) []llm.Message {
+	if messages == nil {
+		return nil
+	}
+	return append([]llm.Message{}, messages...)
+}
+
+func (s *State) appendOutputMessage(message llm.Message) {
+	s.Messages = append(s.Messages, message)
+	if s.outputMessages != nil {
+		s.outputMessages = append(s.outputMessages, message)
 	}
 }
 
