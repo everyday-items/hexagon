@@ -2,11 +2,12 @@
 
 # Hexagon API 参考文档
 
-本文档提供 Hexagon **v0.5.15** 的 API 参考。
+本文档覆盖 Hexagon **v0.5.15** API 与当前 `Unreleased` 变更。
 
 ## 目录
 
 - [顶层 API](#顶层-api)
+- [运行时续接](#运行时续接)
 - [Agent](#agent)
 - [Tool](#tool)
 - [MCP](#mcp)
@@ -94,6 +95,32 @@ func SetDefaultProvider(p llm.Provider)
 ```
 
 ---
+
+## 运行时续接
+
+### `DefaultRunner.Continue`
+
+`Run` 或 `Stream` 的模型调用失败时，运行时返回 `*ProviderCallError`。该错误保留原始原因（可继续用 `errors.Is` / `errors.As` 检查）及运行状态快照。可在配置了备用 Provider 的新 `DefaultRunner` 上调用 `Continue`：
+
+```go
+func (r *DefaultRunner) Continue(ctx context.Context, req Request, interrupted *ProviderCallError, sink EventSink) (*Result, error)
+```
+
+```go
+var interrupted *runtime.ProviderCallError
+if errors.As(err, &interrupted) {
+    result, err = backupRunner.Continue(ctx, retryRequest, interrupted, sink)
+}
+```
+
+- `interrupted` 和 `interrupted.State` 必须非 nil；状态只适用于同进程、同一次运行。将它交给 `Continue` 后不要并发修改。
+- 若原请求提供了 `Request.ID` 或 `Metadata["request_id"]`，续接请求必须保留相同身份；不匹配时返回错误。
+- `retryRequest.Messages` 由调用方按新 Provider 策略重新装配；运行时在其后补回本次运行产出。已完成的工具结果、轮次与用量会保留，工具不会重跑。该状态不替代 `Config.Durable` 持久化及 `Resume`，也不重放在途工具。
+- 流式调用已展示的部分文本会作为续接上下文提示模型从其后继续；具体续写内容仍由 Provider 生成。`ctx` 和 `sink` 按普通运行方式生效。
+
+### `ToolMediaMessageName`
+
+当成功的 `ToolResult.Raw` 实现 `ToolMessageContent() []llm.ContentPart` 并返回非空内容时，运行时会将媒体投影为独立的 `llm.Message`：`Role == llm.RoleUser`、`Name == ToolMediaMessageName`。消息会标注来源工具及调用 ID，并声明其内容是工具数据而非用户指令。
 
 ## Agent
 

@@ -2,11 +2,12 @@
 
 # Hexagon API Reference
 
-This document provides the API reference for Hexagon **v0.5.15**.
+This document covers the Hexagon **v0.5.15** API and the current `Unreleased` changes.
 
 ## Table of Contents
 
 - [Top-Level API](#top-level-api)
+- [Runtime Continuation](#runtime-continuation)
 - [Agent](#agent)
 - [Tool](#tool)
 - [MCP](#mcp)
@@ -94,6 +95,32 @@ func SetDefaultProvider(p llm.Provider)
 ```
 
 ---
+
+## Runtime Continuation
+
+### `DefaultRunner.Continue`
+
+When a model call fails during `Run` or `Stream`, the runtime returns `*ProviderCallError`. It preserves the original cause (which remains inspectable with `errors.Is` / `errors.As`) and a snapshot of the run state. Call `Continue` on a new `DefaultRunner` configured with the fallback Provider:
+
+```go
+func (r *DefaultRunner) Continue(ctx context.Context, req Request, interrupted *ProviderCallError, sink EventSink) (*Result, error)
+```
+
+```go
+var interrupted *runtime.ProviderCallError
+if errors.As(err, &interrupted) {
+    result, err = backupRunner.Continue(ctx, retryRequest, interrupted, sink)
+}
+```
+
+- `interrupted` and `interrupted.State` must be non-nil. The state is valid only for the same process and run; do not mutate it concurrently with `Continue`.
+- If the original request has a `Request.ID` or `Metadata["request_id"]`, the continuation request must preserve that identity. A mismatch returns an error.
+- The caller rebuilds `retryRequest.Messages` under the new Provider's input policy. The runtime appends this run's recorded output and preserves completed tool results, turn count, and usage without rerunning completed tools. This state does not replace `Config.Durable` / `Resume` and does not replay in-flight tools.
+- Any streamed partial text already shown is included as guidance for the Provider to continue after that prefix; the generated continuation remains Provider output. `ctx` and `sink` follow normal run behavior.
+
+### `ToolMediaMessageName`
+
+When a successful `ToolResult.Raw` implements `ToolMessageContent() []llm.ContentPart` and returns non-empty content, the runtime projects it into a separate `llm.Message` with `Role == llm.RoleUser` and `Name == ToolMediaMessageName`. The message identifies the source tool and call ID, and marks its content as tool data rather than a user instruction.
 
 ## Agent
 

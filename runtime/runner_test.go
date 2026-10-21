@@ -2,6 +2,8 @@ package runtime
 
 import (
 	"context"
+	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -232,5 +234,110 @@ func TestRunnerToolLoop(t *testing.T) {
 	}
 	if len(result.ToolCalls) != 1 || result.ToolCalls[0].Name != "echo" {
 		t.Fatalf("ToolCalls = %#v, want echo", result.ToolCalls)
+	}
+}
+
+type continuationProvider struct {
+	complete func(llm.CompletionRequest) (*llm.CompletionResponse, error)
+	stream   func(llm.CompletionRequest) (*llm.Stream, error)
+}
+
+func (*continuationProvider) Name() string { return "continuation" }
+func (p *continuationProvider) Complete(_ context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
+	return p.complete(req)
+}
+func (p *continuationProvider) Stream(_ context.Context, req llm.CompletionRequest) (*llm.Stream, error) {
+	return p.stream(req)
+}
+
+type continuationReadFailure struct{}
+
+func (continuationReadFailure) Read([]byte) (int, error) {
+	return 0, errors.New("503 interrupted model stream")
+}
+
+// 同步和流式续接均保留同次工具事实、原有用量及已显示前缀，并使用新模型的输入策略。
+func TestRunnerContinuePreservesCompletedState(t *testing.T) {
+	for _, streaming := range []bool{false, true} {
+		t.Run(map[bool]string{false: "complete", true: "stream"}[streaming], func(t *testing.T) {
+			primaryCalls := 0
+			primary := &continuationProvider{}
+			primary.complete = func(llm.CompletionRequest) (*llm.CompletionResponse, error) {
+				primaryCalls++
+				if primaryCalls == 1 {
+					return &llm.CompletionResponse{ToolCalls: []llm.ToolCall{{ID: "one", Name: "write_once", Arguments: "{}"}}, Usage: llm.Usage{PromptTokens: 7, CompletionTokens: 3, TotalTokens: 10}}, nil
+				}
+				return nil, errors.New("503 interrupted model")
+			}
+			primary.stream = func(llm.CompletionRequest) (*llm.Stream, error) {
+				primaryCalls++
+				if primaryCalls == 1 {
+					return llm.NewStream(strings.NewReader("data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"one\",\"type\":\"function\",\"function\":{\"name\":\"write_once\",\"arguments\":\"{}\"}}]}}],\"usage\":{\"prompt_tokens\":7,\"completion_tokens\":3,\"total_tokens\":10}}\n\ndata: [DONE]\n\n"), llm.StreamOpenAIFormat), nil
+				}
+				return llm.NewStream(io.MultiReader(strings.NewReader("data: {\"choices\":[{\"delta\":{\"content\":\"PARTIAL_\"}}]}\n\n"), continuationReadFailure{}), llm.StreamOpenAIFormat), nil
+			}
+			tools := &fakeToolExecutor{}
+			runner := NewRunner(Config{ProviderSelector: StaticProviderSelector{Provider: primary}, ToolExecutor: tools})
+			request := Request{ID: "same-run", Messages: []llm.Message{llm.SystemMessage("local-only-policy"), llm.UserMessage("current task")}}
+			var visible strings.Builder
+			sink := EventSinkFunc(func(_ context.Context, e Event) error {
+				if e.Chunk != nil {
+					visible.WriteString(e.Chunk.Content)
+				}
+				return nil
+			})
+			var err error
+			if streaming {
+				_, err = runner.Stream(t.Context(), request, sink)
+			} else {
+				_, err = runner.Run(t.Context(), request)
+			}
+			var interrupted *ProviderCallError
+			if !errors.As(err, &interrupted) {
+				t.Fatalf("provider progress missing: %v", err)
+			}
+			check := func(req llm.CompletionRequest) {
+				t.Helper()
+				found := false
+				for _, m := range req.Messages {
+					if strings.Contains(m.Content, "local-only-policy") {
+						t.Fatal("old provider input leaked")
+					}
+					if m.Role == llm.RoleTool {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatal("completed tool result missing")
+				}
+			}
+			backup := &continuationProvider{complete: func(req llm.CompletionRequest) (*llm.CompletionResponse, error) {
+				check(req)
+				return &llm.CompletionResponse{Content: "DONE", Usage: llm.Usage{PromptTokens: 3, CompletionTokens: 2, TotalTokens: 5}}, nil
+			}, stream: func(req llm.CompletionRequest) (*llm.Stream, error) {
+				check(req)
+				return llm.NewStream(strings.NewReader("data: {\"choices\":[{\"delta\":{\"content\":\"PART\"}}]}\n\ndata: {\"choices\":[{\"delta\":{\"content\":\"IAL_DONE\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5}}\n\ndata: [DONE]\n\n"), llm.StreamOpenAIFormat), nil
+			}}
+			continued := NewRunner(Config{ProviderSelector: StaticProviderSelector{Provider: backup}, ToolExecutor: tools})
+			request.Messages = []llm.Message{llm.SystemMessage("new provider policy"), llm.UserMessage("current task")}
+			request.StreamMode = StreamModeOff
+			if streaming {
+				request.StreamMode = StreamModeTokens
+			}
+			result, err := continued.Continue(t.Context(), request, interrupted, sink)
+			if err != nil || result == nil {
+				t.Fatalf("continue: %+v %v", result, err)
+			}
+			want := "DONE"
+			if streaming {
+				want = "PARTIAL_DONE"
+				if visible.String() != want {
+					t.Fatalf("visible stream repeated or lost prefix: %q", visible.String())
+				}
+			}
+			if result.Content != want || tools.calls != 1 || len(result.ToolCalls) != 1 || result.Usage.TotalTokens != 15 {
+				t.Fatalf("continuation lost progress: result=%+v tool_calls=%d", result, tools.calls)
+			}
+		})
 	}
 }

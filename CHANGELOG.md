@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **runtime**：新增 `DefaultRunner.Continue` 与 `ProviderCallError`，允许模型调用失败后使用重新装配的输入续接同次运行，并保留已完成工具结果、轮次和用量；新增 `ToolMediaMessageName` 标记运行时投影的工具媒体消息。
+
 ### Changed
 
 - 根模块与独立 `examples/` 模块均升级 toolkit 至 **v0.3.5**；最低 Go 版本同步提升至 **1.25.13**。`examples/` 同步更新 toolkit 带来的 `golang.org/x/crypto`、`x/sync` 与 `x/sys` 最低版本。
