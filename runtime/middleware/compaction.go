@@ -183,18 +183,7 @@ func HeuristicCompress(history []llm.Message, cfg HeuristicCompressOptions) []ll
 	}
 
 	// 规则 1：以 assistant 调用组为边界，避免并列工具返回被按消息条数截断。
-	toolGroups := 0
-	toolKeepStart := len(history)
-	for i := len(history) - 1; i >= 0; i-- {
-		role := strings.ToLower(string(history[i].Role))
-		if role == "assistant" && len(history[i].ToolCalls) > 0 {
-			toolKeepStart = i
-			toolGroups++
-			if toolGroups == cfg.KeepRecentToolPairs {
-				break
-			}
-		}
-	}
+	toolKeepStart := heuristicToolKeepStart(history, cfg.KeepRecentToolPairs)
 
 	out := make([]llm.Message, 0, len(history))
 	for i, m := range history {
@@ -207,7 +196,7 @@ func HeuristicCompress(history []llm.Message, cfg HeuristicCompressOptions) []ll
 		}
 
 		// 规则 1: 老 tool_call/tool_result 跳过
-		if (role == "tool" || (role == "assistant" && len(m.ToolCalls) > 0)) && i < toolKeepStart {
+		if (role == "tool" || (role == "assistant" && len(m.ToolCalls) > 0) || m.Name == hruntime.ToolMediaMessageName) && i < toolKeepStart {
 			continue
 		}
 
@@ -225,6 +214,33 @@ func HeuristicCompress(history []llm.Message, cfg HeuristicCompressOptions) []ll
 	}
 
 	return out
+}
+
+func heuristicToolKeepStart(messages []llm.Message, keep int) int {
+	if keep <= 0 {
+		keep = 3
+	}
+	start, groups := len(messages), 0
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == llm.RoleAssistant && len(messages[i].ToolCalls) > 0 {
+			start, groups = i, groups+1
+			if groups == keep {
+				break
+			}
+		}
+	}
+	return start
+}
+
+// HasCompactableToolMedia 检查是否存在应随旧调用组释放的媒体，不依赖正文长度。
+func HasCompactableToolMedia(messages []llm.Message, keep int) bool {
+	start := heuristicToolKeepStart(messages, keep)
+	for _, message := range messages[:start] {
+		if message.Name == hruntime.ToolMediaMessageName {
+			return true
+		}
+	}
+	return false
 }
 
 // RecentMessageBounds 返回前置 system 段末尾及最近消息窗口起点。
@@ -270,6 +286,8 @@ func RecentMessageBounds(messages []llm.Message, keepRecent int) (systemEnd, kee
 			} else if start, ok := callByID[message.ToolCallID]; ok {
 				callForResult[i] = start
 			}
+		} else if message.Name == hruntime.ToolMediaMessageName {
+			callForResult[i] = lastCall
 		}
 	}
 

@@ -86,6 +86,8 @@ type State struct {
 	// outputMessages 只记录本次运行的实际产出，不能随模型输入压缩而丢失或混入历史。
 	// nil 保留旧快照和直接构造 State 的兼容路径。
 	outputMessages []llm.Message
+	// partialText 是已向调用方输出、但该次模型流未完成的正文前缀。
+	partialText string
 
 	emit func(context.Context, Event) error
 }
@@ -131,6 +133,7 @@ func (s *State) Snapshot() *State {
 		Attributes:     attrs,
 		runStart:       s.runStart,
 		outputMessages: cloneOutputMessages(s.outputMessages),
+		partialText:    s.partialText,
 	}
 }
 
