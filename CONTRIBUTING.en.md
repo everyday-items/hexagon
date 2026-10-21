@@ -29,7 +29,7 @@ Please be kind and respectful. We are committed to creating an open, inclusive c
 
 #### Preparation
 
-1. Install the Go version declared in `go.mod` or newer (the current minimum is Go 1.25.12)
+1. Install the Go version declared in `go.mod` or newer (the current minimum is Go 1.25.13)
 2. Fork the repository
 3. Clone it locally:
    ```bash

@@ -100,7 +100,7 @@ Hexagon 是一个完整的 AI Agent 开发生态，由多个仓库组成：
 hexagon
 ├── ai-core v0.2.11
 │   └── toolkit v0.3.4
-└── toolkit v0.3.4
+└── toolkit v0.3.5（根模块选定版本）
 ```
 
 `hexagon-ui` 是生态中的独立可选应用，不在上述 Go module 依赖图中。
@@ -788,10 +788,10 @@ hexagon/
 ## 依赖关系
 
 ```
-hexagon（Go >= 1.25.12）
+hexagon（Go >= 1.25.13）
 ├── ai-core v0.2.11
 │   └── toolkit v0.3.4
-└── toolkit v0.3.4
+└── toolkit v0.3.5 (根模块选定版本)
 ```
 
 ### ai-core — AI 基础能力库
@@ -810,7 +810,7 @@ hexagon（Go >= 1.25.12）
 
 ### toolkit — Go 通用工具库
 
-`github.com/hexagon-codes/toolkit` `v0.3.4`（Go >= 1.25.12）
+`github.com/hexagon-codes/toolkit` `v0.3.5`（Go >= 1.25.13）
 
 生产级 Go 通用工具包，提供语言增强、加密、网络、缓存、协程池等基础能力：
 

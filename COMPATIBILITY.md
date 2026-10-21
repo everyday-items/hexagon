@@ -11,7 +11,7 @@ hexagon 是 Hexagon 生态的 **AI Agent 框架（L2）**，向下依赖 toolkit
 ## 当前发布判定
 
 - 本次文档与发布元数据对应 **v0.5.15**，覆盖 MCP 完整结果与图片投影、工具媒体上下文、运行时压缩与本轮输出保留。MCP 混合结果的 `tool.Result.Output` 表示变化作为本次 patch 的版本策略例外，迁移要求见 [CHANGELOG](CHANGELOG.md#0515---2026-10-21) 的 `BREAKING`；后续 patch 仍遵守公开合同兼容承诺。
-- 根模块基线仍为 Go **1.25.12**、ai-core **v0.2.11** 与 toolkit **v0.3.4**，不提升最低 Go 版本。执行快照新增可选 `output_messages` 字段，旧快照无需迁移即可读取；缺少该字段时沿用旧的输出恢复路径，不提供新快照的本轮输出隔离保证。
+- 当前工作树依赖基线为 Go **1.25.13**、ai-core **v0.2.11** 与 toolkit **v0.3.5**。本次 toolkit 更新将最低 Go 版本提升至 1.25.13；执行快照新增可选 `output_messages` 字段，旧快照无需迁移即可读取；缺少该字段时沿用旧的输出恢复路径，不提供新快照的本轮输出隔离保证。
 - 发布版本来自目标提交的不可变 tag；开发构建使用构建注入或 module build info，未知时保留 `unknown`。文档或 Helm `appVersion` 的更新不代表 tag、镜像或 GitHub Release 已发布。
 
 ## 历史版本策略例外

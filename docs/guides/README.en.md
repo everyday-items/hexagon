@@ -10,9 +10,9 @@ Documentation version: **v0.5.15**. The [MCP API reference](../API.en.md#mcp) co
 
 | Module | Role | Current Root-Module Declaration |
 |--------|------|---------------------------------|
-| **hexagon** | AI Agent framework core | Go `1.25.12` |
+| **hexagon** | AI Agent framework core | Go `1.25.13` |
 | [**ai-core**](https://github.com/hexagon-codes/ai-core) | Core AI capability library | `v0.2.11` |
-| [**toolkit**](https://github.com/hexagon-codes/toolkit) | General-purpose Go toolkit | `v0.3.4` |
+| [**toolkit**](https://github.com/hexagon-codes/toolkit) | General-purpose Go toolkit | `v0.3.5` |
 
 This table is a snapshot of the current root module. Treat [`go.mod`](../../go.mod) as the single source of truth for subsequent dependency updates.
 

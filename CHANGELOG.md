@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 根模块与独立 `examples/` 模块均升级 toolkit 至 **v0.3.5**；最低 Go 版本同步提升至 **1.25.13**。`examples/` 同步更新 toolkit 带来的 `golang.org/x/crypto`、`x/sync` 与 `x/sys` 最低版本。
+
 ## [0.5.15] - 2026-10-21
 
 > **版本策略例外：** 本版本以 patch 版本号交付 MCP 混合结果的输出表示变更；迁移要求见下方 `BREAKING`。该例外不改变后续 patch 的公开合同兼容承诺。
