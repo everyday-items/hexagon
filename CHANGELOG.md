@@ -10,6 +10,7 @@
 
 ### Changed
 
+- 根模块 ai-core 升级至 **v0.2.12**，恢复 OpenAI 流式响应的 Token 用量解析与汇总，使同次运行续接保留跨调用累计用量。
 - 根模块与独立 `examples/` 模块均升级 toolkit 至 **v0.3.5**；最低 Go 版本同步提升至 **1.25.13**。`examples/` 同步更新 toolkit 带来的 `golang.org/x/crypto`、`x/sync` 与 `x/sys` 最低版本。
 
 ## [0.5.15] - 2026-10-21

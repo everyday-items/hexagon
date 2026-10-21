@@ -42,7 +42,7 @@ Hexagon works with the following repositories for AI Agent development:
 | **toolkit** | Go general-purpose toolkit (lang/crypto/net/cache/util) | [github.com/hexagon-codes/toolkit](https://github.com/hexagon-codes/toolkit) |
 | **hexagon-ui** | Dev UI frontend (Vue 3 + TypeScript) | [github.com/hexagon-codes/hexagon-ui](https://github.com/hexagon-codes/hexagon-ui) |
 
-> Documentation version: **v0.5.15** ([changes](CHANGELOG.md)). Current root-module baseline: Go 1.25.13, ai-core v0.2.11, and toolkit v0.3.5. `examples/` is a standalone Go module; its dependency versions are defined by `examples/go.mod` and are not automatically synchronized with the root module.
+> Documentation version: **v0.5.15** ([changes](CHANGELOG.md)). Current root-module baseline: Go 1.25.13, ai-core v0.2.12, and toolkit v0.3.5. `examples/` is a standalone Go module; its dependency versions are defined by `examples/go.mod` and are not automatically synchronized with the root module.
 
 ### 🧠 ai-core — AI Capability Library
 
