@@ -172,7 +172,7 @@ hexagon/
 - MINOR: 向后兼容的功能新增
 - PATCH: 向后兼容的 Bug 修复
 
-本次文档与发布元数据对应 **v0.5.14**。`hexagon.Version` 按构建注入的 `injectedVersion`、Go module build info 顺序解析；无法取得真实版本的开发构建保留 `unknown`，不把发布版本写死到 fallback。workspace 构建应从 Hexagon 源码目录的 `git describe --tags --dirty` 取得注入值。
+本次文档与发布元数据对应 **v0.5.15**。`hexagon.Version` 按构建注入的 `injectedVersion`、Go module build info 顺序解析；无法取得真实版本的开发构建保留 `unknown`，不把发布版本写死到 fallback。workspace 构建应从 Hexagon 源码目录的 `git describe --tags --dirty` 取得注入值。
 
 本仓没有自动发布工作流。发布步骤为：
 

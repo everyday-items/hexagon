@@ -254,6 +254,10 @@ researcher := agent.NewReAct(
 
 `runtime.Middleware` also defines `AfterLLM`, `BeforeTool`, `AfterTool`, and `Finalize` lifecycle methods. `runtime.MiddlewareFuncSet` lets an application implement only the callbacks it needs.
 
+`runtime/middleware.Compaction` compacts model input in `BeforeLLM`. Without `ShouldCompact`, it runs only when `MaxTokens > 0` and the estimated token count exceeds that threshold. A configured `ShouldCompact` callback takes precedence over `MaxTokens`; it must not mutate messages and must provide its own concurrency safety. The built-in compactor keeps all system messages and the latest `KeepRecent` non-system messages (6 by default), without guaranteeing complete tool groups. To keep recent interactions by tool-call group, invoke `HeuristicCompress` from `Compact`: by default it retains the latest 3 groups and shortens assistant text exceeding 4000 code points, while preserving user text and multimodal content. `RecentMessageBounds` calculates a recent window that includes corresponding tool calls, and `HeuristicToolSummary` summarizes interactions without another model call.
+
+New runs track model input separately from messages produced during the run, so input compaction does not replay historical answers as new output. Snapshots retain these messages in the optional `output_messages` field. Older snapshots without that field remain readable but use the legacy output restoration path.
+
 ## State Management
 
 ### Four-Layer State

@@ -172,7 +172,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/):
 - MINOR: backward-compatible new features
 - PATCH: backward-compatible bug fixes
 
-The documentation and release metadata in this revision target **v0.5.14**. `hexagon.Version` is resolved from build-time `injectedVersion`, then Go module build info; an unknown development version remains `unknown`. Keep the fallback independent of release numbers. For workspace builds, derive the injected version from the Hexagon checkout's `git describe --tags --dirty` output.
+The documentation and release metadata in this revision target **v0.5.15**. `hexagon.Version` is resolved from build-time `injectedVersion`, then Go module build info; an unknown development version remains `unknown`. Keep the fallback independent of release numbers. For workspace builds, derive the injected version from the Hexagon checkout's `git describe --tags --dirty` output.
 
 This repository has no automated release workflow. To publish:
 

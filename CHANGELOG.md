@@ -4,6 +4,25 @@
 
 ## [Unreleased]
 
+## [0.5.15] - 2026-10-21
+
+> **版本策略例外：** 本版本以 patch 版本号交付 MCP 混合结果的输出表示变更；迁移要求见下方 `BREAKING`。该例外不改变后续 patch 的公开合同兼容承诺。
+
+### Added
+
+- **mcp**：新增 `PreservedToolResult`，保留完整的 MCP 协议结果；`ToolText()` 提供不含图片编码的文本投影，`ToolMessageContent()` 将返回图片投影为模型消息内容。
+- **runtime**：成功工具结果的 `Raw` 实现 `ToolMessageContent() []llm.ContentPart` 时，将返回媒体及工具来源说明加入后续模型输入。
+- **runtime/middleware/compaction**：新增 `ShouldCompact` 自定义触发条件及 `HeuristicCompress`、`RecentMessageBounds`、`HeuristicToolSummary`，分别支持启发式压缩、完整工具组窗口边界和工具交互摘要。
+
+### Fixed
+
+- **runtime**：将本轮实际产出与可压缩的模型输入分离，避免压缩造成历史回答混入或本轮内容丢失。新快照通过可选 `output_messages` 字段保存本轮产出；旧快照仍可读取，但没有该字段时沿用旧的输出恢复路径。
+- **runtime/middleware/compaction**：启发式压缩保留用户原文与多模态请求，按工具调用组保留最近交互；窗口边界按调用 ID 找回对应调用，摘要按 ID 配对结果。默认 token 估算继续使用既有的 ai-core 中文感知实现，本次修正相关注释。
+
+### BREAKING
+
+- **MCP 输出表示**：同时含文本与结构化内容的成功结果，其 `tool.Result.Output` 由字符串变为 `*mcp.PreservedToolResult`；含非文本内容的成功结果也使用此类型。直接断言 `Output.(string)` 的调用方应按结果类型分支处理，使用 `ToolText()` 取得文本投影，或读取内嵌的 `CallToolResult`。纯文本结果仍返回字符串，纯结构化结果仍直接返回结构化内容；`isError` 仍返回失败结果及非 nil 错误，并在 `Output` 保留完整协议结果。
+
 ## [0.5.14] - 2026-09-14
 
 ### Added

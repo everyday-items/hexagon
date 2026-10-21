@@ -4,7 +4,7 @@
 
 This guide helps you get started with the Hexagon AI Agent framework in 30 minutes.
 
-Documentation version: **v0.5.14**. See the [changelog](../CHANGELOG.md) for release changes and the [MCP API reference](API.en.md#mcp) for connection and cleanup contracts.
+Documentation version: **v0.5.15**. See the [changelog](../CHANGELOG.md) for release changes and the [MCP API reference](API.en.md#mcp) for connection and cleanup contracts.
 
 ## Project Overview
 

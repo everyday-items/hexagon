@@ -2,7 +2,7 @@
 
 # Hexagon API Reference
 
-This document provides the API reference for Hexagon **v0.5.14**.
+This document provides the API reference for Hexagon **v0.5.15**.
 
 ## Table of Contents
 
@@ -233,7 +233,7 @@ calculator := hexagon.NewTool("calculator", "Perform addition",
 
 ## MCP
 
-The V2 entry points in `github.com/hexagon-codes/hexagon/mcp` use the official Go SDK. These contracts apply to **v0.5.14**. Existing top-level compatibility aliases remain available; new code can import the `mcp` package directly.
+The V2 entry points in `github.com/hexagon-codes/hexagon/mcp` use the official Go SDK. These contracts apply to **v0.5.15**. Existing top-level compatibility aliases remain available; new code can import the `mcp` package directly.
 
 ### Connections and Resource Ownership
 
@@ -247,7 +247,9 @@ The V2 entry points in `github.com/hexagon-codes/hexagon/mcp` use the official G
 
 Each entry point returns `[]tool.Tool`, a cleanup handle, and an `error`. Check the error before registering cleanup: failed connections return a nil cleanup handle and close any established connection or session internally. The caller owns a successful session. Its context should cover the required session lifetime; the stdio subprocess is bound to that context, so a short-lived request context must not own a long-lived session.
 
-Tool discovery reads every page. Successful calls return text when present, or preserve `structuredContent` when no text is available. An MCP `isError` response still returns an unsuccessful `tool.Result` and a non-nil error.
+Tool discovery reads every page. For successful calls, `tool.Result.Output` is a string for text-only results, the structured value for results with only `structuredContent` and no text or non-text content, or a `*mcp.PreservedToolResult` for non-text results and results containing both text and structured content. The wrapper embeds the complete `CallToolResult`. `ToolText()` projects text, image placeholders, resource links, and structured content into text; `ToolMessageContent()` converts images into model content parts. Consumers accessing `Output` directly must handle its concrete type rather than always asserting a string.
+
+An MCP `isError` response still returns an unsuccessful `tool.Result` and a non-nil error, with the complete protocol result retained in `Output` as a `*mcp.PreservedToolResult`. The runtime appends media from `Raw`, together with its tool source, to model input only when the tool result has no error. The current MCP projection includes images only; it does not imply support for audio or video in model context.
 
 The SDK owns stdio process cleanup, with a 5-second `WaitDelay`. The SSE and Streamable HTTP convenience functions apply a separate 5-second limit to cancellation notifications and DELETE cleanup requests. This is not a shared timeout for ordinary tool calls, initialization, or arbitrary custom transports; callers still use context deadlines for business operations. Consumers own retry policy and tool identity across multiple MCP servers.
 

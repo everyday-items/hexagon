@@ -4,7 +4,7 @@
 
 本指南帮助你在 30 分钟内上手 Hexagon AI Agent 框架。
 
-文档对应 **v0.5.14**。版本变化见 [CHANGELOG](../CHANGELOG.md)，MCP 连接与清理合同见 [API 参考](API.md#mcp)。
+文档对应 **v0.5.15**。版本变化见 [CHANGELOG](../CHANGELOG.md)，MCP 连接与清理合同见 [API 参考](API.md#mcp)。
 
 ## 项目简介
 

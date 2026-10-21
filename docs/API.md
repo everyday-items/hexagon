@@ -2,7 +2,7 @@
 
 # Hexagon API 参考文档
 
-本文档提供 Hexagon **v0.5.14** 的 API 参考。
+本文档提供 Hexagon **v0.5.15** 的 API 参考。
 
 ## 目录
 
@@ -233,7 +233,7 @@ calculator := hexagon.NewTool("calculator", "执行加法计算",
 
 ## MCP
 
-`github.com/hexagon-codes/hexagon/mcp` 的 V2 入口使用官方 Go SDK。以下合同对应 **v0.5.14**；顶层兼容别名继续可用，新代码可直接导入 `mcp` 子包。
+`github.com/hexagon-codes/hexagon/mcp` 的 V2 入口使用官方 Go SDK。以下合同对应 **v0.5.15**；顶层兼容别名继续可用，新代码可直接导入 `mcp` 子包。
 
 ### 连接与资源所有权
 
@@ -247,7 +247,9 @@ calculator := hexagon.NewTool("calculator", "执行加法计算",
 
 所有入口均返回 `[]tool.Tool`、清理入口和 `error`。先检查错误，只有成功后才注册清理；失败时返回 nil 清理入口，内部负责关闭已建立的连接或会话。成功会话由调用方持有，`ctx` 应覆盖所需会话生命周期；stdio 子进程受该 context 控制，不应直接使用即将结束的短请求 context 承载长期会话。
 
-工具发现读取全部分页；成功调用优先返回文本，无文本而存在 `structuredContent` 时保留结构化结果。MCP `isError` 仍返回失败的 `tool.Result` 和非 nil 错误。
+工具发现读取全部分页。成功结果的 `tool.Result.Output` 按内容分类：纯文本返回字符串；只有 `structuredContent` 而没有文本或非文本内容时直接返回结构化内容；含非文本内容或同时含文本与结构化内容时返回 `*mcp.PreservedToolResult`。后者内嵌完整 `CallToolResult`，`ToolText()` 提供文本、图片占位、资源链接和结构化内容的文本投影，`ToolMessageContent()` 将图片转换为模型可用的内容部分。直接使用 `Output` 的调用方应按类型处理，不能统一断言为字符串。
+
+MCP `isError` 仍返回失败的 `tool.Result` 和非 nil 错误，并在 `Output` 中通过 `*mcp.PreservedToolResult` 保留完整协议结果。runtime 只在工具结果没有错误时，将 `Raw` 提供的媒体内容连同来源说明追加到模型输入；当前 MCP 投影仅包含图片，不代表音频、视频等内容已接入模型上下文。
 
 stdio 的进程回收由 SDK 负责，`WaitDelay` 为 5 秒；SSE/Streamable HTTP 便捷入口仅对取消通知与 DELETE 收尾请求各设置 5 秒时限。这不是普通工具调用、连接初始化或所有自定义 transport 的统一超时；调用方仍通过 context 控制业务截止时间。重试策略与多个 MCP 服务器的工具归属由消费方管理。
 

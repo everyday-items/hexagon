@@ -10,14 +10,14 @@ hexagon 是 Hexagon 生态的 **AI Agent 框架（L2）**，向下依赖 toolkit
 
 ## 当前发布判定
 
-- 本次文档与发布元数据对应 **v0.5.14**，更新范围为兼容的 MCP 诊断/生命周期修复、工具分页与结构化结果修复，以及 CI 判定修正；不提升最低 Go 版本，不要求迁移持久数据。
-- 根模块基线为 Go **1.25.12**、ai-core **v0.2.11** 与 toolkit **v0.3.4**。`ProtocolError` / `StdioConnectError` 为新增类型；现有连接入口的签名保持不变，调用方通过 `errors.As` 读取诊断、通过 `errors.Is` 判断底层原因，不应依赖错误字符串的固定格式。
+- 本次文档与发布元数据对应 **v0.5.15**，覆盖 MCP 完整结果与图片投影、工具媒体上下文、运行时压缩与本轮输出保留。MCP 混合结果的 `tool.Result.Output` 表示变化作为本次 patch 的版本策略例外，迁移要求见 [CHANGELOG](CHANGELOG.md#0515---2026-10-21) 的 `BREAKING`；后续 patch 仍遵守公开合同兼容承诺。
+- 根模块基线仍为 Go **1.25.12**、ai-core **v0.2.11** 与 toolkit **v0.3.4**，不提升最低 Go 版本。执行快照新增可选 `output_messages` 字段，旧快照无需迁移即可读取；缺少该字段时沿用旧的输出恢复路径，不提供新快照的本轮输出隔离保证。
 - 发布版本来自目标提交的不可变 tag；开发构建使用构建注入或 module build info，未知时保留 `unknown`。文档或 Helm `appVersion` 的更新不代表 tag、镜像或 GitHub Release 已发布。
 
 ## 历史版本策略例外
 - v0.5.10 与 v0.5.11 已包含相对 v0.5.9 的公开 API、最低 Go 版本和 Qdrant 持久数据合同变更，但以 patch 版本发布，且两者的提交拓扑与版本顺序倒置。
 - 维护者确认当前框架尚无外部使用者，批准 **v0.5.12** 作为一次性版本策略例外：保留上述合同变化，撤回 v0.5.10 与 v0.5.11，并以 v0.5.12 建立唯一可消费基线。迁移项见 CHANGELOG 的 v0.5.12 `BREAKING` 段。
-- 该例外不改变后续兼容性承诺；v0.5.12 之后的 v0.5.x patch 不得再包含破坏式合同变化。
+- 该例外不改变后续兼容性承诺；除明确记录的版本策略例外外，v0.5.x patch 不得包含破坏式合同变化。
 
 ## 仓库门禁
 - 根 CI 固定设置 `GOWORK=off`、`GOTOOLCHAIN=local` 与 `GOFLAGS=-mod=readonly`，避免本地 workspace 或其他模块掩盖发布依赖问题。最低 Go 版本从根 `go.mod` 读取，检查格式并以 `go test -count=1 -vet=all ./...` 执行完整 vet 和普通测试；最新稳定 Go 版本执行 race 和 `govulncheck`。实际缺失或不一致的依赖仍失败，冗余历史 `go.sum` 条目不作为门禁。

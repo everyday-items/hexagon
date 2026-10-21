@@ -254,6 +254,10 @@ researcher := agent.NewReAct(
 
 `runtime.Middleware` 还提供 `AfterLLM`、`BeforeTool`、`AfterTool` 和 `Finalize` 生命周期方法；`runtime.MiddlewareFuncSet` 允许只实现需要的回调。
 
+`runtime/middleware.Compaction` 可在 `BeforeLLM` 阶段压缩模型输入。未设置 `ShouldCompact` 时，仅在 `MaxTokens > 0` 且估算 token 数超过该值时触发；设置后由回调决定是否压缩，优先于 `MaxTokens`。回调不得修改消息，并应自行保证并发安全。默认压缩保留全部 system 消息和最近 `KeepRecent` 条非 system 消息（默认 6 条），不保证完整工具组。需要按完整工具调用组保留最近交互时，可在 `Compact` 回调中调用 `HeuristicCompress`（默认保留最近 3 组，并缩短超过 4000 个码点的 assistant 正文）；它保留用户原文与多模态内容。`RecentMessageBounds` 可计算包含对应工具调用的最近消息窗口，`HeuristicToolSummary` 可生成不调用模型的工具交互摘要。
+
+新运行将模型输入与本轮实际产出分开记录，压缩输入不会把历史回答重放为本轮输出。执行快照通过可选 `output_messages` 字段保留本轮产出；缺少该字段的旧快照仍可恢复，但沿用旧的输出恢复路径。
+
 ## 状态管理
 
 ### 四层状态

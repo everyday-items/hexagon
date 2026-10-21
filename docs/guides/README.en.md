@@ -4,7 +4,7 @@
 
 This directory indexes Hexagon guides for getting started, agents, RAG, orchestration, collaboration, plugins, and operations. The guides explain common usage; treat the current source, [`go.mod`](../../go.mod), and tests as the authorities for exported APIs, dependency versions, and actual behavior, respectively.
 
-Documentation version: **v0.5.14**. The [MCP API reference](../API.en.md#mcp) covers connections, typed diagnostics, tool discovery, and cleanup.
+Documentation version: **v0.5.15**. The [MCP API reference](../API.en.md#mcp) covers connections, typed diagnostics, tool discovery, and cleanup.
 
 ## Ecosystem and Current Baseline
 
